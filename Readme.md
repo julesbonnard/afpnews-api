@@ -1,5 +1,7 @@
 # AfpNews API
 
+[![Build Status](https://travis-ci.org/julesbonnard/afpnews-api.svg?branch=master)](https://travis-ci.org/julesbonnard/afpnews-api)
+
 This project is aimed to help javascript developers use the [AFP News API](https://api.afpforum.com/).
 
 It provides authentication and search functions.
