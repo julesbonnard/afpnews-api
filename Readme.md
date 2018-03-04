@@ -6,7 +6,7 @@ It provides authentication and search functions.
 
 ## Getting Started
 
-This package is availabe both for NodeJS and browsers. That's why two versions are available on the `./dist` directory.
+This package is available both for NodeJS and browsers. That's why two versions are available on the `./dist` directory.
 
 ### Prerequisites
 
