@@ -16,7 +16,7 @@ Read [the API documentation](https://api.afpforum.com/), and ask for an API Key 
 
 #### Node
 
-`npm install --save afpnews-api` (Not published yet)
+`npm install --save afpnews-api`
 
 ```js
 const AfpNews = require('afpnews-api')
