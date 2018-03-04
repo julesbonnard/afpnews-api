@@ -35,7 +35,9 @@ var clientConfig = {
   target: 'web',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'afpnews.browser.js'
+    filename: 'afpnews.browser.js',
+    library: 'afpnews',
+    libraryTarget: 'umd'
   },
   module: moduleConfig
 };
