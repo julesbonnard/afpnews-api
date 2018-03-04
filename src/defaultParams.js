@@ -3,5 +3,7 @@ export const defaultSearchParams = {
   urgency: null,
   searchTerms: null,
   size: 10,
-  dateFrom: 'now-1h'
+  dateFrom: 'now-1h',
+  dateTo: 'now',
+  sort: 'published desc'
 }

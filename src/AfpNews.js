@@ -32,23 +32,23 @@ class AfpNews {
   }
 
   async authenticate (credentials) {
-    if (credentials && this._apiKey) {
-      return this.requestAuthenticatedToken(credentials)
-    }
-
-    if (!this._apiKey) {
+    if (this._apiKey) {
+      if (credentials) {
+        return this.requestAuthenticatedToken(credentials)
+      } else if (this.token.accessToken === null) {
+        throw new Error('You need to authenticate with credentials once')
+      } else if (this.isAccessTokenValid === false) {
+        return this.requestRefreshToken()
+      } else {
+        return Promise.resolve(this.token)
+      }
+    } else {
       if (this.credentials) {
-        return Promise.reject(new Error('You need an api key to make authenticated requests'))
+        throw new Error('You need an api key to make authenticated requests')
       } else {
         return this.requestAnonymousToken()
       }
     }
-
-    if (this.isAccessTokenValid === false) {
-      return this.requestRefreshToken()
-    }
-
-    return Promise.resolve()
   }
 
   async requestAnonymousToken () {
@@ -128,7 +128,7 @@ class AfpNews {
   }
 
   async search (query) {
-    let { size, dateFrom, dateTo, urgency, searchTerms, lang, startat } = Object.assign(defaultSearchParams, query)
+    let { size, dateFrom, dateTo, urgency, searchTerms, lang, startat, sort } = Object.assign(defaultSearchParams, query)
 
     await this.authenticate()
 
@@ -160,10 +160,10 @@ class AfpNews {
     const params = {
       startat,
       lang,
-      size: parseInt(size) || 10,
-      sort: 'published desc',
-      from: dateFrom || 'now-1M',
-      to: dateTo || 'now',
+      size: parseInt(size),
+      sort,
+      from: dateFrom,
+      to: dateTo,
       fq: filters.join(','),
       q: q.join(',')
     }
