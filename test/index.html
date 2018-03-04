@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+</head>
+<body>
+
+<script type="text/javascript" src="../dist/afpnews.browser.js"></script>
+<script type="text/javascript">
+const afpNews = new AfpNews()
+
+afpNews.authenticate()
+  .then(result => {
+    console.log(result)
+    return afpNews.search()
+  })
+  .then(result => {
+    console.log(result)
+  })
+  .catch(err => {
+    console.error(err)
+  })
+</script>
+</body>
+</html>
