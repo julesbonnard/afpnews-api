@@ -1,10 +1,11 @@
 import { resolve } from 'url'
 import { get, post } from './request'
 import { defaultSearchParams } from './defaultParams'
+import btoa from 'btoa'
 
 class AfpNews {
-  constructor ({ apiKey, baseUrl } = {}) {
-    this._apiKey = apiKey
+  constructor ({ apiKey, clientId, clientSecret, baseUrl } = {}) {
+    this.apiKey = { apiKey, clientId, clientSecret }
     this.baseUrl = baseUrl || 'https://api.afpforum.com'
     this.resetToken()
   }
@@ -13,11 +14,24 @@ class AfpNews {
     return resolve(this.baseUrl, '/oauth/token')
   }
 
-  get isAccessTokenValid () {
-    return this._accessToken !== null && this._refreshToken !== null && this._tokenExpires !== null && this._tokenExpires > +new Date()
+  get apiKey () {
+    return this._apiKey
+  }
+
+  set apiKey ({ apiKey, clientId, clientSecret }) {
+    if (clientId && clientSecret) {
+      this._apiKey = btoa(`${clientId}:${clientSecret}`)
+    } else {
+      this._apiKey = apiKey
+    }
+  }
+
+  get isTokenValid () {
+    return this.token && this.token.tokenExpires > +new Date()
   }
 
   get token () {
+    if (this._accessToken === null || this._tokenExpires === null || this._refreshToken === null) return null
     return {
       accessToken: this._accessToken,
       tokenExpires: this._tokenExpires,
@@ -32,12 +46,12 @@ class AfpNews {
   }
 
   async authenticate (credentials) {
-    if (this._apiKey) {
+    if (this.apiKey) {
       if (credentials) {
         return this.requestAuthenticatedToken(credentials)
-      } else if (this.token.accessToken === null) {
+      } else if (this.token === null) {
         throw new Error('You need to authenticate with credentials once')
-      } else if (this.isAccessTokenValid === false) {
+      } else if (this.isTokenValid === false) {
         return this.requestRefreshToken()
       } else {
         return Promise.resolve(this.token)
@@ -75,7 +89,7 @@ class AfpNews {
           grant_type: 'password'
         },
         headers: {
-          'Authorization': `Basic ${this._apiKey}`
+          'Authorization': `Basic ${this.apiKey}`
         },
         json: true
       })
@@ -90,11 +104,11 @@ class AfpNews {
     try {
       const token = await post(this.authUrl, {
         formData: {
-          refresh_token: this._refreshToken,
+          refresh_token: this.token.refreshToken,
           grant_type: 'refresh_token'
         },
         headers: {
-          'Authorization': `Basic ${this._apiKey}`
+          'Authorization': `Basic ${this.apiKey}`
         },
         json: true
       })
@@ -128,7 +142,7 @@ class AfpNews {
   }
 
   async search (query) {
-    let { size, dateFrom, dateTo, urgency, searchTerms, lang, startat, sort } = Object.assign(defaultSearchParams, query)
+    let { size, dateFrom, dateTo, urgency, searchTerms, lang, sort } = Object.assign(this.defaultSearchParams, query)
 
     await this.authenticate()
 
@@ -158,9 +172,8 @@ class AfpNews {
     }
 
     const params = {
-      startat,
       lang,
-      size: parseInt(size),
+      size,
       sort,
       from: dateFrom,
       to: dateTo,
@@ -172,7 +185,7 @@ class AfpNews {
       const data = await get(this.searchUrl, {
         params,
         headers: {
-          'Authorization': `Bearer ${this._accessToken}`,
+          'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
         },
         json: true

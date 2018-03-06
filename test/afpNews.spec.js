@@ -6,6 +6,8 @@ const expect = chai.expect;
 const AfpNews = require('../');
 
 const apiKey = process.env.AFPNEWS_API_KEY;
+const clientId = process.env.AFPNEWS_CLIENT_ID;
+const clientSecret = process.env.AFPNEWS_CLIENT_SECRET;
 const username = process.env.AFPNEWS_USERNAME;
 const password = process.env.AFPNEWS_PASSWORD;
 
@@ -17,10 +19,7 @@ describe('AFP News', function() {
     });
     it('should reset token on init', function() {
       const afpNews = new AfpNews();
-      const { accessToken, refreshToken, tokenExpires } = afpNews.token;
-      expect(accessToken).to.be.null;
-      expect(refreshToken).to.be.null;
-      expect(tokenExpires).to.be.null;
+      expect(afpNews.token).to.be.null;
     });
     it('should allow to change base url in constructor', function() {
       const afpNews = new AfpNews({ baseUrl: 'http://customurl' });
@@ -58,6 +57,14 @@ describe('AFP News', function() {
     });
     it('should return an authenticated token when called with api key and credentials', async function() {
       const afpNews = new AfpNews({ apiKey });
+      const token = await afpNews.authenticate({ username, password });
+      expect(token.accessToken).to.be.a('string');
+      expect(token.refreshToken).to.be.a('string');
+      expect(token.tokenExpires).to.be.a('number');
+      expect(token).to.deep.equal(afpNews.token);
+    });
+    it('should return an authenticated token when called with client id and client secret', async function() {
+      const afpNews = new AfpNews({ clientId, clientSecret });
       const token = await afpNews.authenticate({ username, password });
       expect(token.accessToken).to.be.a('string');
       expect(token.refreshToken).to.be.a('string');
