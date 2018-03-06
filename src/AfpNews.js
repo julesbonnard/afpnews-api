@@ -57,7 +57,7 @@ class AfpNews {
         return Promise.resolve(this.token)
       }
     } else {
-      if (this.credentials) {
+      if (credentials) {
         throw new Error('You need an api key to make authenticated requests')
       } else {
         return this.requestAnonymousToken()
