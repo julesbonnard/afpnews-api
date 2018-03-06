@@ -21,6 +21,10 @@ export async function post (uri, { formData, headers }) {
       form.append(item, formData[item])
     }
 
+    if (typeof form.getHeaders === 'function') {
+      headers = Object.assign(headers, form.getHeaders())
+    }
+
     const response = await axios.post(uri, form, {
       headers
     })

@@ -2,24 +2,18 @@
   "name": "afpnews-api",
   "version": "1.0.3",
   "description": "Node helper functions to authenticate and fetch AFP News API",
-  "main": "dist/afpnews.js",
+  "main": "dist/AfpNews.node.js",
+  "module": "src/AfpNews.js",
   "engines": {
     "node": ">= 6.0.0"
   },
-  "browser": {
-    "./src/request/index.js": "./src/request/browser.js"
-  },
   "scripts": {
-    "clean": "rimraf dist",
-    "dev": "webpack --mode development --watch",
+    "clean": "rimraf dist stats.json",
+    "dev": "webpack --mode development --watch --display-error-details",
     "build": "webpack --mode production",
+    "analyse": "webpack --mode production --json > stats.json && npx webpack-bundle-analyzer stats.json",
     "test": "mocha --colors --exit --timeout 5000 ./test/*.spec.js"
   },
-  "pre-commit": [
-    "clean",
-    "build",
-    "test"
-  ],
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/julesbonnard/afpnews-api.git"
@@ -37,7 +31,6 @@
   },
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
-    "axios": "^0.17.1",
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
     "babel-eslint": "^8.2.2",
@@ -52,15 +45,16 @@
     "eslint-config-recommended": "^2.0.0",
     "eslint-loader": "^2.0.0",
     "mocha": "^5.0.1",
-    "pre-commit": "^1.2.2",
-    "request": "^2.83.0",
-    "request-promise": "^4.2.2",
     "rimraf": "^2.6.2",
     "webpack": "^4.0.1",
-    "webpack-cli": "^2.0.10"
+    "webpack-bundle-analyzer": "^2.11.1",
+    "webpack-cli": "^2.0.10",
+    "webpack-node-externals": "^1.6.0"
   },
   "dependencies": {
+    "axios": "^0.17.1",
     "babel-runtime": "^6.26.0",
-    "btoa": "^1.1.2"
+    "btoa": "^1.1.2",
+    "form-data": "^2.3.2"
   }
 }

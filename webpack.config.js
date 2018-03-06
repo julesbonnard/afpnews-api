@@ -1,4 +1,5 @@
 var path = require('path');
+var nodeExternals = require('webpack-node-externals');
 
 var moduleConfig = {
   rules: [
@@ -18,28 +19,31 @@ var moduleConfig = {
       }
     }
   ]
-}
+};
 
-var serverConfig = {
+var nodeConfig = {
   target: 'node',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'afpnews.js',
-    library: 'afpnews',
+    filename: 'AfpNews.node.js',
+    library: 'AfpNews',
+    libraryExport: 'default',
     libraryTarget: 'umd'
   },
+  externals: [nodeExternals()],
   module: moduleConfig
 };
 
-var clientConfig = {
+var webConfig = {
   target: 'web',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'afpnews.browser.js',
-    library: 'afpnews',
+    filename: 'AfpNews.js',
+    library: 'AfpNews',
+    libraryExport: 'default',
     libraryTarget: 'umd'
   },
   module: moduleConfig
 };
 
-module.exports = [ serverConfig, clientConfig ];
+module.exports = [nodeConfig, webConfig];

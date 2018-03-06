@@ -27,7 +27,7 @@ const AfpNews = require('afpnews-api')
 #### Browser
 
 ```html
-<script src="./dist/afpnews.browser.js"></script>
+<script src="./dist/AfpNews.js"></script>
 ```
 
 ### Let's start using it
