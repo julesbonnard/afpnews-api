@@ -82,7 +82,7 @@ export default class AfpNews {
 
   async requestAuthenticatedToken ({ username, password }) {
     try {
-      const token = await post(this.authUrl, {
+      const token = await post(this.authUrl, {}, {
         formData: {
           username,
           password,
@@ -102,15 +102,14 @@ export default class AfpNews {
 
   async requestRefreshToken () {
     try {
-      const token = await post(this.authUrl, {
+      const token = await post(this.authUrl, {}, {
         formData: {
           refresh_token: this.token.refreshToken,
           grant_type: 'refresh_token'
         },
         headers: {
           'Authorization': `Basic ${this.apiKey}`
-        },
-        json: true
+        }
       })
 
       return this.parseToken(token)
@@ -142,11 +141,11 @@ export default class AfpNews {
   }
 
   async search (query) {
-    let { size, dateFrom, dateTo, urgency, searchTerms, lang, sort } = Object.assign(this.defaultSearchParams, query)
+    let { size, dateFrom, dateTo, urgency, searchTerms, lang, sort } = Object.assign({}, this.defaultSearchParams, query)
 
     await this.authenticate()
 
-    const filters = ['product:news']
+    const filters = ['product:news', 'product:multimedia', 'product:photo', 'product:sid']
     let q = []
 
     if (urgency) {
@@ -171,7 +170,7 @@ export default class AfpNews {
       })
     }
 
-    const params = {
+    const body = {
       lang,
       size,
       sort,
@@ -182,13 +181,12 @@ export default class AfpNews {
     }
 
     try {
-      const data = await get(this.searchUrl, {
-        params,
+      const data = await post(this.searchUrl, {}, {
+        body,
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
-        },
-        json: true
+        }
       })
 
       const { docs, numFound } = data.response

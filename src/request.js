@@ -1,9 +1,11 @@
 import FormData from 'form-data'
 import axios from 'axios'
 
-export async function get (uri, { params, headers }) {
+export async function get (url, { params, headers }) {
   try {
-    const response = await axios.get(uri, {
+    const response = await axios({
+      method: 'get',
+      url,
       params,
       headers
     })
@@ -14,18 +16,25 @@ export async function get (uri, { params, headers }) {
   }
 }
 
-export async function post (uri, { formData, headers }) {
+export async function post (url, data = {}, { formData, headers }) {
   try {
-    const form = new FormData()
-    for (const item in formData) {
-      form.append(item, formData[item])
+    if (formData) {
+      const form = new FormData()
+      for (const item in formData) {
+        form.append(item, formData[item])
+      }
+
+      data = Object.assign(data, form)
+
+      if (typeof form.getHeaders === 'function') {
+        headers = Object.assign({}, headers, form.getHeaders())
+      }
     }
 
-    if (typeof form.getHeaders === 'function') {
-      headers = Object.assign(headers, form.getHeaders())
-    }
-
-    const response = await axios.post(uri, form, {
+    const response = await axios({
+      method: 'post',
+      url,
+      data,
       headers
     })
 
