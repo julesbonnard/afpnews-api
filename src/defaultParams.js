@@ -1,9 +1,11 @@
 export const defaultSearchParams = {
-  lang: null,
-  urgency: null,
-  searchTerms: null,
+  products: ['news', 'multimedia', 'photo'],
+  langs: ['fr', 'en', 'es', 'de', 'pt', 'ar'],
+  urgencies: [1, 2, 3, 4, 5],
+  queryString: '',
   size: 10,
-  dateFrom: 'now-1h',
+  dateFrom: 'now-1M',
   dateTo: 'now',
-  sort: 'published desc'
+  sortField: 'published',
+  sortOrder: 'desc'
 }

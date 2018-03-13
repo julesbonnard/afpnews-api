@@ -1,6 +1,7 @@
 import { resolve } from 'url'
 import { get, post } from './request'
 import { defaultSearchParams } from './defaultParams'
+import { buildQuery } from './searchParser'
 import btoa from 'btoa'
 
 export default class AfpNews {
@@ -140,49 +141,47 @@ export default class AfpNews {
     return defaultSearchParams
   }
 
-  async search (query) {
-    let { size, dateFrom, dateTo, urgency, searchTerms, lang, sort } = Object.assign({}, this.defaultSearchParams, query)
+  async search (params) {
+    let { products, size, dateFrom, dateTo, urgencies, queryString, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
 
     await this.authenticate()
 
-    const filters = ['product:news', 'product:multimedia', 'product:photo', 'product:sid']
-    let q = []
-
-    if (urgency) {
-      filters.push(`urgency:${urgency}`)
+    let query = {
+      and: []
     }
 
-    if (typeof searchTerms === 'string') {
-      if (searchTerms === '') searchTerms = null
-      else {
-        const regex = /(["']([^"']+)["'])|([^\s]+)/gu
-        searchTerms = searchTerms.match(regex)
-      }
-    }
+    query.and.push({
+      name: 'lang',
+      in: langs
+    })
 
-    if (Array.isArray(searchTerms)) {
-      q = searchTerms.map(s => {
-        const searchExpression = s.split(':')
-        if (!searchExpression[1]) {
-          return `*:${s}`
-        }
-        return s
-      })
-    }
+    query.and.push({
+      name: 'product',
+      in: products
+    })
+
+    query.and.push({
+      name: 'urgency',
+      in: urgencies
+    })
+
+    const queryBuilt = await buildQuery(queryString)
+
+    query.and = query.and.concat(queryBuilt)
 
     const body = {
-      lang,
-      size,
-      sort,
-      from: dateFrom,
-      to: dateTo,
-      fq: filters.join(','),
-      q: q.join(',')
+      maxRows: size,
+      sortField,
+      sortOrder,
+      dateRange: {
+        from: dateFrom,
+        to: dateTo
+      },
+      query
     }
 
     try {
-      const data = await post(this.searchUrl, {}, {
-        body,
+      const data = await post(this.searchUrl, body, {
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
@@ -198,5 +197,9 @@ export default class AfpNews {
     } catch (e) {
       return Promise.reject(e)
     }
+  }
+
+  get buildQuery () {
+    return buildQuery
   }
 }

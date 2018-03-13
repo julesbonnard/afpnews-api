@@ -18,27 +18,28 @@ export async function get (url, { params, headers }) {
 
 export async function post (url, data = {}, { formData, headers }) {
   try {
-    if (formData) {
+    if (typeof formData === 'object') {
       const form = new FormData()
       for (const item in formData) {
         form.append(item, formData[item])
       }
 
-      data = Object.assign(data, form)
-
       if (typeof form.getHeaders === 'function') {
         headers = Object.assign({}, headers, form.getHeaders())
       }
+
+      const response = await axios.post(url, form, {
+        headers
+      })
+
+      return response.data
+    } else {
+      const response = await axios.post(url, data, {
+        headers
+      })
+
+      return response.data
     }
-
-    const response = await axios({
-      method: 'post',
-      url,
-      data,
-      headers
-    })
-
-    return response.data
   } catch (e) {
     return Promise.reject(e)
   }
