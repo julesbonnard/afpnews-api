@@ -32,7 +32,7 @@ export default class AfpNews {
   }
 
   get token () {
-    if (this._accessToken === null || this._tokenExpires === null || this._refreshToken === null) return null
+    if (!this._accessToken || !this._tokenExpires || !this._refreshToken) return null
     return {
       accessToken: this._accessToken,
       tokenExpires: this._tokenExpires,
@@ -147,7 +147,8 @@ export default class AfpNews {
     await this.authenticate()
 
     let query = {
-      and: []
+      and: [],
+      fullText: true
     }
 
     query.and.push({
@@ -165,9 +166,12 @@ export default class AfpNews {
       in: urgencies
     })
 
-    const queryBuilt = await buildQuery(queryString)
-
-    query.and = query.and.concat(queryBuilt)
+    try {
+      const queryBuilt = await buildQuery(queryString)
+      query.and = query.and.concat(queryBuilt)
+    } catch (e) {
+      query = queryString
+    }
 
     const body = {
       maxRows: size,

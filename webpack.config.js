@@ -25,7 +25,7 @@ var nodeConfig = {
   target: 'node',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'AfpNews.node.js',
+    filename: 'afpnews-api.node.js',
     library: 'AfpNews',
     libraryExport: 'default',
     libraryTarget: 'umd'
@@ -38,7 +38,7 @@ var webConfig = {
   target: 'web',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'AfpNews.js',
+    filename: 'afpnews-api.js',
     library: 'AfpNews',
     libraryExport: 'default',
     libraryTarget: 'umd'

@@ -28,13 +28,17 @@ function recursiveBuild (query) {
     }
     if (query.prefix === '-') {
       return [{
-        name: query.field === '<implicit>' ? 'news' : query.field,
-        excludes: [query.term]
+        exclude: [
+          {
+            name: query.field === '<implicit>' ? 'news' : query.field,
+            contains: [query.term]
+          }
+        ]
       }]
     }
     return [{
       name: query.field === '<implicit>' ? 'news' : query.field,
-      contains: [query.term]
+      in: [query.term.toLowerCase()]
     }]
   }
 }
