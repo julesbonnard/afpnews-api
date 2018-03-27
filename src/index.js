@@ -32,7 +32,7 @@ export default class AfpNews {
   }
 
   get token () {
-    if (this._accessToken === undefined || this._tokenExpires === undefined || !this._refreshToken === undefined) return null
+    if (this._accessToken === undefined || this._tokenExpires === undefined || !this._refreshToken === undefined || this._authType === undefined) return null
     return {
       accessToken: this._accessToken,
       tokenExpires: this._tokenExpires,
@@ -41,10 +41,11 @@ export default class AfpNews {
     }
   }
 
-  set token ({ accessToken, refreshToken, tokenExpires }) {
+  set token ({ accessToken, refreshToken, tokenExpires, authType }) {
     this._accessToken = accessToken
     this._refreshToken = refreshToken
     this._tokenExpires = tokenExpires
+    this._authType = authType
   }
 
   async authenticate (credentials) {
@@ -76,7 +77,7 @@ export default class AfpNews {
         json: true
       })
 
-      this._authType = 'anonymous'
+      token.authType = 'anonymous'
 
       return this.parseToken(token)
     } catch (e) {
@@ -98,7 +99,7 @@ export default class AfpNews {
         json: true
       })
 
-      this._authType = 'credentials'
+      token.authType = 'credentials'
 
       return this.parseToken(token)
     } catch (e) {
@@ -108,7 +109,7 @@ export default class AfpNews {
 
   async requestRefreshToken () {
     try {
-      const token = await post(this.authUrl, {}, {
+      const newToken = await post(this.authUrl, {}, {
         formData: {
           refresh_token: this.token.refreshToken,
           grant_type: 'refresh_token'
@@ -118,17 +119,20 @@ export default class AfpNews {
         }
       })
 
-      return this.parseToken(token)
+      newToken.authType = this.token.authType
+
+      return this.parseToken(newToken)
     } catch (e) {
       return Promise.reject(e)
     }
   }
 
-  parseToken ({ access_token, refresh_token, expires_in }) {
+  parseToken ({ access_token, refresh_token, expires_in, authType }) {
     this.token = {
       accessToken: access_token,
       refreshToken: refresh_token,
-      tokenExpires: +new Date() + expires_in * 1000
+      tokenExpires: +new Date() + expires_in * 1000,
+      authType
     }
 
     return Promise.resolve(this.token)
