@@ -37,6 +37,7 @@ describe('AFP News', function() {
       expect(token.accessToken).to.be.a('string');
       expect(token.refreshToken).to.be.a('string');
       expect(token.tokenExpires).to.be.a('number');
+      expect(token.authType).to.be.equal('anonymous');
       expect(token).to.deep.equal(afpNews.token);
     });
     it('should throw if called with api key but without credentials', async function() {
@@ -61,6 +62,7 @@ describe('AFP News', function() {
       expect(token.accessToken).to.be.a('string');
       expect(token.refreshToken).to.be.a('string');
       expect(token.tokenExpires).to.be.a('number');
+      expect(token.authType).to.be.equal('credentials');
       expect(token).to.deep.equal(afpNews.token);
     });
     it('should return an authenticated token when called with client id and client secret', async function() {
@@ -69,6 +71,7 @@ describe('AFP News', function() {
       expect(token.accessToken).to.be.a('string');
       expect(token.refreshToken).to.be.a('string');
       expect(token.tokenExpires).to.be.a('number');
+      expect(token.authType).to.be.equal('credentials');
       expect(token).to.deep.equal(afpNews.token);
     });
     it('should refresh token when token expires', async function() {
@@ -77,12 +80,14 @@ describe('AFP News', function() {
       afpNews._tokenExpires = 0;
       const newToken = await afpNews.authenticate();
       expect(token.accessToken).to.not.be.equal(newToken.accessToken);
+      expect(token.authType).to.be.equal('credentials');
     });
     it('should not refresh token when token is valid', async function() {
       const afpNews = new AfpNews({ apiKey });
       const token = await afpNews.authenticate({ username, password });
       const newToken = await afpNews.authenticate();
       expect(token.accessToken).to.be.equal(newToken.accessToken);
+      expect(token.authType).to.be.equal('credentials');
     });
   });
   describe('Search', async function() {
@@ -107,29 +112,30 @@ describe('AFP News', function() {
       expect(news.documents).to.have.lengthOf.within(1, afpNews.defaultSearchParams.size);
       expect(news.count).to.be.at.least(news.documents.length);
     });
-    // it('should react to custom params', async function() {
-    //   const afpNews = new AfpNews({ apiKey });
-    //   await afpNews.authenticate({ username, password });
-    //   const customParams = {
-    //     size: 15,
-    //     dateFrom: 'now-1M',
-    //     dateTo: 'now-1d',
-    //     lang: 'fr',
-    //     urgencies: [3],
-    //     sort: 'published asc',
-    //     products: ['news']
-    //   }
-    //   const news = await afpNews.search(customParams);
-    //   expect(news.documents).to.have.lengthOf.within(1, customParams.size);
-    //   expect(news.count).to.be.at.least(news.documents.length);
-    //   const firstDocument = news.documents[0];
-    //   expect(firstDocument).to.be.an('object').that.includes.all.keys('country', 'city', 'lang', 'title', 'urgency', 'href', 'headline', 'slug', 'news', 'product', 'created', 'published', 'uno');
-    //   expect(firstDocument.lang).to.be.equal(customParams.lang);
-    //   expect(firstDocument.urgency).to.be.equal(customParams.urgencies[0]);
-    //   const lastDocument = news.documents[news.documents.length - 1];
-    //   expect(new Date(firstDocument.published)).to.be.below(new Date(lastDocument.published));
-    //   expect(new Date(firstDocument.published)).to.be.below(new Date(Date.now() - 2419200)); // now-1M
-    //   expect(new Date(lastDocument.published)).to.be.below(new Date(Date.now() - 86400)); // now-1d
-    // });
+    it('should react to custom params', async function() {
+      const afpNews = new AfpNews({ apiKey });
+      await afpNews.authenticate({ username, password });
+      const customParams = {
+        size: 15,
+        dateFrom: 'now-1M',
+        dateTo: 'now-1d',
+        langs: ['fr'],
+        urgencies: [3],
+        sortField: 'published',
+        sortOrder: 'asc',
+        products: ['news']
+      }
+      const news = await afpNews.search(customParams);
+      expect(news.documents).to.have.lengthOf.within(1, customParams.size);
+      expect(news.count).to.be.at.least(news.documents.length);
+      const firstDocument = news.documents[0];
+      expect(firstDocument).to.be.an('object').that.includes.all.keys('country', 'city', 'lang', 'title', 'urgency', 'href', 'headline', 'slug', 'news', 'product', 'created', 'published', 'uno');
+      expect(firstDocument.lang).to.be.equal(customParams.langs[0]);
+      expect(firstDocument.urgency).to.be.equal(customParams.urgencies[0]);
+      const lastDocument = news.documents[news.documents.length - 1];
+      expect(new Date(firstDocument.published)).to.be.below(new Date(lastDocument.published));
+      expect(new Date(firstDocument.published)).to.be.below(new Date(Date.now() - 2419200)); // now-1M
+      expect(new Date(lastDocument.published)).to.be.below(new Date(Date.now() - 86400)); // now-1d
+    });
   });
 });

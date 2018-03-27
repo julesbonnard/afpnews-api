@@ -15,26 +15,26 @@ describe('AFP News Search Parser', function() {
       const query = await afpNews.buildQuery('cat dog');
       expect(query).to.deep.equal([
         {
-          name: '*',
-          contains: ['cat']
+          name: 'news',
+          in: ['cat']
         },
         {
-          name: '*',
-          contains: ['dog']
+          name: 'news',
+          in: ['dog']
         }
       ]);
     });
-    it('should build query with multi-words search terms', async function() {
+    it('should build lowercase query with multi-words search terms', async function() {
       const afpNews = new AfpNews();
       const query = await afpNews.buildQuery('"Firstname Lastname" multi-word');
       expect(query).to.deep.equal([
         {
-          name: '*',
-          contains: ['Firstname Lastname']
+          name: 'news',
+          in: ['firstname lastname']
         },
         {
-          name: '*',
-          contains: ['multi-word']
+          name: 'news',
+          in: ['multi-word']
         }
       ]);
     });
@@ -46,8 +46,8 @@ describe('AFP News Search Parser', function() {
       expect(query).to.deep.equal([
         {
           "name": "title",
-          "contains": [
-            "AFP"
+          "in": [
+            "afp"
           ]
         }
       ]);
@@ -60,18 +60,18 @@ describe('AFP News Search Parser', function() {
       expect(query).to.deep.equal([{
         and: [
           {
-            name: '*',
-            contains: ['cat']
+            name: 'news',
+            in: ['cat']
           },
           {
             and: [
               {
-                name: '*',
-                contains: ['dog']
+                name: 'news',
+                in: ['dog']
               },
               {
-                name: '*',
-                contains: ['duck']
+                name: 'news',
+                in: ['duck']
               }
             ]
           }
@@ -85,30 +85,30 @@ describe('AFP News Search Parser', function() {
         {
           "and": [
             {
-              "name": "*",
-              "contains": [
+              "name": "news",
+              "in": [
                 "cat"
               ]
             },
             {
               "or": [
                 {
-                  "name": "*",
-                  "contains": [
+                  "name": "news",
+                  "in": [
                     "dog"
                   ]
                 },
                 {
                   "and": [
                     {
-                      "name": "*",
-                      "contains": [
+                      "name": "news",
+                      "in": [
                         "duck"
                       ]
                     },
                     {
-                      "name": "*",
-                      "contains": [
+                      "name": "news",
+                      "in": [
                         "cat"
                       ]
                     }
@@ -127,8 +127,8 @@ describe('AFP News Search Parser', function() {
         {
           "and": [
             {
-              "name": "*",
-              "contains": [
+              "name": "news",
+              "in": [
                 "cat"
               ]
             },
@@ -137,22 +137,22 @@ describe('AFP News Search Parser', function() {
                 {
                   "or": [
                     {
-                      "name": "*",
-                      "contains": [
+                      "name": "news",
+                      "in": [
                         "dog"
                       ]
                     },
                     {
-                      "name": "*",
-                      "contains": [
+                      "name": "news",
+                      "in": [
                         "duck"
                       ]
                     }
                   ]
                 },
                 {
-                  "name": "*",
-                  "contains": [
+                  "name": "news",
+                  "in": [
                     "cat"
                   ]
                 }
@@ -169,16 +169,24 @@ describe('AFP News Search Parser', function() {
       const query = await afpNews.buildQuery('cat -dog title:-duck');
       expect(query).to.deep.equal([
         {
-          name: '*',
-          contains: ['cat']
+          name: 'news',
+          in: ['cat']
         },
         {
-          name: '*',
-          excludes: ['dog']
+          exclude: [
+            {
+              name: 'news',
+              contains: ['dog']
+            }
+          ]
         },
         {
-          name: 'title',
-          excludes: ['duck']
+          exclude: [
+            {
+              name: 'title',
+              contains: ['duck']
+            }
+          ]
         }
       ]);
     });

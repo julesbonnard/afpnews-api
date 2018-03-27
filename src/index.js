@@ -32,11 +32,12 @@ export default class AfpNews {
   }
 
   get token () {
-    if (!this._accessToken || !this._tokenExpires || !this._refreshToken) return null
+    if (this._accessToken === undefined || this._tokenExpires === undefined || !this._refreshToken === undefined) return null
     return {
       accessToken: this._accessToken,
       tokenExpires: this._tokenExpires,
-      refreshToken: this._refreshToken
+      refreshToken: this._refreshToken,
+      authType: this._authType
     }
   }
 
@@ -75,6 +76,8 @@ export default class AfpNews {
         json: true
       })
 
+      this._authType = 'anonymous'
+
       return this.parseToken(token)
     } catch (e) {
       return Promise.reject(e)
@@ -94,6 +97,8 @@ export default class AfpNews {
         },
         json: true
       })
+
+      this._authType = 'credentials'
 
       return this.parseToken(token)
     } catch (e) {
@@ -130,7 +135,10 @@ export default class AfpNews {
   }
 
   resetToken () {
-    this.token = { accessToken: null, refreshToken: null, tokenExpires: null }
+    delete this._accessToken
+    delete this._refreshToken
+    delete this._tokenExpires
+    delete this._authType
   }
 
   get searchUrl () {
@@ -139,6 +147,10 @@ export default class AfpNews {
 
   get defaultSearchParams () {
     return defaultSearchParams
+  }
+
+  get buildQuery () {
+    return buildQuery
   }
 
   async search (params) {
@@ -167,7 +179,7 @@ export default class AfpNews {
     })
 
     try {
-      const queryBuilt = await buildQuery(queryString)
+      const queryBuilt = await this.buildQuery(queryString)
       query.and = query.and.concat(queryBuilt)
     } catch (e) {
       query = queryString
@@ -201,9 +213,5 @@ export default class AfpNews {
     } catch (e) {
       return Promise.reject(e)
     }
-  }
-
-  get buildQuery () {
-    return buildQuery
   }
 }
