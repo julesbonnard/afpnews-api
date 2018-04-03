@@ -48,10 +48,10 @@ export default class AfpNews {
     this._authType = authType
   }
 
-  async authenticate (credentials) {
+  async authenticate ({ username, password } = {}) {
     if (this.apiKey) {
-      if (credentials) {
-        return this.requestAuthenticatedToken(credentials)
+      if (username && password) {
+        return this.requestAuthenticatedToken({ username, password })
       } else if (this.token === null) {
         throw new Error('You need to authenticate with credentials once')
       } else if (this.isTokenValid === false) {
@@ -60,7 +60,7 @@ export default class AfpNews {
         return Promise.resolve(this.token)
       }
     } else {
-      if (credentials) {
+      if (username && password) {
         throw new Error('You need an api key to make authenticated requests')
       } else {
         return this.requestAnonymousToken()
