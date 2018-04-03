@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/julesbonnard/afpnews-api.svg?branch=master)](https://travis-ci.org/julesbonnard/afpnews-api)
 
-This project is aimed to help javascript developers use the [AFP News API](https://api.afpforum.com/).
+This project is aimed to help javascript developers use the [AFP News API](https://api.afp.com/).
 
 It provides authentication and search functions.
 
@@ -27,13 +27,13 @@ const AfpNews = require('afpnews-api')
 #### Browser
 
 ```html
-<script src="./dist/AfpNews.js"></script>
+<script src="./dist/afpnews-api.js"></script>
 ```
 
 ### Let's start using it
 
 ```js
-const afpNews = new AfpNews({ apiKey: 'YOUR_API_KEY' })
+const afpNews = new AfpNews({ clientId: 'YOUR_CLIENT_ID', clientSecret: 'YOUR_CLIENT_SECRET' })
 
 const credentials = {
   username: 'YOUR_USERNAME',
@@ -43,7 +43,6 @@ const credentials = {
 afpNews.authenticate(credentials)
   .then(token => {
     // You can eventually save the token to be used later
-    // afpNews.token = token
 
     return afpNews.search()
   })
@@ -54,6 +53,33 @@ afpNews.authenticate(credentials)
     console.error(err)
   })
 ```
+
+### Query parser
+
+The above request use default parameters stored in ./src/defaultParams.js
+
+You can pass your own parameters to the search function, that will overide the defaults : 
+
+```js
+const params = {
+  products: ['news'],
+  langs: ['fr'],
+  urgencies: [1, 2, 3, 4],
+  query: 'french politics',
+  size: 10,
+  dateFrom: '2012-01-01',
+  dateTo: 'now',
+  sortField: 'published',
+  sortOrder: 'desc'
+}
+
+afpNews.search(params)
+  .then(news => {
+    console.log(news)
+  })
+```
+
+The query parameter can be used to look precisely for a field (`title:Macron`) and may include logical parameters (`Macron OR Merkel`).
 
 ## Development
 
