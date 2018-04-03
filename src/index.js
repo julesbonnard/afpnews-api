@@ -158,35 +158,34 @@ export default class AfpNews {
   }
 
   async search (params) {
-    let { products, size, dateFrom, dateTo, urgencies, queryString, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
+    let { products, size, dateFrom, dateTo, urgencies, query, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
 
     await this.authenticate()
 
-    let query = {
-      and: [],
-      fullText: true
+    let request = {
+      and: []
     }
 
-    query.and.push({
+    request.and.push({
       name: 'lang',
       in: langs
     })
 
-    query.and.push({
+    request.and.push({
       name: 'product',
       in: products
     })
 
-    query.and.push({
+    request.and.push({
       name: 'urgency',
       in: urgencies
     })
 
     try {
-      const queryBuilt = await this.buildQuery(queryString)
-      query.and = query.and.concat(queryBuilt)
+      const queryBuilt = await this.buildQuery(query)
+      request.and = request.and.concat(queryBuilt)
     } catch (e) {
-      query = queryString
+      return Promise.reject(new Error('Invalid request'))
     }
 
     const body = {
@@ -197,7 +196,7 @@ export default class AfpNews {
         from: dateFrom,
         to: dateTo
       },
-      query
+      query: request
     }
 
     try {

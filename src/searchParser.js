@@ -26,27 +26,23 @@ function recursiveBuild (query) {
         ...recursiveBuild(query.left)
       ]
     }
-    if (query.prefix === '-') {
-      return [{
-        exclude: [
-          {
-            name: query.field === '<implicit>' ? 'news' : query.field,
-            contains: [query.term]
-          }
-        ]
-      }]
-    }
-    return [{
+    const object = {
       name: query.field === '<implicit>' ? 'news' : query.field,
-      in: [query.term.toLowerCase()]
-    }]
+      fullText: true
+    }
+    if (query.prefix === '-') {
+      object['exclude'] = [query.term]
+    } else {
+      object['contains'] = [query.term]
+    }
+    return [object]
   }
 }
 
-export async function buildQuery (queryString) {
+export async function buildQuery (query) {
   try {
-    if (!queryString || queryString === '') return []
-    const queryParsed = queryParser(queryString)
+    if (!query || query === '') return []
+    const queryParsed = queryParser(query)
     const queryBuilt = recursiveBuild(queryParsed)
     return queryBuilt
   } catch (e) {
