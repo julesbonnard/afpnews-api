@@ -16,12 +16,12 @@ describe('AFP News Search Parser', function() {
       expect(query).to.deep.equal([
         {
           name: 'news',
-          contains: ['cat'],
+          in: ['cat'],
           fullText: true
         },
         {
           name: 'news',
-          contains: ['dog'],
+          in: ['dog'],
           fullText: true
         }
       ]);
@@ -32,12 +32,12 @@ describe('AFP News Search Parser', function() {
       expect(query).to.deep.equal([
         {
           name: 'news',
-          contains: ['Firstname Lastname'],
+          in: ['Firstname Lastname'],
           fullText: true
         },
         {
           name: 'news',
-          contains: ['multi-word'],
+          in: ['multi-word'],
           fullText: true
         }
       ]);
@@ -49,11 +49,10 @@ describe('AFP News Search Parser', function() {
       const query = await afpNews.buildQuery('title:AFP');
       expect(query).to.deep.equal([
         {
-          "name": "title",
-          "contains": [
-            "AFP"
-          ],
-          fullText: true
+          name: 'title',
+          in: [
+            'AFP'
+          ]
         }
       ]);
     })
@@ -66,19 +65,19 @@ describe('AFP News Search Parser', function() {
         and: [
           {
             name: 'news',
-            contains: ['cat'],
-          fullText: true
+            in: ['cat'],
+            fullText: true
           },
           {
             and: [
               {
                 name: 'news',
-                contains: ['dog'],
+                in: ['dog'],
                 fullText: true
               },
               {
                 name: 'news',
-                contains: ['duck'],
+                in: ['duck'],
                 fullText: true
               }
             ]
@@ -94,7 +93,7 @@ describe('AFP News Search Parser', function() {
           and: [
             {
               name: "news",
-              contains: [
+              in: [
                 "cat"
               ],
               fullText: true
@@ -103,7 +102,7 @@ describe('AFP News Search Parser', function() {
               or: [
                 {
                   name: "news",
-                  contains: [
+                  in: [
                     "dog"
                   ],
                   fullText: true
@@ -112,14 +111,14 @@ describe('AFP News Search Parser', function() {
                   and: [
                     {
                       name: "news",
-                      contains: [
+                      in: [
                         "duck"
                       ],
                       fullText: true
                     },
                     {
                       name: "news",
-                      contains: [
+                      in: [
                         "cat"
                       ],
                       fullText: true
@@ -140,7 +139,7 @@ describe('AFP News Search Parser', function() {
           and: [
             {
               name: "news",
-              contains: [
+              in: [
                 "cat"
               ],
               fullText: true
@@ -151,14 +150,14 @@ describe('AFP News Search Parser', function() {
                   or: [
                     {
                       name: "news",
-                      contains: [
+                      in: [
                         "dog"
                       ],
                       fullText: true
                     },
                     {
                       name: "news",
-                      contains: [
+                      in: [
                         "duck"
                       ],
                       fullText: true
@@ -167,7 +166,7 @@ describe('AFP News Search Parser', function() {
                 },
                 {
                   name: "news",
-                  contains: [
+                  in: [
                     "cat"
                   ],
                   fullText: true
@@ -186,7 +185,7 @@ describe('AFP News Search Parser', function() {
       expect(query).to.deep.equal([
         {
           name: 'news',
-          contains: ['cat'],
+          in: ['cat'],
           fullText: true
         },
         {
@@ -196,8 +195,7 @@ describe('AFP News Search Parser', function() {
         },
         {
           name: 'title',
-          exclude: ['duck'],
-          fullText: true
+          exclude: ['duck']
         }
       ]);
     });

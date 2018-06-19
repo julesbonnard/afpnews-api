@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/afpnews-api.node.js",
   "module": "src/index.js",
@@ -40,15 +40,15 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "cross-env": "^5.1.6",
-    "dotenv": "^5.0.1",
+    "dotenv": "^6.0.0",
     "eslint": "^4.19.1",
-    "eslint-config-recommended": "^2.0.0",
+    "eslint-config-recommended": "^3.0.0",
     "eslint-loader": "^2.0.0",
     "mocha": "^5.2.0",
     "rimraf": "^2.6.2",
     "webpack": "^4.10.2",
     "webpack-bundle-analyzer": "^2.13.1",
-    "webpack-cli": "^2.1.5",
+    "webpack-cli": "^3.0.8",
     "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
