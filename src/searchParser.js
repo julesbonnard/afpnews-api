@@ -29,9 +29,6 @@ function recursiveBuild (query) {
     const object = {
       name: query.field === '<implicit>' ? 'news' : query.field
     }
-    if (query.field === '<implicit>') {
-      object['fullText'] = true
-    }
     if (query.prefix === '-') {
       object['exclude'] = [query.term]
     } else {

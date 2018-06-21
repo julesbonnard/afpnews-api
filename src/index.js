@@ -22,8 +22,10 @@ export default class AfpNews {
   set apiKey ({ apiKey, clientId, clientSecret }) {
     if (clientId && clientSecret) {
       this._apiKey = btoa(`${clientId}:${clientSecret}`)
-    } else {
+    } else if (apiKey) {
       this._apiKey = apiKey
+    } else {
+      delete this._apiKey
     }
   }
 
@@ -85,6 +87,12 @@ export default class AfpNews {
     }
   }
 
+  get authorizationBasicHeaders () {
+    return {
+      'Authorization': `Basic ${this.apiKey}`
+    }
+  }
+
   async requestAuthenticatedToken ({ username, password }) {
     try {
       const token = await post(this.authUrl, {}, {
@@ -93,9 +101,7 @@ export default class AfpNews {
           password,
           grant_type: 'password'
         },
-        headers: {
-          'Authorization': `Basic ${this.apiKey}`
-        },
+        headers: this.authorizationBasicHeaders,
         json: true
       })
 
@@ -114,9 +120,7 @@ export default class AfpNews {
           refresh_token: this.token.refreshToken,
           grant_type: 'refresh_token'
         },
-        headers: {
-          'Authorization': `Basic ${this.apiKey}`
-        }
+        headers: this.authorizationBasicHeaders
       })
 
       newToken.authType = this.token.authType
