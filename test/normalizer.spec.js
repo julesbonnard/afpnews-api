@@ -14,6 +14,6 @@ describe('AFP News Normalizer', () => {
     expect(normalize('pépé')).to.be.equal('pepe')
   })
   it('should trim the string', () => {
-    expect(normalize(' benalla')).to.be.equal('benalla')
+    expect(normalize(' dog')).to.be.equal('dog')
   })
 })
