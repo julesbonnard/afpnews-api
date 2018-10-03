@@ -27,7 +27,7 @@ describe('AFP News Search Parser', () => {
       expect(query).to.deep.equal([
         {
           name: 'news',
-          in: ['Firstname Lastname']
+          in: ['firstname lastname']
         },
         {
           name: 'news',
@@ -43,7 +43,7 @@ describe('AFP News Search Parser', () => {
         {
           name: 'title',
           in: [
-            'AFP'
+            'afp'
           ]
         }
       ])

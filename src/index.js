@@ -2,7 +2,6 @@ import { resolve } from 'url'
 import { get, post } from './request'
 import { defaultSearchParams } from './defaultParams'
 import { buildQuery } from './queryBuilder'
-import { normalize } from './normalizer'
 import btoa from 'btoa'
 
 export default class AfpNews {
@@ -183,7 +182,7 @@ export default class AfpNews {
     })
 
     try {
-      const queryBuilt = buildQuery(normalize(query))
+      const queryBuilt = buildQuery(query)
       request.and = request.and.concat(queryBuilt)
     } catch (e) {
       return Promise.reject(new Error('Invalid request'))

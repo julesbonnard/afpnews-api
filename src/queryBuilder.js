@@ -1,4 +1,5 @@
 import { parse as queryParser } from 'lucene-query-parser'
+import { normalize } from './normalizer'
 
 function recursiveBuild (query) {
   if (query.operator === '<implicit>') {
@@ -27,12 +28,12 @@ function recursiveBuild (query) {
       ]
     }
     const object = {
-      name: query.field === '<implicit>' ? 'news' : query.field
+      name: query.field === '<implicit>' ? 'news' : normalize(query.field)
     }
     if (query.prefix === '-') {
-      object['exclude'] = [query.term]
+      object['exclude'] = [normalize(query.term)]
     } else {
-      object['in'] = [query.term]
+      object['in'] = [normalize(query.term)]
     }
     return [object]
   }
