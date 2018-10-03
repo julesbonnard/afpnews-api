@@ -6,3 +6,5 @@ es
 coverage
 .env
 stats.json
+.nyc_output
+coverage

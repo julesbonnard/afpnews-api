@@ -12,7 +12,7 @@
     "dev": "webpack --mode development --watch --display-error-details",
     "build": "webpack --mode production",
     "analyse": "webpack --mode production --json > stats.json && npx webpack-bundle-analyzer stats.json",
-    "test": "mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
+    "test": "nyc --reporter=html --reporter=text mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
   },
   "repository": {
     "type": "git",
@@ -46,6 +46,7 @@
     "eslint-config-recommended": "^4.0.0",
     "eslint-loader": "^2.1.1",
     "mocha": "^5.2.0",
+    "nyc": "^13.0.1",
     "rimraf": "^2.6.2",
     "webpack": "^4.20.2",
     "webpack-bundle-analyzer": "^3.0.2",
