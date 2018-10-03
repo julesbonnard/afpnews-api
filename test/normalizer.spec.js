@@ -4,7 +4,10 @@ import { normalize } from '../src/normalizer.js'
 const expect = chai.expect
 
 describe('AFP News Normalizer', () => {
-  it('should lowercase value', async () => {
+  it('should throw if query is not a string', () => {
+    expect(() => normalize(['cat'])).to.throw()
+  })
+  it('should lowercase value', () => {
     expect(normalize('Cat')).to.be.equal('cat')
   })
   it('should remove accents', () => {

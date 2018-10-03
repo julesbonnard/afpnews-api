@@ -1,9 +1,12 @@
 import chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
 import AfpNews from '../src'
 
-require('dotenv').config()
-
+chai.use(chaiAsPromised)
 const expect = chai.expect
+chai.should()
+
+require('dotenv').config()
 
 const {
   AFPNEWS_API_KEY: apiKey,
@@ -44,19 +47,11 @@ describe('AFP News', () => {
     })
     it('should throw if called with api key but without credentials', async () => {
       const afpNews = new AfpNews({ apiKey })
-      try {
-        await afpNews.authenticate()
-      } catch (e) {
-        expect(e).to.be.an('error')
-      }
+      await afpNews.authenticate().should.be.rejectedWith(Error)
     })
     it('should throw if called with credentials but without api key', async () => {
       const afpNews = new AfpNews()
-      try {
-        await afpNews.authenticate({ username: 'TEST', password: 'TEST' })
-      } catch (e) {
-        expect(e).to.be.an('error')
-      }
+      await afpNews.authenticate({ username: 'TEST', password: 'TEST' }).should.be.rejectedWith(Error)
     })
     it('should return an authenticated token when called with api key and credentials', async () => {
       const afpNews = new AfpNews({ apiKey })
