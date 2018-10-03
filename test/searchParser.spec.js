@@ -1,18 +1,16 @@
-const chai = require('chai')
+import chai from 'chai'
+import { buildQuery } from '../src/queryBuilder'
+
 const expect = chai.expect
 
-const AfpNews = require('../')
-
-describe('AFP News Search Parser', function() {
-  describe('implicit operators', function() {
-    it('should return an array if query string is empty', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('')
+describe('AFP News Search Parser', () => {
+  describe('implicit operators', () => {
+    it('should return an array if query string is empty', () => {
+      const query = buildQuery('')
       expect(query).to.deep.equal([])
     })
-    it('should build query with simple search terms, implicit and operator', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('cat dog')
+    it('should build query with simple search terms, implicit and operator', () => {
+      const query = buildQuery('cat dog')
       expect(query).to.deep.equal([
         {
           name: 'news',
@@ -24,9 +22,8 @@ describe('AFP News Search Parser', function() {
         }
       ])
     })
-    it('should build query with multi-words search terms', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('"Firstname Lastname" multi-word')
+    it('should build query with multi-words search terms', () => {
+      const query = buildQuery('"Firstname Lastname" multi-word')
       expect(query).to.deep.equal([
         {
           name: 'news',
@@ -39,10 +36,9 @@ describe('AFP News Search Parser', function() {
       ])
     })
   })
-  describe('implicit operators', function() {
-    it('should allow field prefix', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('title:AFP')
+  describe('implicit operators', () => {
+    it('should allow field prefix', () => {
+      const query = buildQuery('title:AFP')
       expect(query).to.deep.equal([
         {
           name: 'title',
@@ -53,10 +49,9 @@ describe('AFP News Search Parser', function() {
       ])
     })
   })
-  describe('and or operators', function() {
-    it('should build query with explicit AND operator', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('cat AND dog AND duck')
+  describe('and or operators', () => {
+    it('should build query with explicit AND operator', () => {
+      const query = buildQuery('cat AND dog AND duck')
       expect(query).to.deep.equal([{
         and: [
           {
@@ -78,9 +73,8 @@ describe('AFP News Search Parser', function() {
         ]
       }])
     })
-    it('should build query with explicit OR operator', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('cat AND dog OR duck AND cat')
+    it('should build query with explicit OR operator', () => {
+      const query = buildQuery('cat AND dog OR duck AND cat')
       expect(query).to.deep.equal([
         {
           and: [
@@ -120,9 +114,8 @@ describe('AFP News Search Parser', function() {
         }
       ])
     })
-    it('should build query with explicit parenthesis', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('cat AND (dog OR duck) AND cat')
+    it('should build query with explicit parenthesis', () => {
+      const query = buildQuery('cat AND (dog OR duck) AND cat')
       expect(query).to.deep.equal([
         {
           and: [
@@ -163,10 +156,9 @@ describe('AFP News Search Parser', function() {
       ])
     })
   })
-  describe('exclude contains', async function() {
-    it('should allows to exclude some words', async function() {
-      const afpNews = new AfpNews()
-      const query = await afpNews.buildQuery('cat -dog title:-duck')
+  describe('exclude contains', () => {
+    it('should allows to exclude some words', () => {
+      const query = buildQuery('cat -dog title:-duck')
       expect(query).to.deep.equal([
         {
           name: 'news',

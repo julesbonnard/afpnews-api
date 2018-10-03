@@ -1,37 +1,39 @@
+import chai from 'chai'
+import AfpNews from '../src'
+
 require('dotenv').config()
 
-const chai = require('chai')
 const expect = chai.expect
 
-const AfpNews = require('../')
+const {
+  AFPNEWS_API_KEY: apiKey,
+  AFPNEWS_CLIENT_ID: clientId,
+  AFPNEWS_CLIENT_SECRET: clientSecret,
+  AFPNEWS_USERNAME: username,
+  AFPNEWS_PASSWORD: password
+} = process.env
 
-const apiKey = process.env.AFPNEWS_API_KEY
-const clientId = process.env.AFPNEWS_CLIENT_ID
-const clientSecret = process.env.AFPNEWS_CLIENT_SECRET
-const username = process.env.AFPNEWS_USERNAME
-const password = process.env.AFPNEWS_PASSWORD
-
-describe('AFP News', function() {
-  describe('Initialization', function() {
-    it('should return true when afpNews is instance of AfpNews', function() {
+describe('AFP News', () => {
+  describe('Initialization', () => {
+    it('should return true when afpNews is instance of AfpNews', () => {
       const afpNews = new AfpNews()
       expect(afpNews instanceof AfpNews).to.be.true
     })
-    it('should reset token on init', function() {
+    it('should reset token on init', () => {
       const afpNews = new AfpNews()
       expect(afpNews.token).to.be.null
     })
-    it('should allow to change base url in constructor', function() {
+    it('should allow to change base url in constructor', () => {
       const afpNews = new AfpNews({ baseUrl: 'http://customurl' })
       expect(afpNews.baseUrl).to.be.equal('http://customurl')
     })
-    it('should accept an apiKey', function() {
+    it('should accept an apiKey', () => {
       const afpNews = new AfpNews({ apiKey: 'TEST' })
       expect(afpNews._apiKey).to.be.equal('TEST')
     })
   })
-  describe('Authentication', function() {
-    it('should return an anonymous token when called without api key', async function() {
+  describe('Authentication', () => {
+    it('should return an anonymous token when called without api key', async () => {
       const afpNews = new AfpNews()
       const token = await afpNews.authenticate()
       expect(token.accessToken).to.be.a('string')
@@ -40,7 +42,7 @@ describe('AFP News', function() {
       expect(token.authType).to.be.equal('anonymous')
       expect(token).to.deep.equal(afpNews.token)
     })
-    it('should throw if called with api key but without credentials', async function() {
+    it('should throw if called with api key but without credentials', async () => {
       const afpNews = new AfpNews({ apiKey })
       try {
         await afpNews.authenticate()
@@ -48,7 +50,7 @@ describe('AFP News', function() {
         expect(e).to.be.an('error')
       }
     })
-    it('should throw if called with credentials but without api key', async function() {
+    it('should throw if called with credentials but without api key', async () => {
       const afpNews = new AfpNews()
       try {
         await afpNews.authenticate({ username: 'TEST', password: 'TEST' })
@@ -56,7 +58,7 @@ describe('AFP News', function() {
         expect(e).to.be.an('error')
       }
     })
-    it('should return an authenticated token when called with api key and credentials', async function() {
+    it('should return an authenticated token when called with api key and credentials', async () => {
       const afpNews = new AfpNews({ apiKey })
       const token = await afpNews.authenticate({ username, password })
       expect(token.accessToken).to.be.a('string')
@@ -65,7 +67,7 @@ describe('AFP News', function() {
       expect(token.authType).to.be.equal('credentials')
       expect(token).to.deep.equal(afpNews.token)
     })
-    it('should return an authenticated token when called with client id and client secret', async function() {
+    it('should return an authenticated token when called with client id and client secret', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       const token = await afpNews.authenticate({ username, password })
       expect(token.accessToken).to.be.a('string')
@@ -74,7 +76,7 @@ describe('AFP News', function() {
       expect(token.authType).to.be.equal('credentials')
       expect(token).to.deep.equal(afpNews.token)
     })
-    it('should refresh token when token expires', async function() {
+    it('should refresh token when token expires', async () => {
       const afpNews = new AfpNews({ apiKey })
       const token = await afpNews.authenticate({ username, password })
       afpNews._tokenExpires = 0
@@ -82,7 +84,7 @@ describe('AFP News', function() {
       expect(token.accessToken).to.not.be.equal(newToken.accessToken)
       expect(token.authType).to.be.equal('credentials')
     })
-    it('should not refresh token when token is valid', async function() {
+    it('should not refresh token when token is valid', async () => {
       const afpNews = new AfpNews({ apiKey })
       const token = await afpNews.authenticate({ username, password })
       const newToken = await afpNews.authenticate()
@@ -90,29 +92,29 @@ describe('AFP News', function() {
       expect(token.authType).to.be.equal('credentials')
     })
   })
-  describe('Search', async function() {
-    it('should return the search url', function() {
+  describe('Search', async () => {
+    it('should return the search url', () => {
       const afpNews = new AfpNews()
       expect(afpNews.searchUrl).to.be.a('string')
     })
-    it('should return the default search params', function() {
+    it('should return the default search params', () => {
       const afpNews = new AfpNews()
       expect(afpNews.defaultSearchParams).to.have.all.keys('langs', 'urgencies', 'query', 'size', 'dateFrom', 'dateTo', 'sortField', 'sortOrder', 'products')
     })
-    it('should return a news array with anonymous token, without explicit call to authenticate', async function() {
+    it('should return a news array with anonymous token, without explicit call to authenticate', async () => {
       const afpNews = new AfpNews()
       const news = await afpNews.search()
       expect(news.documents).to.be.an('array')
       expect(news.count).to.be.a('number')
     })
-    it('should return a news array with authenticated token', async function() {
+    it('should return a news array with authenticated token', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
       const news = await afpNews.search()
       expect(news.documents).to.have.lengthOf.within(1, afpNews.defaultSearchParams.size)
       expect(news.count).to.be.at.least(news.documents.length)
     })
-    it('should react to custom params', async function() {
+    it('should react to custom params', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
       const customParams = {
