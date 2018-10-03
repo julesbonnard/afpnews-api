@@ -1,7 +1,8 @@
 import { resolve } from 'url'
 import { get, post } from './request'
 import { defaultSearchParams } from './defaultParams'
-import { buildQuery } from './searchParser'
+import { buildQuery } from './queryBuilder'
+import { normalize } from './normalizer'
 import btoa from 'btoa'
 
 export default class AfpNews {
@@ -157,10 +158,6 @@ export default class AfpNews {
     return defaultSearchParams
   }
 
-  get buildQuery () {
-    return buildQuery
-  }
-
   async search (params) {
     let { products, size, dateFrom, dateTo, urgencies, query, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
 
@@ -186,7 +183,7 @@ export default class AfpNews {
     })
 
     try {
-      const queryBuilt = await this.buildQuery(query)
+      const queryBuilt = buildQuery(normalize(query))
       request.and = request.and.concat(queryBuilt)
     } catch (e) {
       return Promise.reject(new Error('Invalid request'))
