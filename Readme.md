@@ -1,6 +1,6 @@
 # AfpNews API
 
-[![Build Status](https://travis-ci.org/julesbonnard/afpnews-api.svg?branch=master)](https://travis-ci.org/julesbonnard/afpnews-api)
+[![Build Status](https://travis-ci.org/julesbonnard/afpnews-api.svg?branch=master)](https://travis-ci.org/julesbonnard/afpnews-api) [![Greenkeeper badge](https://badges.greenkeeper.io/julesbonnard/afpnews-api.svg)](https://greenkeeper.io/)
 
 This project is aimed to help javascript developers use the [AFP News API](https://api.afp.com/).
 
