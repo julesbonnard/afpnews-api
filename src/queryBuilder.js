@@ -3,10 +3,12 @@ import { normalize } from './normalizer'
 
 function recursiveBuild (query) {
   if (query.operator === '<implicit>') {
-    return [
-      ...recursiveBuild(query.left),
-      ...recursiveBuild(query.right)
-    ]
+    return [{
+      and: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(query.right)
+      ]
+    }]
   } else if (query.operator === 'AND') {
     return [{
       and: [
@@ -27,8 +29,24 @@ function recursiveBuild (query) {
         ...recursiveBuild(query.left)
       ]
     }
+    if (query.field === '<implicit>') {
+      return [{
+        [query.prefix === '-' ? 'and' : 'or']: [
+          ...recursiveBuild(Object.assign({}, query, { field: 'news' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'slug' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'city' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'country' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'title' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'caption' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'creator' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'headline' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'entity_person' })),
+          ...recursiveBuild(Object.assign({}, query, { field: 'entity_location' }))
+        ]
+      }]
+    }
     const object = {
-      name: query.field === '<implicit>' ? 'news' : normalize(query.field)
+      name: normalize(query.field)
     }
     if (query.prefix === '-') {
       object['exclude'] = [normalize(query.term)]
