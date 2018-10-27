@@ -135,4 +135,18 @@ describe('AFP News', () => {
       expect(new Date(lastDocument.published)).to.be.below(new Date(Date.now() - 86400)) // now-1d
     })
   })
+  describe('Search', async () => {
+    it('should return the get url', () => {
+      const afpNews = new AfpNews()
+      expect(afpNews.getUrl).to.be.a('string')
+    })
+    it('should return a document when authenticated', async () => {
+      const afpNews = new AfpNews({ apiKey })
+      await afpNews.authenticate({ username, password })
+      const uno = 'newsml.afp.com.20181027T140347Z.TX-PAR-OSW58'
+      const news = await afpNews.get(uno)
+      expect(news.document).to.be.an('object')
+      expect(news.document.uno).to.be.equal(uno)
+    })
+  })
 })

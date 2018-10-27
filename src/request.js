@@ -1,7 +1,7 @@
 import FormData from 'form-data'
 import axios from 'axios'
 
-export async function get (url, { params, headers }) {
+export async function get (url, { params = {}, headers = {} }) {
   try {
     const response = await axios({
       method: 'get',

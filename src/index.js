@@ -217,4 +217,27 @@ export default class AfpNews {
       return Promise.reject(e)
     }
   }
+
+  get getUrl () {
+    return resolve(this.baseUrl, '/v1/api/get/')
+  }
+
+  async get (uno) {
+    await this.authenticate()
+
+    try {
+      const data = await get(resolve(this.getUrl, uno), {
+        headers: {
+          'Authorization': `Bearer ${this.token.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      const { docs } = data.response
+      return Promise.resolve({
+        document: docs[0]
+      })
+    } catch (e) {
+      return Promise.reject(e)
+    }
+  }
 }
