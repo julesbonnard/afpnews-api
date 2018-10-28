@@ -152,7 +152,7 @@ export default class AfpNews {
   }
 
   async search (params) {
-    let { products, size, dateFrom, dateTo, urgencies, query, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
+    let { products, size: maxRows, dateFrom, dateTo, urgencies, query, langs, sortField, sortOrder } = Object.assign({}, this.defaultSearchParams, params)
 
     await this.authenticate()
 
@@ -182,7 +182,7 @@ export default class AfpNews {
     }
 
     const body = {
-      maxRows: size,
+      maxRows,
       sortField,
       sortOrder,
       dateRange: {
