@@ -34,6 +34,10 @@ describe('AFP News', () => {
       const afpNews = new AfpNews({ apiKey: 'TEST' })
       expect(afpNews._apiKey).to.be.equal('TEST')
     })
+    it('should return the api url', () => {
+      const afpNews = new AfpNews()
+      expect(afpNews.apiUrl).to.be.a('string')
+    })
   })
   describe('Authentication', () => {
     it('should return an anonymous token when called without api key', async () => {
@@ -88,10 +92,6 @@ describe('AFP News', () => {
     })
   })
   describe('Search', async () => {
-    it('should return the search url', () => {
-      const afpNews = new AfpNews()
-      expect(afpNews.searchUrl).to.be.a('string')
-    })
     it('should return the default search params', () => {
       const afpNews = new AfpNews()
       expect(afpNews.defaultSearchParams).to.have.all.keys('langs', 'urgencies', 'query', 'size', 'dateFrom', 'dateTo', 'sortField', 'sortOrder', 'products')
@@ -136,10 +136,6 @@ describe('AFP News', () => {
     })
   })
   describe('Search', async () => {
-    it('should return the get url', () => {
-      const afpNews = new AfpNews()
-      expect(afpNews.getUrl).to.be.a('string')
-    })
     it('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })

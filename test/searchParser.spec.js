@@ -1,7 +1,5 @@
 import chai from 'chai'
-import {
-  buildQuery
-} from '../src/queryBuilder'
+import buildQuery from '../src/utils/queryBuilder'
 
 const expect = chai.expect
 

@@ -1,4 +1,4 @@
-export const defaultSearchParams = {
+export default {
   products: ['news', 'multimedia', 'photo', 'infographie', 'sid', 'videographie', 'livereport', 'sidtv', 'parismode'],
   langs: ['fr', 'en', 'es', 'de', 'pt', 'ar', 'zh-tw', 'zh-cn'],
   urgencies: [1, 2, 3, 4, 5],

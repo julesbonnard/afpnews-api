@@ -57,7 +57,7 @@ function recursiveBuild (query) {
   }
 }
 
-export function buildQuery (query) {
+export default function buildQuery (query) {
   if (query === '') return []
   const queryParsed = queryParser(query)
   const queryBuilt = recursiveBuild(queryParsed)

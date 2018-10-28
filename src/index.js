@@ -1,7 +1,7 @@
 import { resolve } from 'url'
-import { get, post } from './request'
-import { defaultSearchParams } from './defaultParams'
-import { buildQuery } from './queryBuilder'
+import { get, post } from './utils/request'
+import defaultSearchParams from './defaultSearchParams'
+import buildQuery from './utils/queryBuilder'
 import btoa from 'btoa'
 
 export default class AfpNews {
@@ -13,6 +13,10 @@ export default class AfpNews {
 
   get authUrl () {
     return resolve(this.baseUrl, '/oauth/token')
+  }
+
+  get apiUrl () {
+    return resolve(this.baseUrl, '/v1/api')
   }
 
   get apiKey () {
@@ -34,7 +38,7 @@ export default class AfpNews {
   }
 
   get token () {
-    if (this._accessToken === undefined || this._tokenExpires === undefined || !this._refreshToken === undefined || this._authType === undefined) return null
+    if ([this._accessToken, this._tokenExpires, this._refreshToken, this._authType].some(d => d === undefined)) return null
     return {
       accessToken: this._accessToken,
       tokenExpires: this._tokenExpires,
@@ -79,9 +83,7 @@ export default class AfpNews {
         json: true
       })
 
-      token.authType = 'anonymous'
-
-      return this.parseToken(token)
+      return this.parseToken(token, 'anonymous')
     } catch (e) {
       return Promise.reject(e)
     }
@@ -105,9 +107,7 @@ export default class AfpNews {
         json: true
       })
 
-      token.authType = 'credentials'
-
-      return this.parseToken(token)
+      return this.parseToken(token, 'credentials')
     } catch (e) {
       return Promise.reject(e)
     }
@@ -123,15 +123,13 @@ export default class AfpNews {
         headers: this.authorizationBasicHeaders
       })
 
-      newToken.authType = this.token.authType
-
-      return this.parseToken(newToken)
+      return this.parseToken(newToken, this.token.authType)
     } catch (e) {
       return Promise.reject(e)
     }
   }
 
-  parseToken ({ access_token, refresh_token, expires_in, authType }) {
+  parseToken ({ access_token, refresh_token, expires_in }, authType) {
     this.token = {
       accessToken: access_token,
       refreshToken: refresh_token,
@@ -149,10 +147,6 @@ export default class AfpNews {
     delete this._authType
   }
 
-  get searchUrl () {
-    return resolve(this.baseUrl, '/v1/api/search')
-  }
-
   get defaultSearchParams () {
     return defaultSearchParams
   }
@@ -162,28 +156,27 @@ export default class AfpNews {
 
     await this.authenticate()
 
-    let request = {
+    const request = {
       and: []
     }
 
-    request.and.push({
-      name: 'lang',
-      in: langs
-    })
-
-    request.and.push({
-      name: 'product',
-      in: products
-    })
-
-    request.and.push({
-      name: 'urgency',
-      in: urgencies
-    })
+    request.and = request.and.concat([
+      {
+        name: 'lang',
+        in: langs
+      },
+      {
+        name: 'product',
+        in: products
+      },
+      {
+        name: 'urgency',
+        in: urgencies
+      }
+    ])
 
     try {
-      const queryBuilt = buildQuery(query)
-      request.and = request.and.concat(queryBuilt)
+      request.and = request.and.concat(buildQuery(query))
     } catch (e) {
       return Promise.reject(new Error('Invalid request'))
     }
@@ -200,33 +193,29 @@ export default class AfpNews {
     }
 
     try {
-      const data = await post(this.searchUrl, body, {
+      const data = await post(`${this.apiUrl}/search`, body, {
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
         }
       })
 
-      const { docs, numFound } = data.response
+      const { docs: documents, numFound: count } = data.response
 
       return Promise.resolve({
-        documents: docs || [],
-        count: numFound
+        documents,
+        count
       })
     } catch (e) {
       return Promise.reject(e)
     }
   }
 
-  get getUrl () {
-    return resolve(this.baseUrl, '/v1/api/get/')
-  }
-
   async get (uno) {
     await this.authenticate()
 
     try {
-      const data = await get(resolve(this.getUrl, uno), {
+      const data = await get(`${this.apiUrl}/get/${uno}`, {
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
