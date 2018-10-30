@@ -68,6 +68,8 @@ export default class AfpNews {
     } else {
       if (username && password) {
         throw new Error('You need an api key to make authenticated requests')
+      } else if (this.isTokenValid === true) {
+        return Promise.resolve(this.token)
       } else {
         return this.requestAnonymousToken()
       }
@@ -137,6 +139,8 @@ export default class AfpNews {
       authType
     }
 
+    this.saveToken(this.token)
+
     return Promise.resolve(this.token)
   }
 
@@ -146,6 +150,8 @@ export default class AfpNews {
     delete this._tokenExpires
     delete this._authType
   }
+
+  saveToken () {}
 
   get defaultSearchParams () {
     return defaultSearchParams

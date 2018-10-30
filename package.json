@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/afpnews-api.node.js",
   "module": "src/index.js",
