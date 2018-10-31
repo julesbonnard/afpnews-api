@@ -135,7 +135,7 @@ describe('AFP News', () => {
       expect(new Date(lastDocument.published)).to.be.below(new Date(Date.now() - 86400)) // now-1d
     })
   })
-  describe('Search', async () => {
+  describe('Get', async () => {
     it('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
