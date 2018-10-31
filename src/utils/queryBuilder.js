@@ -3,28 +3,31 @@ import { normalize } from './normalizer'
 
 function recursiveBuild (query) {
   switch (query.operator) {
-    case '<implicit>':
+    case '<implicit>': {
       return [{
         and: [
           ...recursiveBuild(query.left),
           ...recursiveBuild(query.right)
         ]
       }]
-    case 'AND':
+    }
+    case 'AND': {
       return [{
         and: [
           ...recursiveBuild(query.left),
           ...recursiveBuild(query.right)
         ]
       }]
-    case 'OR':
+    }
+    case 'OR': {
       return [{
         or: [
           ...recursiveBuild(query.left),
           ...recursiveBuild(query.right)
         ]
       }]
-    default:
+    }
+    default: {
       if (query.left) {
         return [
           ...recursiveBuild(query.left)
@@ -55,6 +58,7 @@ function recursiveBuild (query) {
         object['in'] = [normalize(query.term)]
       }
       return [object]
+    }
   }
 }
 
