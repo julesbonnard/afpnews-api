@@ -1,6 +1,5 @@
+import FormData from 'form-data'
 import axios from 'axios'
-
-const FormData = require('form-data')
 
 export async function get (url, { params = {}, headers = {} }) {
   try {
