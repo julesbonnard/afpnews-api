@@ -1,13 +1,26 @@
-import FormData from 'form-data'
+// @ts-ignore
 import axios from 'axios'
+// @ts-ignore
+import FormData from 'form-data'
+import { Form, Headers, Params, Query } from './types'
 
-export async function get (url, { params = {}, headers = {} }) {
+export async function get (
+  url: string,
+  {
+    headers,
+    params
+  }: {
+    params?: {
+      grant_type: string
+    },
+    headers?: Headers
+  } = {}) {
   try {
     const response = await axios({
+      headers,
       method: 'get',
-      url,
       params,
-      headers
+      url
     })
 
     return response.data
@@ -16,11 +29,20 @@ export async function get (url, { params = {}, headers = {} }) {
   }
 }
 
-export async function post (url, data = {}, { formData, headers }) {
+export async function post (
+  url: string,
+  data: {} | Query = {},
+  {
+    headers,
+    formData
+  }: {
+    headers?: Headers,
+    formData?: Form
+  }) {
   try {
     if (typeof formData === 'object') {
       const form = new FormData()
-      for (const item in formData) {
+      for (const item of Object.keys(formData)) {
         form.append(item, formData[item])
       }
 
