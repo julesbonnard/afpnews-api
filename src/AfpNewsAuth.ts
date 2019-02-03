@@ -1,17 +1,12 @@
-// @ts-ignore
 import btoa from 'btoa'
 import { resolve } from 'url'
+import { Client, Headers, Token } from './@types'
 import { get, post } from './utils/request'
-import { Credentials, Headers, Token } from './utils/types'
 
 export default class AfpNewsAuth {
   public baseUrl: string
-  public apiKey: string
-
-  private authType: string
-  private tokenExpires: number
-  private refreshToken: string
-  private accessToken: string
+  public apiKey: string | undefined
+  public token: Token | undefined
 
   constructor (
     {
@@ -19,7 +14,7 @@ export default class AfpNewsAuth {
       clientId,
       clientSecret,
       baseUrl
-    }: Client | { baseUrl?: string } = {}
+    }: Client = {}
   ) {
     if (clientId && clientSecret) {
       this.apiKey = btoa(`${clientId}:${clientSecret}`)
@@ -35,38 +30,20 @@ export default class AfpNewsAuth {
   }
 
   get isTokenValid (): boolean {
-    return this.token && this.token.tokenExpires > +new Date()
-  }
-
-  get token (): Token {
-    if ([
-      this.accessToken,
-      this.tokenExpires,
-      this.refreshToken,
-      this.authType
-    ].some((d) => d === undefined)) {
-      return null
+    if (!this.token) {
+      return false
     }
-    return {
-      accessToken: this.accessToken,
-      authType: this.authType,
-      refreshToken: this.refreshToken,
-      tokenExpires: this.tokenExpires
-    }
+    return this.token.tokenExpires > +new Date()
   }
 
-  set token ({ accessToken, refreshToken, tokenExpires, authType }: Token) {
-    this.accessToken = accessToken
-    this.refreshToken = refreshToken
-    this.tokenExpires = tokenExpires
-    this.authType = authType
-  }
-
-  public async authenticate ({ username, password }: Credentials = {}) {
+  public async authenticate (
+    { username, password }:
+    { username?: string, password?: string } = {}
+  ) {
     if (this.apiKey) {
       if (username && password) {
         return this.requestAuthenticatedToken({ username, password })
-      } else if (this.token === null) {
+      } else if (this.token === undefined) {
         throw new Error('You need to authenticate with credentials once')
       } else if (this.isTokenValid === false) {
         return this.requestRefreshToken()
@@ -85,13 +62,12 @@ export default class AfpNewsAuth {
   }
 
   public resetToken () {
-    delete this.accessToken
-    delete this.refreshToken
-    delete this.tokenExpires
-    delete this.authType
+    delete this.token
   }
 
-  public saveToken (token: Token) {} // tslint:disable-line no-empty
+  public saveToken (token: Token) { //eslint-disable-line no-unused-vars
+    // tslint:disable-line no-empty
+  }
 
   private async requestAnonymousToken () {
     try {
@@ -114,7 +90,10 @@ export default class AfpNewsAuth {
     }
   }
 
-  private async requestAuthenticatedToken ({ username, password }: Credentials) {
+  private async requestAuthenticatedToken (
+    { username, password }:
+    { username: string, password: string }
+  ) {
     try {
       const token = await post(this.authUrl, {}, {
         formData: {
@@ -133,6 +112,9 @@ export default class AfpNewsAuth {
 
   private async requestRefreshToken () {
     try {
+      if (this.token === undefined) {
+        throw new Error('Token is invalid')
+      }
       const newToken = await post(this.authUrl, {}, {
         formData: {
           grant_type: 'refresh_token',

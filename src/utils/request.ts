@@ -1,8 +1,6 @@
-// @ts-ignore
 import axios from 'axios'
-// @ts-ignore
 import FormData from 'form-data'
-import { Form, Headers, Params, Query } from './types'
+import { Form, Headers, Params, Query } from '../@types'
 
 export async function get (
   url: string,

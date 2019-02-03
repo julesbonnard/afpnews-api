@@ -1,7 +1,8 @@
 import { parse as queryParser } from 'lucene-query-parser'
+import { Field, LuceneQueryParsed, Request } from '../@types'
 import { normalize } from './normalizer'
 
-function recursiveBuild (query) {
+function recursiveBuild (query: LuceneQueryParsed): Request[] {
   switch (query.operator) {
     case '<implicit>': {
       return [{
@@ -49,22 +50,28 @@ function recursiveBuild (query) {
           ]
         }]
       }
-      const object = {
-        name: normalize(query.field)
+      const object: {
+        name: Field,
+        exclude?: Array<string | number>,
+        in?: Array<string | number>
+      } = {
+        name: normalize(query.field) as Field
       }
       if (query.prefix === '-') {
-        object['exclude'] = [normalize(query.term)]
+        object.exclude = [normalize(query.term)]
       } else {
-        object['in'] = [normalize(query.term)]
+        object.in = [normalize(query.term)]
       }
       return [object]
     }
   }
 }
 
-export default function buildQuery (query) {
-  if (query === '') return []
-  const queryParsed = queryParser(query)
-  const queryBuilt = recursiveBuild(queryParsed)
+export default function buildQuery (query: string | undefined): Request[] {
+  if (!query || query === '') {
+    return []
+  }
+  const queryParsed: LuceneQueryParsed = queryParser(query)
+  const queryBuilt: Request[] = recursiveBuild(queryParsed)
   return queryBuilt
 }

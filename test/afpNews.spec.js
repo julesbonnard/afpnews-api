@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import AfpNews from '../src/index'
+import AfpNews from '../'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -24,7 +24,7 @@ describe('AFP News', () => {
     })
     it('should reset token on init', () => {
       const afpNews = new AfpNews()
-      expect(afpNews.token).to.be.null
+      expect(afpNews.token).to.be.undefined
     })
     it('should allow to change base url in constructor', () => {
       const afpNews = new AfpNews({ baseUrl: 'http://customurl' })

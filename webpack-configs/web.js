@@ -4,7 +4,7 @@ const commonConfig = require('./common');
 module.exports = {
   target: 'web',
   output: {
-    path: path.resolve(__dirname, '../dist'),
+    path: path.resolve(__dirname, '../dist/umd'),
     filename: 'afpnews-api.js',
     library: 'AfpNews',
     libraryExport: 'default',
