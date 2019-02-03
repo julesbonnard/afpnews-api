@@ -1,5 +1,5 @@
 import { resolve } from 'url'
-import { ApiResponse, Client, Document, Params, Query, Request } from './@types'
+import { AfpResponse, Client, Params, Query, Request } from './@types'
 import AfpNewsAuth from './AfpNewsAuth'
 import defaultSearchParams from './defaultSearchParams'
 import buildQuery from './utils/queryBuilder'
@@ -66,7 +66,7 @@ export default class AfpNews extends AfpNewsAuth {
       if (this.token === undefined) {
         throw new Error('Token is invalid')
       }
-      const data: ApiResponse = await post(`${this.apiUrl}/search`, body, {
+      const data: AfpResponse = await post(`${this.apiUrl}/search`, body, {
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'
@@ -91,7 +91,7 @@ export default class AfpNews extends AfpNewsAuth {
       if (this.token === undefined) {
         throw new Error('Token is invalid')
       }
-      const data: ApiResponse = await get(`${this.apiUrl}/get/${uno}`, {
+      const data: AfpResponse = await get(`${this.apiUrl}/get/${uno}`, {
         headers: {
           'Authorization': `Bearer ${this.token.accessToken}`,
           'Content-Type': 'application/json'

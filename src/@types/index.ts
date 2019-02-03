@@ -104,42 +104,81 @@ export interface Client {
   baseUrl?: string
 }
 
-export interface MediaSize {
-  width: number,
-  height: number,
-  href: string
-}
-
-export interface Media {
-  uno: string,
-  sizes: Array<MediaSize>,
-  creator: string,
-  provider: string,
-  caption: string,
-  source: string
-}
-
-export interface Document {
-  uno: string,
-  country: string,
+export interface AfpDocument {
+  bagItem: [
+    {
+      creator: string,
+      medias: [
+        {
+          height: number,
+          href: string,
+          role: string,
+          type: string,
+          width: number
+        }
+      ],
+      newslines: {
+        headline: string,
+        byline: string
+      },
+      provider: string,
+      source: string,
+      uno: string
+    }
+  ],
+  bagUno: string[],
+  caption: string[],
   city: string,
-  provider: string,
-  creator: string,
-  source: string,
-  iptc: Array<string>,
-  slugs: Array<string>,
-  news: Array<string>,
-  urgency: Urgency,
-  product: Product,
-  lang: Lang,
-  published: string,
+  country: string,
+  country_only: string[],
+  created: string,
+  entity_faces: [
+    {
+      faces: [
+        {
+          height: number,
+          href: string,
+          offsetX: number,
+          offsetY: number,
+          width: number
+        }
+      ],
+      src: string
+    }
+  ],
+  entity_location: string[],
+  entity_person: string[],
+  entity_video: string,
   headline: string,
-  medias: Array<Media>
+  href: string,
+  iptc: string[],
+  lang: Lang,
+  language: string,
+  location: {
+    lon: number,
+    lat: number
+  },
+  news: string[],
+  objectName: string,
+  ofinterestof: string[],
+  product: Product,
+  provider: string,
+  publicIdentifier: string,
+  published: string,
+  revision: number,
+  serial: string,
+  slug: string[],
+  source: string,
+  status: string,
+  title: string,
+  topic: string[],
+  uno: string,
+  urgency: Urgency
 }
 
-export interface ApiResponse {
+export interface AfpResponse {
   response: {
-    docs: Document[],
+    docs: AfpDocument[],
     numFound: number
   }
 }
