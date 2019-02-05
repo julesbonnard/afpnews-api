@@ -1,6 +1,6 @@
 import axios from 'axios'
 import FormData from 'form-data'
-import { Form, Headers, Params, Query } from '../@types'
+import { AuthorizationHeaders, Form, Params, Query } from '../@types'
 
 export async function get (
   url: string,
@@ -11,8 +11,11 @@ export async function get (
     params?: {
       grant_type: string
     },
-    headers?: Headers
+    headers?: AuthorizationHeaders
   } = {}) {
+  headers = Object.assign({}, headers, {
+    'Content-Type': 'application/json'
+  })
   try {
     const response = await axios({
       headers,
@@ -34,9 +37,12 @@ export async function post (
     headers,
     formData
   }: {
-    headers?: Headers,
+    headers?: AuthorizationHeaders,
     formData?: Form
   }) {
+  headers = Object.assign({}, headers, {
+    'Content-Type': 'application/json'
+  })
   try {
     if (typeof formData === 'object') {
       const form = new FormData()
@@ -45,7 +51,7 @@ export async function post (
       }
 
       if (typeof form.getHeaders === 'function') {
-        headers = Object.assign({}, headers, form.getHeaders())
+        headers = Object.assign(headers, form.getHeaders(), { 'Content-Type': 'application/json' })
       }
 
       const response = await axios.post(url, form, {

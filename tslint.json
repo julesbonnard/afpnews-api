@@ -4,6 +4,7 @@
     "trailing-comma": false,
     "semicolon": false,
     "quotemark": [true, "single"],
-    "space-before-function-paren": false
+    "space-before-function-paren": false,
+    "interface-name": false
   }
 }

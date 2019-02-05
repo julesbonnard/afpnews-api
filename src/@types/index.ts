@@ -11,7 +11,8 @@ export type Field =
   'entity_location' |
   'lang' |
   'product' |
-  'urgency'
+  'urgency' |
+  'status'
 
 export interface LuceneQueryParsed {
   left: LuceneQueryParsed,
@@ -70,9 +71,10 @@ export interface Params {
   products: Product[]
 }
 
-export interface Headers {
-  Authorization: string,
-  'Content-Type': string
+export type AuthType = 'anonymous' | 'credentials'
+
+export interface AuthorizationHeaders {
+  Authorization?: string
 }
 
 export interface Form {
@@ -83,7 +85,7 @@ export interface Token {
   accessToken: string,
   refreshToken: string,
   tokenExpires: number,
-  authType: string
+  authType: AuthType
 }
 
 export interface Query {
@@ -97,16 +99,20 @@ export interface Query {
   query: Request
 }
 
-export interface Client {
+export interface ClientCredentials {
   apiKey?: string,
   clientId?: string,
   clientSecret?: string,
-  baseUrl?: string
+  customAuthUrl?: string
 }
 
+export type Status = 'Canceled' | 'Usable' | 'Embargoed'
+
 export interface AfpDocument {
+  advisory: string,
   bagItem: [
     {
+      caption: string,
       creator: string,
       medias: [
         {
@@ -129,9 +135,13 @@ export interface AfpDocument {
   bagUno: string[],
   caption: string[],
   city: string,
+  contributor: string,
   country: string,
   country_only: string[],
   created: string,
+  creator: string,
+  embargoed: string,
+  entity_company: string[],
   entity_faces: [
     {
       faces: [
@@ -146,6 +156,7 @@ export interface AfpDocument {
       src: string
     }
   ],
+  entity_keyword: string[],
   entity_location: string[],
   entity_person: string[],
   entity_video: string,
@@ -169,7 +180,8 @@ export interface AfpDocument {
   serial: string,
   slug: string[],
   source: string,
-  status: string,
+  status: Status,
+  summary: string[],
   title: string,
   topic: string[],
   uno: string,

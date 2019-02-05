@@ -1,12 +1,12 @@
 import { resolve } from 'url'
-import { AfpResponse, Client, Params, Query, Request } from './@types'
+import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request } from './@types'
 import AfpNewsAuth from './AfpNewsAuth'
 import defaultSearchParams from './defaultSearchParams'
 import buildQuery from './utils/queryBuilder'
 import { get, post } from './utils/request'
 
 export default class AfpNews extends AfpNewsAuth {
-  constructor (credentials: Client | { baseUrl?: string } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string } = {}) {
     super(credentials)
   }
 
@@ -16,6 +16,15 @@ export default class AfpNews extends AfpNewsAuth {
 
   get defaultSearchParams (): Params {
     return defaultSearchParams as Params
+  }
+
+  get authorizationBearerHeaders (): AuthorizationHeaders {
+    if (!this.token) {
+      return {}
+    }
+    return {
+      'Authorization': `Bearer ${this.token.accessToken}`
+    }
   }
 
   public async search (params?: Params) {
@@ -67,10 +76,7 @@ export default class AfpNews extends AfpNewsAuth {
         throw new Error('Token is invalid')
       }
       const data: AfpResponse = await post(`${this.apiUrl}/search`, body, {
-        headers: {
-          'Authorization': `Bearer ${this.token.accessToken}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.authorizationBearerHeaders
       })
 
       const { docs: documents, numFound: count } = data.response
@@ -92,10 +98,7 @@ export default class AfpNews extends AfpNewsAuth {
         throw new Error('Token is invalid')
       }
       const data: AfpResponse = await get(`${this.apiUrl}/get/${uno}`, {
-        headers: {
-          'Authorization': `Bearer ${this.token.accessToken}`,
-          'Content-Type': 'application/json'
-        }
+        headers: this.authorizationBearerHeaders
       })
       const { docs } = data.response
       return Promise.resolve({

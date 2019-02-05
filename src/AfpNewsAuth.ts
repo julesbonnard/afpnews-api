@@ -1,31 +1,48 @@
 import btoa from 'btoa'
+import { EventEmitter } from 'events'
 import { resolve } from 'url'
-import { Client, Headers, Token } from './@types'
+import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './@types'
 import { get, post } from './utils/request'
 
-export default class AfpNewsAuth {
-  public baseUrl: string
-  public apiKey: string | undefined
+export default class AfpNewsAuth extends EventEmitter {
   public token: Token | undefined
+
+  protected baseUrl: string
+
+  private apiKey: string | undefined
+  private customAuthUrl: string | undefined
 
   constructor (
     {
       apiKey,
       clientId,
       clientSecret,
-      baseUrl
-    }: Client = {}
+      baseUrl,
+      customAuthUrl
+    }: ClientCredentials & { baseUrl?: string } = {}
   ) {
+    super()
+    this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
+    this.baseUrl = baseUrl || 'https://api.afp.com'
+  }
+
+  set credentials ({ clientId, clientSecret, apiKey, customAuthUrl }: ClientCredentials) {
     if (clientId && clientSecret) {
+      delete this.customAuthUrl
       this.apiKey = btoa(`${clientId}:${clientSecret}`)
     } else if (apiKey) {
+      delete this.customAuthUrl
       this.apiKey = apiKey
+    } else if (customAuthUrl) {
+      delete this.apiKey
+      this.customAuthUrl = customAuthUrl
     }
-    this.baseUrl = baseUrl || 'https://api.afp.com'
-    this.resetToken()
   }
 
   get authUrl (): string {
+    if (this.customAuthUrl) {
+      return this.customAuthUrl
+    }
     return resolve(this.baseUrl, '/oauth/token')
   }
 
@@ -39,7 +56,7 @@ export default class AfpNewsAuth {
   public async authenticate (
     { username, password }:
     { username?: string, password?: string } = {}
-  ) {
+  ): Promise<Token> {
     if (this.apiKey) {
       if (username && password) {
         return this.requestAuthenticatedToken({ username, password })
@@ -52,8 +69,12 @@ export default class AfpNewsAuth {
       }
     } else {
       if (username && password) {
-        throw new Error('You need an api key to make authenticated requests')
-      } else if (this.isTokenValid === true) {
+        if (this.customAuthUrl) {
+          return this.requestAuthenticatedToken({ username, password })
+        } else {
+          throw new Error('You need an api key to make authenticated requests')
+        }
+      } else if (this.token && this.isTokenValid === true) {
         return Promise.resolve(this.token)
       } else {
         return this.requestAnonymousToken()
@@ -61,15 +82,12 @@ export default class AfpNewsAuth {
     }
   }
 
-  public resetToken () {
+  public resetToken (): void {
     delete this.token
+    this.emit('resetToken')
   }
 
-  public saveToken (token: Token) { //eslint-disable-line no-unused-vars
-    // tslint:disable-line no-empty
-  }
-
-  private async requestAnonymousToken () {
+  private async requestAnonymousToken (): Promise<Token> {
     try {
       const token = await get(this.authUrl, {
         params: {
@@ -83,17 +101,19 @@ export default class AfpNewsAuth {
     }
   }
 
-  get authorizationBasicHeaders (): Headers {
+  get authorizationBasicHeaders (): AuthorizationHeaders {
+    if (this.customAuthUrl || !this.apiKey) {
+      return {}
+    }
     return {
-      'Authorization': `Basic ${this.apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Basic ${this.apiKey}`
     }
   }
 
   private async requestAuthenticatedToken (
     { username, password }:
     { username: string, password: string }
-  ) {
+  ): Promise<Token> {
     try {
       const token = await post(this.authUrl, {}, {
         formData: {
@@ -110,7 +130,7 @@ export default class AfpNewsAuth {
     }
   }
 
-  private async requestRefreshToken () {
+  private async requestRefreshToken (): Promise<Token> {
     try {
       if (this.token === undefined) {
         throw new Error('Token is invalid')
@@ -139,17 +159,16 @@ export default class AfpNewsAuth {
       refresh_token: string,
       expires_in: number
     },
-    authType: string
-  ) {
+    authType: AuthType
+  ): Token {
     this.token = {
       accessToken: access_token,
       authType,
       refreshToken: refresh_token,
       tokenExpires: +new Date() + expires_in * 1000
     }
+    this.emit('setToken', this.token)
 
-    this.saveToken(this.token)
-
-    return Promise.resolve(this.token)
+    return this.token
   }
 }
