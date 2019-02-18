@@ -139,7 +139,7 @@ describe('AFP News', () => {
     it('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
-      const uno = 'newsml.afp.com.20181027T140347Z.TX-PAR-OSW58'
+      const uno = 'newsmlmmd.urn.newsml.afp.com.20190131.doc.1cw5ie'
       const news = await afpNews.get(uno)
       expect(news.document).to.be.an('object')
       expect(news.document.uno).to.be.equal(uno)
