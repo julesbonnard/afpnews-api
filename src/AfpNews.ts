@@ -23,7 +23,7 @@ export default class AfpNews extends AfpNewsAuth {
       return {}
     }
     return {
-      'Authorization': `Bearer ${this.token.accessToken}`
+      Authorization: `Bearer ${this.token.accessToken}`
     }
   }
 
