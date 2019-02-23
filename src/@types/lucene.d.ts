@@ -1,7 +1,7 @@
 declare module 'lucene' {
     export interface LuceneQueryParsed {
         left: LuceneQueryParsed,
-        operator: 'AND' | 'OR' | '<implicit>',
+        operator: 'AND' | '&&' | 'OR' | '||' | 'NOT' | 'AND NOT' | 'OR NOT' | '<implicit>',
         right: LuceneQueryParsed,
         term: string,
         field: string | '<implicit>',

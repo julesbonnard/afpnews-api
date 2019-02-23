@@ -14,7 +14,7 @@
     "build": "webpack --mode production",
     "prebuild": "tsc",
     "analyse": "webpack --mode production --json > stats.json && npx webpack-bundle-analyzer stats.json",
-    "test": "cross-env BABEL_ENV=test nyc --reporter=html --reporter=text mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
+    "test": "cross-env BABEL_ENV=test mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
   },
   "repository": {
     "type": "git",
