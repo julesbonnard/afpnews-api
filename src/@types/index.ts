@@ -14,15 +14,6 @@ export type Field =
   'urgency' |
   'status'
 
-export interface LuceneQueryParsed {
-  left: LuceneQueryParsed,
-  operator: 'AND' | 'OR' | '<implicit>',
-  right: LuceneQueryParsed,
-  term: string,
-  field: Field | '<implicit>',
-  prefix: '-'
-}
-
 export interface Request {
   and?: Request[],
   or?: Request[],

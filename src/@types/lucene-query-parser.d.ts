@@ -1,1 +1,0 @@
-declare module 'lucene-query-parser';
