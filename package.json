@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "1.6.0-rc1",
+  "version": "1.6.0-rc2",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/umd/afpnews-api.node.js",
   "module": "dist/esm/index.js",
@@ -14,7 +14,7 @@
     "build": "webpack --mode production",
     "prebuild": "tsc",
     "analyse": "webpack --mode production --json > stats.json && npx webpack-bundle-analyzer stats.json",
-    "test": "cross-env BABEL_ENV=test mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
+    "test": "mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
   },
   "repository": {
     "type": "git",
@@ -42,16 +42,13 @@
     "@types/node": "^11.9.5",
     "babel-eslint": "^10.0.1",
     "babel-loader": "^8.0.5",
-    "babel-plugin-istanbul": "^5.1.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "cross-env": "^5.2.0",
     "dotenv": "^6.2.0",
     "eslint": "^5.14.1",
     "eslint-config-recommended": "^4.0.0",
     "eslint-loader": "^2.1.2",
     "mocha": "^6.0.1",
-    "nyc": "^13.3.0",
     "ts-loader": "^5.3.3",
     "tslint": "^5.12.1",
     "tslint-loader": "^3.5.4",
