@@ -4,7 +4,7 @@
 
 This project is aimed to help javascript developers use the [AFP News API](https://api.afp.com/).
 
-It provides authentication and search functions.
+It provides authentication, search and get functions.
 
 ## Getting Started
 
@@ -12,7 +12,7 @@ This package is available both for NodeJS and browsers. That's why two versions 
 
 ### Prerequisites
 
-Read [the API documentation](https://api.afpforum.com/), and ask for an API Key and credentials.
+Read [the API documentation](https://api.afp.com/), and ask for an API Key and credentials.
 
 ### Installing
 
@@ -41,17 +41,21 @@ const credentials = {
 }
 
 afpNews.authenticate(credentials)
-  .then(token => {
-    // You can eventually save the token to be used later
-
-    return afpNews.search()
-  })
+  .then(() => afpNews.search())
   .then(news => {
     console.log(news)
   })
   .catch(err => {
     console.error(err)
   })
+
+afpNews.on('setToken', token => {
+  // You can eventually save the token to be used later
+})
+
+afpNews.get('A_SPECIFIC_UNO', ({ document }) => {
+  console.log(document)
+})
 ```
 
 ### Query parser
@@ -79,7 +83,7 @@ afpNews.search(params)
   })
 ```
 
-The query parameter can be used to look precisely for a field (`title:Macron`) and may include logical parameters (`Macron OR Merkel`).
+The query parameter can be used to look precisely for a field (`title:Macron`) and may include logical parameters (`Macron OR Merkel`, `Macron AND NOT Merkel`, `title:(Macron OR Merkel) AND country:fra`).
 
 ## Development
 
@@ -97,6 +101,7 @@ Just `npm test` to execute all tests in `./tests`
 
 * [Webpack](https://webpack.js.org/) - Building machine
 * [Babel](https://babeljs.io/) - Javascript Transpiler
+* [TypeScript](https://www.typescriptlang.org/) - Typescript
 * [ESLint](https://eslint.org/) - JS Linter
 
 ## Authors

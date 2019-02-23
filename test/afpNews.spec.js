@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import AfpNews from '../src'
+import AfpNews from '../'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -24,7 +24,7 @@ describe('AFP News', () => {
     })
     it('should reset token on init', () => {
       const afpNews = new AfpNews()
-      expect(afpNews.token).to.be.null
+      expect(afpNews.token).to.be.undefined
     })
     it('should allow to change base url in constructor', () => {
       const afpNews = new AfpNews({ baseUrl: 'http://customurl' })
@@ -32,7 +32,7 @@ describe('AFP News', () => {
     })
     it('should accept an apiKey', () => {
       const afpNews = new AfpNews({ apiKey: 'TEST' })
-      expect(afpNews._apiKey).to.be.equal('TEST')
+      expect(afpNews.apiKey).to.be.equal('TEST')
     })
     it('should return the api url', () => {
       const afpNews = new AfpNews()
@@ -78,7 +78,7 @@ describe('AFP News', () => {
     it('should refresh token when token expires', async () => {
       const afpNews = new AfpNews({ apiKey })
       const token = await afpNews.authenticate({ username, password })
-      afpNews._tokenExpires = 0
+      afpNews.token = { ...token, tokenExpires: 0 }
       const newToken = await afpNews.authenticate()
       expect(token.accessToken).to.not.be.equal(newToken.accessToken)
       expect(token.authType).to.be.equal('credentials')
@@ -94,7 +94,17 @@ describe('AFP News', () => {
   describe('Search', async () => {
     it('should return the default search params', () => {
       const afpNews = new AfpNews()
-      expect(afpNews.defaultSearchParams).to.have.all.keys('langs', 'urgencies', 'query', 'size', 'dateFrom', 'dateTo', 'sortField', 'sortOrder', 'products')
+      expect(afpNews.defaultSearchParams).to.have.all.keys(
+        'langs',
+        'urgencies',
+        'query',
+        'size',
+        'dateFrom',
+        'dateTo',
+        'sortField',
+        'sortOrder',
+        'products'
+      )
     })
     it('should return a news array with anonymous token, without explicit call to authenticate', async () => {
       const afpNews = new AfpNews()
@@ -113,11 +123,11 @@ describe('AFP News', () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
       const customParams = {
-        size: 15,
         dateFrom: 'now-1M',
         dateTo: 'now-1d',
         langs: ['fr'],
         urgencies: [3],
+        size: 15,
         sortField: 'published',
         sortOrder: 'asc',
         products: ['news']

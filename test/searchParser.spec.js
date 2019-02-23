@@ -1,5 +1,5 @@
 import chai from 'chai'
-import buildQuery from '../src/utils/queryBuilder'
+import buildQuery from '../dist/esm/utils/queryBuilder'
 
 const expect = chai.expect
 
@@ -401,6 +401,143 @@ describe('AFP News Search Parser', () => {
           }]
         }]
       }])
+    })
+    it('should build query with explicit NOT operator', () => {
+      const query = buildQuery('cat NOT dog')
+      expect(query).to.deep.equal([
+        {
+          "and": [
+            {
+              "or": [
+                {
+                  "name": "news",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "slug",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "city",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "country",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "title",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "caption",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "creator",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "headline",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "entity_person",
+                  "in": [
+                    "cat"
+                  ]
+                },
+                {
+                  "name": "entity_location",
+                  "in": [
+                    "cat"
+                  ]
+                }
+              ]
+            },
+            {
+              "and": [
+                {
+                  "name": "news",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "slug",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "city",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "country",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "title",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "caption",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "creator",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "headline",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "entity_person",
+                  "exclude": [
+                    "dog"
+                  ]
+                },
+                {
+                  "name": "entity_location",
+                  "exclude": [
+                    "dog"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ])
     })
     it('should build query with explicit parenthesis', () => {
       const query = buildQuery('cat AND (dog OR duck) AND cat')

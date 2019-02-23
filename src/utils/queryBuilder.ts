@@ -1,7 +1,24 @@
-import { parse as queryParser } from 'lucene-query-parser'
+import { LuceneQueryParsed, parse as queryParser } from 'lucene'
+import { Field, Request } from '../@types'
 import { normalize } from './normalizer'
 
-function recursiveBuild (query) {
+function recursiveBuild (query: LuceneQueryParsed): Request[] {
+  if (query.field && query.field !== '<implicit>') {
+    if (query.left) {
+      Object.assign(query.left, { field: query.field })
+    }
+    if (query.right) {
+      Object.assign(query.right, { field: query.field })
+    }
+  }
+  if (query.prefix === '-') {
+    if (query.left) {
+      Object.assign(query.left, { prefix: query.prefix })
+    }
+    if (query.left) {
+      Object.assign(query.right, { prefix: query.prefix })
+    }
+  }
   switch (query.operator) {
     case '<implicit>': {
       return [{
@@ -11,6 +28,7 @@ function recursiveBuild (query) {
         ]
       }]
     }
+    case '&&':
     case 'AND': {
       return [{
         and: [
@@ -19,6 +37,7 @@ function recursiveBuild (query) {
         ]
       }]
     }
+    case '||':
     case 'OR': {
       return [{
         or: [
@@ -27,6 +46,22 @@ function recursiveBuild (query) {
         ]
       }]
     }
+    case 'AND NOT':
+    case 'NOT': {
+      return [{
+        and: [
+          ...recursiveBuild(query.left),
+          ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
+        ]
+      }]
+    }
+    case 'OR NOT':
+      return [{
+        or: [
+          ...recursiveBuild(query.left),
+          ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
+        ]
+      }]
     default: {
       if (query.left) {
         return [
@@ -49,22 +84,28 @@ function recursiveBuild (query) {
           ]
         }]
       }
-      const object = {
-        name: normalize(query.field)
+      const object: {
+        name: Field,
+        exclude?: Array<string | number>,
+        in?: Array<string | number>
+      } = {
+        name: normalize(query.field) as Field
       }
       if (query.prefix === '-') {
-        object['exclude'] = [normalize(query.term)]
+        object.exclude = [normalize(query.term)]
       } else {
-        object['in'] = [normalize(query.term)]
+        object.in = [normalize(query.term)]
       }
       return [object]
     }
   }
 }
 
-export default function buildQuery (query) {
-  if (query === '') return []
+export default function buildQuery (query: string | undefined): Request[] {
+  if (!query || query === '') {
+    return []
+  }
   const queryParsed = queryParser(query)
-  const queryBuilt = recursiveBuild(queryParsed)
+  const queryBuilt: Request[] = recursiveBuild(queryParsed)
   return queryBuilt
 }
