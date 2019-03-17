@@ -1,5 +1,5 @@
-import { LuceneQueryParsed, parse as queryParser } from 'lucene'
-import { Field, Request } from '../@types'
+import { LuceneQueryParsed, parse } from 'lucene'
+import { Field, Request } from '../types'
 import { normalize } from './normalizer'
 
 function recursiveBuild (query: LuceneQueryParsed): Request[] {
@@ -105,7 +105,7 @@ export default function buildQuery (query: string | undefined): Request[] {
   if (!query || query === '') {
     return []
   }
-  const queryParsed = queryParser(query)
+  const queryParsed = parse(query)
   const queryBuilt: Request[] = recursiveBuild(queryParsed)
   return queryBuilt
 }

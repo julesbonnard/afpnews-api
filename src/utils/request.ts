@@ -1,6 +1,6 @@
 import axios from 'axios'
 import FormData from 'form-data'
-import { AuthorizationHeaders, Form, Params, Query } from '../@types'
+import { AuthorizationHeaders, Form, Query } from '../types'
 
 export async function get (
   url: string,

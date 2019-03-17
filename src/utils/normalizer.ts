@@ -1,4 +1,4 @@
-export function normalize (query: string | undefined): string {
+export function normalize (query: string | undefined): string {
   if (typeof query !== 'string') {
     throw new Error('The query must be a string')
   }

@@ -1,5 +1,5 @@
 import chai from 'chai'
-import { normalize } from '../dist/esm/utils/normalizer'
+import { normalize } from '../src/utils/normalizer'
 
 const expect = chai.expect
 

@@ -1,16 +1,15 @@
-import btoa from 'btoa'
-import { EventEmitter } from 'events'
-import { resolve } from 'url'
-import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './@types'
+import base64 from './utils/base64'
+import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
 import { get, post } from './utils/request'
 
-export default class AfpNewsAuth extends EventEmitter {
+export default class AfpNewsAuth {
   public token: Token | undefined
 
   protected baseUrl: string
 
-  private apiKey: string | undefined
+  private apiKey: string | undefined
   private customAuthUrl: string | undefined
+  private saveToken: Function
 
   constructor (
     {
@@ -18,18 +17,23 @@ export default class AfpNewsAuth extends EventEmitter {
       clientId,
       clientSecret,
       baseUrl,
-      customAuthUrl
-    }: ClientCredentials & { baseUrl?: string } = {}
+      customAuthUrl,
+      saveToken
+    }: ClientCredentials & { baseUrl?: string } & { saveToken?: (token: Token | null) => void } = {}
   ) {
-    super()
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
+    if (saveToken) {
+      this.saveToken = saveToken
+    } else {
+      this.saveToken = (token: Token) => {} // tslint:disable-line
+    }
   }
 
   set credentials ({ clientId, clientSecret, apiKey, customAuthUrl }: ClientCredentials) {
     if (clientId && clientSecret) {
       delete this.customAuthUrl
-      this.apiKey = btoa(`${clientId}:${clientSecret}`)
+      this.apiKey = base64(`${clientId}:${clientSecret}`)
     } else if (apiKey) {
       delete this.customAuthUrl
       this.apiKey = apiKey
@@ -43,7 +47,7 @@ export default class AfpNewsAuth extends EventEmitter {
     if (this.customAuthUrl) {
       return this.customAuthUrl
     }
-    return resolve(this.baseUrl, '/oauth/token')
+    return `${this.baseUrl}/oauth/token`
   }
 
   get isTokenValid (): boolean {
@@ -84,7 +88,7 @@ export default class AfpNewsAuth extends EventEmitter {
 
   public resetToken (): void {
     delete this.token
-    this.emit('resetToken')
+    this.saveToken(null)
   }
 
   private async requestAnonymousToken (): Promise<Token> {
@@ -167,7 +171,7 @@ export default class AfpNewsAuth extends EventEmitter {
       refreshToken: refresh_token,
       tokenExpires: +new Date() + expires_in * 1000
     }
-    this.emit('setToken', this.token)
+    this.saveToken(this.token)
 
     return this.token
   }

@@ -1,5 +1,5 @@
 import chai from 'chai'
-import buildQuery from '../dist/esm/utils/queryBuilder'
+import buildQuery from '../src/utils/query-builder'
 
 const expect = chai.expect
 

@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import AfpNews from '../'
+import AfpNews from '../src/afpnews-api'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect

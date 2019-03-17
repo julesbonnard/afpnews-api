@@ -1,8 +1,7 @@
-import { resolve } from 'url'
-import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request } from './@types'
-import AfpNewsAuth from './AfpNewsAuth'
-import defaultSearchParams from './defaultSearchParams'
-import buildQuery from './utils/queryBuilder'
+import AfpNewsAuth from './afpnews-auth'
+import defaultSearchParams from './default-search-params'
+import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request } from './types'
+import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
 export default class AfpNews extends AfpNewsAuth {
@@ -11,7 +10,7 @@ export default class AfpNews extends AfpNewsAuth {
   }
 
   get apiUrl (): string {
-    return resolve(this.baseUrl, '/v1/api')
+    return `${this.baseUrl}/v1/api`
   }
 
   get defaultSearchParams (): Params {
