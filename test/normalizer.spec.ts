@@ -1,16 +1,13 @@
-import chai from 'chai'
 import { normalize } from '../src/utils/normalizer'
 
-const expect = chai.expect
-
 describe('AFP News Normalizer', () => {
-  it('should lowercase value', () => {
-    expect(normalize('Cat')).to.be.equal('cat')
+  test('should lowercase value', () => {
+    expect(normalize('Cat')).toBe('cat')
   })
-  it('should remove accents', () => {
-    expect(normalize('pépé')).to.be.equal('pepe')
+  test('should remove accents', () => {
+    expect(normalize('pépé')).toBe('pepe')
   })
-  it('should trim the string', () => {
-    expect(normalize(' dog')).to.be.equal('dog')
+  test('should trim the string', () => {
+    expect(normalize(' dog')).toBe('dog')
   })
 })
