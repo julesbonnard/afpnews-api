@@ -23,7 +23,7 @@
     "build": "npm run clean && npm run build:d && npm run build:lib && npm run microbundle:web && npm run microbundle:node",
     "clean": "rm -rf dist .rts2_cache_*",
     "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "engines": {
     "node": ">= 8.0.0"

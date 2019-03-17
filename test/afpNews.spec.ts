@@ -1,6 +1,7 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import AfpNews from '../src/afpnews-api'
+import { Params } from '../src/types';
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -20,19 +21,15 @@ describe('AFP News', () => {
   describe('Initialization', () => {
     it('should return true when afpNews is instance of AfpNews', () => {
       const afpNews = new AfpNews()
-      expect(afpNews instanceof AfpNews).to.be.true
+      expect(afpNews instanceof AfpNews).to.be.true // tslint:disable-line
     })
     it('should reset token on init', () => {
       const afpNews = new AfpNews()
-      expect(afpNews.token).to.be.undefined
+      expect(afpNews.token).to.be.undefined // tslint:disable-line
     })
     it('should allow to change base url in constructor', () => {
       const afpNews = new AfpNews({ baseUrl: 'http://customurl' })
-      expect(afpNews.baseUrl).to.be.equal('http://customurl')
-    })
-    it('should accept an apiKey', () => {
-      const afpNews = new AfpNews({ apiKey: 'TEST' })
-      expect(afpNews.apiKey).to.be.equal('TEST')
+      expect(afpNews.authUrl).to.include('http://customurl')
     })
     it('should return the api url', () => {
       const afpNews = new AfpNews()
@@ -122,7 +119,7 @@ describe('AFP News', () => {
     it('should react to custom params', async () => {
       const afpNews = new AfpNews({ apiKey })
       await afpNews.authenticate({ username, password })
-      const customParams = {
+      const customParams: Params = {
         dateFrom: 'now-1M',
         dateTo: 'now-1d',
         langs: ['fr'],
