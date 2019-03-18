@@ -1,6 +1,6 @@
-import base64 from './utils/base64'
+import { btoa } from 'isomorphic-base64'
 import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
-import { get, post } from './utils/request'
+import { get, postForm } from './utils/request'
 
 export default class AfpNewsAuth {
   public token: Token | undefined
@@ -33,7 +33,7 @@ export default class AfpNewsAuth {
   set credentials ({ clientId, clientSecret, apiKey, customAuthUrl }: ClientCredentials) {
     if (clientId && clientSecret) {
       delete this.customAuthUrl
-      this.apiKey = base64(`${clientId}:${clientSecret}`)
+      this.apiKey = btoa(`${clientId}:${clientSecret}`)
     } else if (apiKey) {
       delete this.customAuthUrl
       this.apiKey = apiKey
@@ -78,12 +78,11 @@ export default class AfpNewsAuth {
         } else {
           throw new Error('You need an api key to make authenticated requests')
         }
-      } else if (this.token && this.isTokenValid === true) {
-        return Promise.resolve(this.token)
-      } else {
-        return this.requestAnonymousToken()
+      } else if (this.isTokenValid === true) {
+        return Promise.resolve(this.token as Token)
       }
     }
+    return this.requestAnonymousToken()
   }
 
   public resetToken (): void {
@@ -119,14 +118,16 @@ export default class AfpNewsAuth {
     { username: string, password: string }
   ): Promise<Token> {
     try {
-      const token = await post(this.authUrl, {}, {
-        formData: {
+      const token = await postForm(
+        this.authUrl,
+        {
           grant_type: 'password',
           password,
           username
-        },
-        headers: this.authorizationBasicHeaders
-      })
+        }, {
+          headers: this.authorizationBasicHeaders
+        }
+      )
 
       return this.parseToken(token, 'credentials')
     } catch (e) {
@@ -139,13 +140,15 @@ export default class AfpNewsAuth {
       if (this.token === undefined) {
         throw new Error('Token is invalid')
       }
-      const newToken = await post(this.authUrl, {}, {
-        formData: {
+      const newToken = await postForm(
+        this.authUrl,
+        {
           grant_type: 'refresh_token',
           refresh_token: this.token.refreshToken
-        },
-        headers: this.authorizationBasicHeaders
-      })
+        }, {
+          headers: this.authorizationBasicHeaders
+        }
+      )
 
       return this.parseToken(newToken, this.token.authType)
     } catch (e) {

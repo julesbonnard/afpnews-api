@@ -10,15 +10,11 @@
   "files": [
     "dist"
   ],
-  "browser": {
-    "./dist/lib/utils/request.js": "./dist/lib/utils/request-browser.js",
-    "./dist/lib/utils/base64.js": "./dist/lib/utils/base64-browser.js"
-  },
   "scripts": {
     "prepare": "npm run build",
     "build:d": "tsc --outFile dist/afpnews-api.js --module commonjs --target es2015 --declaration --emitDeclarationOnly",
     "build:lib": "tsc --outDir dist/lib --module esnext --target esnext",
-    "microbundle:web": "microbundle -i dist/lib/afpnews-api.js -o dist -f es,umd --target web --strict --name AfpNews --sourcemap",
+    "microbundle:web": "microbundle -i dist/lib/afpnews-api.js -o dist -f es,umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData",
     "microbundle:node": "microbundle -i dist/lib/afpnews-api.js -o dist -f cjs --target node --strict --sourcemap",
     "build": "npm run clean && npm run build:d && npm run build:lib && npm run microbundle:web && npm run microbundle:node",
     "clean": "rm -rf dist .rts2_cache_*",
@@ -53,14 +49,14 @@
     "ts-jest": "^24.0.0",
     "tslint": "^5.14.0",
     "tslint-config-standard": "^8.0.1",
-    "typescript": "^3.3.3333",
-    "emittery": "^0.4.1"
+    "typescript": "^3.3.3333"
   },
   "dependencies": {
-    "@types/btoa": "^1.2.2",
+    "@types/isomorphic-fetch": "0.0.35",
     "@types/node": "^11.11.3",
-    "axios": "^0.18.0",
-    "form-data": "^2.3.3"
+    "isomorphic-base64": "^1.0.2",
+    "isomorphic-fetch": "^2.2.1",
+    "isomorphic-form-data": "^2.0.0"
   },
   "jest": {
     "transform": {

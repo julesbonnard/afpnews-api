@@ -82,19 +82,19 @@ describe('AFP News', () => {
       }
     )
     test('should refresh token when token expires', async () => {
-      const afpNews = new AfpNews({ apiKey })
+      const afpNews = new AfpNews({ clientId, clientSecret })
       const token = await afpNews.authenticate({ username, password })
       afpNews.token = { ...token, tokenExpires: 0 }
       const newToken = await afpNews.authenticate()
       expect(token.accessToken).not.toEqual(newToken.accessToken)
-      expect(token.authType).not.toBe('credentials')
+      expect(token.authType).toBe('credentials')
     })
     test('should not refresh token when token is valid', async () => {
-      const afpNews = new AfpNews({ apiKey })
+      const afpNews = new AfpNews({ clientId, clientSecret })
       const token = await afpNews.authenticate({ username, password })
       const newToken = await afpNews.authenticate()
-      expect(token.accessToken).not.toEqual(newToken.accessToken)
-      expect(token.authType).not.toBe('credentials')
+      expect(token.accessToken).toEqual(newToken.accessToken)
+      expect(token.authType).toBe('credentials')
     })
   })
   describe('Search', () => {
@@ -122,7 +122,7 @@ describe('AFP News', () => {
       }
     )
     test('should return a news array with authenticated token', async () => {
-      const afpNews = new AfpNews({ apiKey })
+      const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
       const news = await afpNews.search()
       expect(news.documents.length).toBeLessThanOrEqual(afpNews.defaultSearchParams.size)
@@ -130,7 +130,7 @@ describe('AFP News', () => {
       expect(news.count).toBeGreaterThanOrEqual(news.documents.length)
     })
     test('should react to custom params', async () => {
-      const afpNews = new AfpNews({ apiKey })
+      const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
       const customParams: Params = {
         dateFrom: 'now-1M',
@@ -158,7 +158,7 @@ describe('AFP News', () => {
   })
   describe('Get', () => {
     test('should return a document when authenticated', async () => {
-      const afpNews = new AfpNews({ apiKey })
+      const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
       const uno = 'newsmlmmd.urn.newsml.afp.com.20190131.doc.1cw5ie'
       const news = await afpNews.get(uno)
