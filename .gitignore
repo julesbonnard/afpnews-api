@@ -9,3 +9,4 @@ stats.json
 .nyc_output
 coverage
 dist
+.rts2_cache_*

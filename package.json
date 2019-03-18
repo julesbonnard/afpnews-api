@@ -12,11 +12,9 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build:d": "tsc --outFile dist/afpnews-api.js --module commonjs --target es2015 --declaration --emitDeclarationOnly",
-    "build:lib": "tsc --outDir dist/lib --module esnext --target esnext",
-    "microbundle:web": "microbundle -i dist/lib/afpnews-api.js -o dist -f es,umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData",
-    "microbundle:node": "microbundle -i dist/lib/afpnews-api.js -o dist -f cjs --target node --strict --sourcemap",
-    "build": "npm run clean && npm run build:d && npm run build:lib && npm run microbundle:web && npm run microbundle:node",
+    "build:web": "microbundle -o dist -f es,umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData --external isomorphic-base64,isomorphic-fetch,isomorphic-base64",
+    "build:node": "microbundle -o dist -f cjs --target node --strict --sourcemap",
+    "build": "npm run clean && npm run build:web && npm run build:node",
     "clean": "rm -rf dist .rts2_cache_*",
     "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",
     "test": "jest --coverage"
@@ -44,7 +42,6 @@
     "@types/jest": "^24.0.11",
     "dotenv": "^7.0.0",
     "jest": "^24.5.0",
-    "lucene": "^2.0.3",
     "microbundle": "^0.11.0",
     "ts-jest": "^24.0.0",
     "tslint": "^5.14.0",
@@ -56,7 +53,8 @@
     "@types/node": "^11.11.3",
     "isomorphic-base64": "^1.0.2",
     "isomorphic-fetch": "^2.2.1",
-    "isomorphic-form-data": "^2.0.0"
+    "isomorphic-form-data": "^2.0.0",
+    "lucene": "^2.0.3"
   },
   "jest": {
     "transform": {
