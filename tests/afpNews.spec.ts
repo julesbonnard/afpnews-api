@@ -22,8 +22,8 @@ describe('AFP News', () => {
       expect(afpNews.token).toBeUndefined()
     })
     test('should allow to change base url in constructor', () => {
-      const afpNews = new AfpNews({ baseUrl: 'http://customurl' })
-      expect(afpNews.authUrl.includes('http://customurl')).toBeTruthy()
+      const afpNews = new AfpNews({ baseUrl: 'http://customBase' })
+      expect(afpNews.authUrl.includes('http://customBase')).toBeTruthy()
     })
     test('should return the api url', () => {
       const afpNews = new AfpNews()
@@ -31,6 +31,19 @@ describe('AFP News', () => {
     })
   })
   describe('Authentication', () => {
+    test('should authorization headers be an empty object when token is not set and use customAuthUrl', () => {
+      const afpNews = new AfpNews({
+        customAuthUrl: ''
+      })
+      expect(afpNews.authorizationBearerHeaders).toEqual({})
+    })
+    test('should authorize custom auth url', () => {
+      const afpNews = new AfpNews({ apiKey: 'apiKey' })
+      afpNews.credentials = { customAuthUrl: 'http://customAuth' }
+      expect(afpNews.authorizationBasicHeaders).toEqual({})
+      expect(afpNews.authUrl).toBe('http://customAuth')
+      return expect(afpNews.authenticate({ username: 'username', password: 'password' })).rejects.toBeInstanceOf(Error)
+    })
     test(
       'should return an anonymous token when called without api key',
       async () => {
@@ -41,6 +54,8 @@ describe('AFP News', () => {
         expect(typeof token.tokenExpires).toBe('number')
         expect(token.authType).toBe('anonymous')
         expect(token).toEqual(afpNews.token)
+        const newToken = await afpNews.authenticate()
+        expect(newToken).toEqual(token)
       }
     )
     test(
@@ -95,6 +110,21 @@ describe('AFP News', () => {
       const newToken = await afpNews.authenticate()
       expect(token.accessToken).toEqual(newToken.accessToken)
       expect(token.authType).toBe('credentials')
+    })
+    test('should allow to delete token', async () => {
+      const afpNews = new AfpNews()
+      await afpNews.authenticate()
+      afpNews.resetToken()
+      expect(afpNews.token).toBeUndefined()
+    })
+    test('should allow to save token', done => {
+      const afpNews = new AfpNews({
+        saveToken: token => {
+          expect(token).toEqual(afpNews.token)
+          done()
+        }
+      })
+      afpNews.authenticate()
     })
   })
   describe('Search', () => {

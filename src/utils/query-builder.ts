@@ -15,7 +15,7 @@ function recursiveBuild (query: LuceneQueryParsed): Request[] {
     if (query.left) {
       Object.assign(query.left, { prefix: query.prefix })
     }
-    if (query.left) {
+    if (query.right) {
       Object.assign(query.right, { prefix: query.prefix })
     }
   }

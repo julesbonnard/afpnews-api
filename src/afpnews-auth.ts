@@ -19,7 +19,10 @@ export default class AfpNewsAuth {
       baseUrl,
       customAuthUrl,
       saveToken
-    }: ClientCredentials & { baseUrl?: string } & { saveToken?: (token: Token | null) => void } = {}
+    }: ClientCredentials & {
+      baseUrl?: string,
+      saveToken?: (token: Token | null) => void
+    } = {}
   ) {
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
@@ -128,20 +131,18 @@ export default class AfpNewsAuth {
   }
 
   private async requestRefreshToken (): Promise<Token> {
-    if (this.token === undefined) {
-      throw new Error('Token is invalid')
-    }
+    const { refreshToken, authType } = this.token as Token
     const newToken = await postForm(
       this.authUrl,
       {
         grant_type: 'refresh_token',
-        refresh_token: this.token.refreshToken
+        refresh_token: refreshToken
       }, {
         headers: this.authorizationBasicHeaders
       }
     )
 
-    return this.parseToken(newToken, this.token.authType)
+    return this.parseToken(newToken, authType)
   }
 
   private parseToken (

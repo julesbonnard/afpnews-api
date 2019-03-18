@@ -12,8 +12,8 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build:web": "microbundle -o dist -f es,umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData --external isomorphic-base64,isomorphic-fetch,isomorphic-base64",
-    "build:node": "microbundle -o dist -f cjs --target node --strict --sourcemap",
+    "build:web": "microbundle -o dist -f umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData --external isomorphic-base64,isomorphic-fetch,isomorphic-base64",
+    "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
     "build": "npm run clean && npm run build:web && npm run build:node",
     "clean": "rm -rf dist .rts2_cache_*",
     "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",

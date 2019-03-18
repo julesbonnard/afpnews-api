@@ -1,11 +1,11 @@
 import AfpNewsAuth from './afpnews-auth'
 import defaultSearchParams from './default-search-params'
-import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request } from './types'
+import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request, Token } from './types'
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
 export default class AfpNews extends AfpNewsAuth {
-  constructor (credentials: ClientCredentials & { baseUrl?: string } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
   }
 

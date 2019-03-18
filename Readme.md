@@ -12,7 +12,7 @@ This package is available both for NodeJS and browsers. That's why two versions 
 
 ### Prerequisites
 
-Read [the API documentation](https://api.afp.com/), and ask for an API Key and credentials.
+Read [the API documentation](https://api.afp.com/), and [ask for an API Key and credentials](https://developers.afp.com).
 
 ### Installing
 
@@ -22,40 +22,44 @@ Read [the API documentation](https://api.afp.com/), and ask for an API Key and c
 
 ```js
 const AfpNews = require('afpnews-api')
+// OR using import
+import AfpNews from 'afpnews-api'
 ```
 
 #### Browser
 
 ```html
-<script src="./dist/afpnews-api.js"></script>
+<script module="./dist/afpnews-api.es.js"></script>
+<script nomodule src="./dist/afpnews-api.umd.js"></script>
 ```
 
 ### Let's start using it
 
 ```js
-const afpNews = new AfpNews({ clientId: 'YOUR_CLIENT_ID', clientSecret: 'YOUR_CLIENT_SECRET' })
+const afpNews = new AfpNews({
+  clientId: 'YOUR_CLIENT_ID',
+  clientSecret: 'YOUR_CLIENT_SECRET',
+  saveToken: token => {
+    // You can eventually save the token to be used later
+    console.log(token)
+  }
+})
 
-const credentials = {
-  username: 'YOUR_USERNAME',
-  password: 'YOUR_PASSWORD'
-}
-
-afpNews.authenticate(credentials)
+afpNews
+  .authenticate({
+    username: 'YOUR_USERNAME',
+    password: 'YOUR_PASSWORD'
+  })
   .then(() => afpNews.search())
   .then(news => {
     console.log(news)
   })
-  .catch(err => {
-    console.error(err)
+
+afpNews
+  .get('A_SPECIFIC_UNO')
+  .then(({ document }) => {
+    console.log(document)
   })
-
-afpNews.on('setToken', token => {
-  // You can eventually save the token to be used later
-})
-
-afpNews.get('A_SPECIFIC_UNO', ({ document }) => {
-  console.log(document)
-})
 ```
 
 ### Query parser
@@ -89,8 +93,6 @@ The query parameter can be used to look precisely for a field (`title:Macron`) a
 
 Clone the repository, then `npm install`
 
-Source files are automatically compiled using Webpack with `npm run dev`
-
 Build and minify your work for browsers and node with `npm run build`
 
 ## Running the tests
@@ -99,10 +101,8 @@ Just `npm test` to execute all tests in `./tests`
 
 ## Built With
 
-* [Webpack](https://webpack.js.org/) - Building machine
-* [Babel](https://babeljs.io/) - Javascript Transpiler
+* [Microbundle](https://www.npmjs.com/package/microbundle) - Building machine
 * [TypeScript](https://www.typescriptlang.org/) - Typescript
-* [ESLint](https://eslint.org/) - JS Linter
 
 ## Authors
 
