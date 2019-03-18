@@ -41,70 +41,56 @@ export default class AfpNews extends AfpNewsAuth {
 
     await this.authenticate()
 
-    try {
-      const request: Request = {
-        and: [
-          {
-            in: langs,
-            name: 'lang'
-          },
-          {
-            in: products,
-            name: 'product'
-          },
-          {
-            in: urgencies,
-            name: 'urgency'
-          },
-          ...buildQuery(query)
-        ]
-      }
-
-      const body: Query = {
-        dateRange: {
-          from: dateFrom,
-          to: dateTo
+    const request: Request = {
+      and: [
+        {
+          in: langs,
+          name: 'lang'
         },
-        maxRows,
-        query: request,
-        sortField,
-        sortOrder
-      }
+        {
+          in: products,
+          name: 'product'
+        },
+        {
+          in: urgencies,
+          name: 'urgency'
+        },
+        ...buildQuery(query)
+      ]
+    }
 
-      if (this.token === undefined) {
-        throw new Error('Token is invalid')
-      }
-      const data: AfpResponse = await post(`${this.apiUrl}/search`, body, {
-        headers: this.authorizationBearerHeaders
-      })
+    const body: Query = {
+      dateRange: {
+        from: dateFrom,
+        to: dateTo
+      },
+      maxRows,
+      query: request,
+      sortField,
+      sortOrder
+    }
 
-      const { docs: documents, numFound: count } = data.response
+    const data: AfpResponse = await post(`${this.apiUrl}/search`, body, {
+      headers: this.authorizationBearerHeaders
+    })
 
-      return Promise.resolve({
-        count,
-        documents
-      })
-    } catch (e) {
-      return Promise.reject(e)
+    const { docs: documents, numFound: count } = data.response
+
+    return {
+      count,
+      documents
     }
   }
 
   public async get (uno: string) {
     await this.authenticate()
 
-    try {
-      if (this.token === undefined) {
-        throw new Error('Token is invalid')
-      }
-      const data: AfpResponse = await get(`${this.apiUrl}/get/${uno}`, {
-        headers: this.authorizationBearerHeaders
-      })
-      const { docs } = data.response
-      return Promise.resolve({
-        document: docs[0]
-      })
-    } catch (e) {
-      return Promise.reject(e)
+    const data: AfpResponse = await get(`${this.apiUrl}/get/${uno}`, {
+      headers: this.authorizationBearerHeaders
+    })
+    const { docs } = data.response
+    return {
+      document: docs[0]
     }
   }
 }

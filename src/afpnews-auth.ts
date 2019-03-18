@@ -69,7 +69,7 @@ export default class AfpNewsAuth {
       } else if (this.isTokenValid === false) {
         return this.requestRefreshToken()
       } else {
-        return Promise.resolve(this.token)
+        return this.token
       }
     } else {
       if (username && password) {
@@ -79,7 +79,7 @@ export default class AfpNewsAuth {
           throw new Error('You need an api key to make authenticated requests')
         }
       } else if (this.isTokenValid === true) {
-        return Promise.resolve(this.token as Token)
+        return this.token as Token
       }
     }
     return this.requestAnonymousToken()
@@ -91,17 +91,13 @@ export default class AfpNewsAuth {
   }
 
   private async requestAnonymousToken (): Promise<Token> {
-    try {
-      const token = await get(this.authUrl, {
-        params: {
-          grant_type: 'anonymous'
-        }
-      })
+    const token = await get(this.authUrl, {
+      params: {
+        grant_type: 'anonymous'
+      }
+    })
 
-      return this.parseToken(token, 'anonymous')
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    return this.parseToken(token, 'anonymous')
   }
 
   get authorizationBasicHeaders (): AuthorizationHeaders {
@@ -117,43 +113,35 @@ export default class AfpNewsAuth {
     { username, password }:
     { username: string, password: string }
   ): Promise<Token> {
-    try {
-      const token = await postForm(
-        this.authUrl,
-        {
-          grant_type: 'password',
-          password,
-          username
-        }, {
-          headers: this.authorizationBasicHeaders
-        }
-      )
+    const token = await postForm(
+      this.authUrl,
+      {
+        grant_type: 'password',
+        password,
+        username
+      }, {
+        headers: this.authorizationBasicHeaders
+      }
+    )
 
-      return this.parseToken(token, 'credentials')
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    return this.parseToken(token, 'credentials')
   }
 
   private async requestRefreshToken (): Promise<Token> {
-    try {
-      if (this.token === undefined) {
-        throw new Error('Token is invalid')
-      }
-      const newToken = await postForm(
-        this.authUrl,
-        {
-          grant_type: 'refresh_token',
-          refresh_token: this.token.refreshToken
-        }, {
-          headers: this.authorizationBasicHeaders
-        }
-      )
-
-      return this.parseToken(newToken, this.token.authType)
-    } catch (e) {
-      return Promise.reject(e)
+    if (this.token === undefined) {
+      throw new Error('Token is invalid')
     }
+    const newToken = await postForm(
+      this.authUrl,
+      {
+        grant_type: 'refresh_token',
+        refresh_token: this.token.refreshToken
+      }, {
+        headers: this.authorizationBasicHeaders
+      }
+    )
+
+    return this.parseToken(newToken, this.token.authType)
   }
 
   private parseToken (

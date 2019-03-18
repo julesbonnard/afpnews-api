@@ -34,16 +34,12 @@ export async function get (
   headers = Object.assign({}, headers, {
     'Content-Type': 'application/json'
   })
-  try {
-    const response = await fetch(params ? buildUrl(url, params) : url, {
-      headers: buildHeaders(headers),
-      method: 'GET'
-    })
+  const response = await fetch(params ? buildUrl(url, params) : url, {
+    headers: buildHeaders(headers),
+    method: 'GET'
+  })
 
-    return response.json()
-  } catch (e) {
-    return Promise.reject(e)
-  }
+  return response.json()
 }
 
 export async function post (
@@ -54,19 +50,15 @@ export async function post (
   }: {
     headers?: AuthorizationHeaders
   }) {
-  try {
-    headers = Object.assign({ 'Content-Type': 'application/json' }, headers)
+  headers = Object.assign({ 'Content-Type': 'application/json' }, headers)
 
-    const response = await fetch(url, {
-      headers: buildHeaders(headers),
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
+  const response = await fetch(url, {
+    headers: buildHeaders(headers),
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
 
-    return response.json()
-  } catch (e) {
-    return Promise.reject(e)
-  }
+  return response.json()
 }
 
 export async function postForm (
@@ -77,17 +69,13 @@ export async function postForm (
   }: {
     headers: AuthorizationHeaders
   }) {
-  try {
-    const form = buildForm(formData)
+  const form = buildForm(formData)
 
-    const response = await fetch(url, {
-      headers: buildHeaders(headers),
-      method: 'POST',
-      body: form
-    })
+  const response = await fetch(url, {
+    headers: buildHeaders(headers),
+    method: 'POST',
+    body: form
+  })
 
-    return response.json()
-  } catch (e) {
-    return Promise.reject(e)
-  }
+  return response.json()
 }

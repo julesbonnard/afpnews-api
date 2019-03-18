@@ -89,7 +89,9 @@
           results.documents.forEach(doc => {
             const el = document.createElement('div')
             el.classList.add('card')
-            el.classList.add('col-4')
+            el.classList.add('col-12')
+            el.classList.add('col-sm-6')
+            el.classList.add('col-md-4')
             if (doc.bagItem) {
               const img = document.createElement('img')
               img.classList.add('card-img-top')
