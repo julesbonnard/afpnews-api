@@ -29,8 +29,7 @@ import AfpNews from 'afpnews-api'
 #### Browser
 
 ```html
-<script module="./dist/afpnews-api.es.js"></script>
-<script nomodule src="./dist/afpnews-api.umd.js"></script>
+<script src="./dist/afpnews-api.umd.js"></script>
 ```
 
 ### Let's start using it

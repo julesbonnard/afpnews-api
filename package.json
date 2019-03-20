@@ -3,7 +3,7 @@
   "version": "1.7.0",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/afpnews-api.js",
-  "umd:main": "dist/afpnews-api.umd.js",
+  "browser": "dist/afpnews-api.umd.js",
   "module": "dist/afpnews-api.es.js",
   "source": "src/afpnews-api.ts",
   "typings": "dist/afpnews-api.d.ts",
@@ -11,12 +11,12 @@
     "dist"
   ],
   "scripts": {
-    "prepare": "npm run build",
+    "clean": "rimraf -rf dist .rts2_cache_*",
     "build:web": "microbundle -o dist -f umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData --external isomorphic-base64,isomorphic-fetch,isomorphic-base64",
     "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
-    "build": "npm run clean && npm run build:web && npm run build:node",
-    "clean": "rm -rf dist .rts2_cache_*",
+    "build": "npm run build:web && npm run build:node",
     "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",
+    "prepare": "npm run clean && npm run lint && npm run build",
     "test": "jest --coverage"
   },
   "engines": {
@@ -33,7 +33,7 @@
     "Node"
   ],
   "author": "Jules Bonnard",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/julesbonnard/afpnews-api/issues"
   },
@@ -43,14 +43,15 @@
     "dotenv": "^7.0.0",
     "jest": "^24.5.0",
     "microbundle": "^0.11.0",
+    "rimraf": "^2.6.3",
     "ts-jest": "^24.0.0",
     "tslint": "^5.14.0",
     "tslint-config-standard": "^8.0.1",
-    "typescript": "^3.3.3333"
+    "typescript": "^3.3.4000"
   },
   "dependencies": {
     "@types/isomorphic-fetch": "0.0.35",
-    "@types/node": "^11.11.3",
+    "@types/node": "^11.11.4",
     "isomorphic-base64": "^1.0.2",
     "isomorphic-fetch": "^2.2.1",
     "isomorphic-form-data": "^2.0.0",
