@@ -1,2 +1,3 @@
-declare module 'isomorphic-form-data'
-declare module 'isomorphic-base64'
+declare module 'node-fetch'
+declare module 'form-data'
+declare module 'btoa-lite'

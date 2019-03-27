@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "clean": "rimraf -rf dist .rts2_cache_*",
-    "build:web": "microbundle -o dist -f umd --target web --strict --name AfpNews --sourcemap --globals isomorphic-base64=window,isomorphic-fetch=fetch,isomorphic-form-data=FormData --external isomorphic-base64,isomorphic-fetch,isomorphic-base64",
+    "build:web": "microbundle -o dist -f umd --target web --name AfpNews --sourcemap --external none",
     "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
     "build": "npm run build:web && npm run build:node",
     "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",
@@ -20,7 +20,7 @@
     "test": "jest --coverage"
   },
   "engines": {
-    "node": ">= 8.0.0"
+    "node": ">= 10.0.0"
   },
   "repository": {
     "type": "git",
@@ -50,12 +50,11 @@
     "typescript": "^3.3.4000"
   },
   "dependencies": {
-    "@types/isomorphic-fetch": "0.0.35",
-    "@types/node": "^11.11.4",
-    "isomorphic-base64": "^1.0.2",
-    "isomorphic-fetch": "^2.2.1",
-    "isomorphic-form-data": "^2.0.0",
-    "lucene": "^2.0.3"
+    "@types/node": "^11.12.0",
+    "btoa-lite": "^1.0.0",
+    "form-data": "^2.3.3",
+    "lucene": "^2.0.3",
+    "node-fetch": "^2.3.0"
   },
   "jest": {
     "transform": {

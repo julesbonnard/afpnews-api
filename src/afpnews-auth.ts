@@ -1,4 +1,4 @@
-import { btoa } from 'isomorphic-base64'
+import btoa from 'btoa-lite'
 import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
 import { get, postForm } from './utils/request'
 

@@ -1,5 +1,5 @@
-import fetch from 'isomorphic-fetch'
-import FormData from 'isomorphic-form-data'
+import fetch, { Headers } from 'node-fetch'
+import FormData from 'form-data'
 import { AuthorizationHeaders, Form, Query } from '../types'
 
 function buildUrl (url: string, params: Object): string {
