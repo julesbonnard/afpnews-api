@@ -8,7 +8,8 @@ const {
   AFPNEWS_CLIENT_ID: clientId,
   AFPNEWS_CLIENT_SECRET: clientSecret,
   AFPNEWS_USERNAME: username,
-  AFPNEWS_PASSWORD: password
+  AFPNEWS_PASSWORD: password,
+  AFPNEWS_CUSTOM_AUTH_URL: customAuthUrl
 } = process.env
 
 describe('AFP News', () => {
@@ -31,19 +32,6 @@ describe('AFP News', () => {
     })
   })
   describe('Authentication', () => {
-    test('should authorization headers be an empty object when token is not set and use customAuthUrl', () => {
-      const afpNews = new AfpNews({
-        customAuthUrl: ''
-      })
-      expect(afpNews.authorizationBearerHeaders).toEqual({})
-    })
-    test('should authorize custom auth url', () => {
-      const afpNews = new AfpNews({ apiKey: 'apiKey' })
-      afpNews.credentials = { customAuthUrl: 'http://customAuth' }
-      expect(afpNews.authorizationBasicHeaders).toEqual({})
-      expect(afpNews.authUrl).toBe('http://customAuth')
-      return expect(afpNews.authenticate({ username: 'username', password: 'password' })).rejects.toBeInstanceOf(Error)
-    })
     test(
       'should return an anonymous token when called without api key',
       async () => {
@@ -56,6 +44,13 @@ describe('AFP News', () => {
         expect(token).toEqual(afpNews.token)
         const newToken = await afpNews.authenticate()
         expect(newToken).toEqual(token)
+      }
+    )
+    test(
+      'should return false if no token is present',
+      () => {
+        const afpNews = new AfpNews()
+        return expect(afpNews.isTokenValid).toBeFalsy()
       }
     )
     test(
@@ -96,8 +91,33 @@ describe('AFP News', () => {
         expect(token).toEqual(afpNews.token)
       }
     )
-    test('should refresh token when token expires', async () => {
+    test('should authorization headers be an empty object when token is not set and use customAuthUrl', () => {
+      const afpNews = new AfpNews({
+        customAuthUrl
+      })
+      expect(afpNews.authorizationBearerHeaders).toEqual({})
+    })
+    test('should return an authenticated token when called without apiKey but credentials and a custom auth url', async () => {
+      const afpNews = new AfpNews()
+      afpNews.credentials = { customAuthUrl }
+      expect(afpNews.authUrl).toBe(customAuthUrl)
+      const token = await afpNews.authenticate({ username, password })
+      expect(typeof token.accessToken).toBe('string')
+      expect(typeof token.refreshToken).toBe('string')
+      expect(typeof token.tokenExpires).toBe('number')
+      expect(token.authType).toBe('credentials')
+      expect(token).toEqual(afpNews.token)
+    })
+    test('should refresh token when token expires with api key', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
+      const token = await afpNews.authenticate({ username, password })
+      afpNews.token = { ...token, tokenExpires: 0 }
+      const newToken = await afpNews.authenticate()
+      expect(token.accessToken).not.toEqual(newToken.accessToken)
+      expect(token.authType).toBe('credentials')
+    })
+    test('should refresh token when token expires with custom auth url', async () => {
+      const afpNews = new AfpNews({ customAuthUrl })
       const token = await afpNews.authenticate({ username, password })
       afpNews.token = { ...token, tokenExpires: 0 }
       const newToken = await afpNews.authenticate()

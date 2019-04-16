@@ -30,7 +30,7 @@ export async function get (
       grant_type: string
     },
     headers?: AuthorizationHeaders
-  } = {}) {
+  }) {
   headers = Object.assign({}, headers, {
     'Content-Type': 'application/json'
   })
@@ -65,7 +65,7 @@ export async function postForm (
   url: string,
   formData: Form,
   {
-    headers = {}
+    headers
   }: {
     headers: AuthorizationHeaders
   }) {
