@@ -54,10 +54,7 @@ export default class AfpNewsAuth {
   }
 
   get isTokenValid (): boolean {
-    if (!this.token) {
-      return false
-    }
-    return this.token.tokenExpires > +new Date()
+    return (this.token as Token).tokenExpires > +new Date()
   }
 
   public async authenticate (
@@ -67,24 +64,37 @@ export default class AfpNewsAuth {
     if (this.apiKey) {
       if (username && password) {
         return this.requestAuthenticatedToken({ username, password })
-      } else if (this.token === undefined) {
+      }
+
+      if (this.token === undefined) {
         throw new Error('You need to authenticate with credentials once')
-      } else if (this.isTokenValid === false) {
-        return this.requestRefreshToken()
-      } else {
-        return this.token
       }
-    } else if (this.customAuthUrl) {
-      if (username && password) {
-        return this.requestAuthenticatedToken({ username, password })
-      } else if (this.token && this.isTokenValid === false && this.token.authType === 'credentials') {
+
+      if (this.isTokenValid === false) {
         return this.requestRefreshToken()
       }
-    } else if (username && password) {
-      throw new Error('You need an api key to make authenticated requests')
-    } else if (this.token && this.isTokenValid === true) {
+
       return this.token
     }
+
+    if (this.customAuthUrl) {
+      if (username && password) {
+        return this.requestAuthenticatedToken({ username, password })
+      }
+
+      if (this.token && this.isTokenValid === false && this.token.authType === 'credentials') {
+        return this.requestRefreshToken()
+      }
+    }
+
+    if (username && password) {
+      throw new Error('You need an api key to make authenticated requests')
+    }
+
+    if (this.token && this.isTokenValid === true) {
+      return this.token
+    }
+
     return this.requestAnonymousToken()
   }
 

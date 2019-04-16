@@ -47,13 +47,6 @@ describe('AFP News', () => {
       }
     )
     test(
-      'should return false if no token is present',
-      () => {
-        const afpNews = new AfpNews()
-        return expect(afpNews.isTokenValid).toBeFalsy()
-      }
-    )
-    test(
       'should throw if called with api key but without credentials',
       () => {
         const afpNews = new AfpNews({ apiKey })
@@ -111,18 +104,20 @@ describe('AFP News', () => {
     test('should refresh token when token expires with api key', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       const token = await afpNews.authenticate({ username, password })
+      expect(token.authType).toBe('credentials')
       afpNews.token = { ...token, tokenExpires: 0 }
       const newToken = await afpNews.authenticate()
-      expect(token.accessToken).not.toEqual(newToken.accessToken)
-      expect(token.authType).toBe('credentials')
+      expect(newToken.accessToken).not.toEqual(token.accessToken)
+      expect(newToken.authType).toBe('credentials')
     })
     test('should refresh token when token expires with custom auth url', async () => {
       const afpNews = new AfpNews({ customAuthUrl })
       const token = await afpNews.authenticate({ username, password })
+      expect(token.authType).toBe('credentials')
       afpNews.token = { ...token, tokenExpires: 0 }
       const newToken = await afpNews.authenticate()
-      expect(token.accessToken).not.toEqual(newToken.accessToken)
-      expect(token.authType).toBe('credentials')
+      expect(newToken.accessToken).not.toEqual(token.accessToken)
+      expect(newToken.authType).toBe('credentials')
     })
     test('should not refresh token when token is valid', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
