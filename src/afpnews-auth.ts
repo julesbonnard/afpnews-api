@@ -22,7 +22,7 @@ export default class AfpNewsAuth {
     }: ClientCredentials & {
       baseUrl?: string,
       saveToken?: (token: Token | null) => void
-    } = {}
+    }
   ) {
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
@@ -74,16 +74,16 @@ export default class AfpNewsAuth {
       } else {
         return this.token
       }
-    } else {
+    } else if (this.customAuthUrl) {
       if (username && password) {
-        if (this.customAuthUrl) {
-          return this.requestAuthenticatedToken({ username, password })
-        } else {
-          throw new Error('You need an api key to make authenticated requests')
-        }
-      } else if (this.isTokenValid === true) {
-        return this.token as Token
+        return this.requestAuthenticatedToken({ username, password })
+      } else if (this.token && this.isTokenValid === false && this.token.authType === 'credentials') {
+        return this.requestRefreshToken()
       }
+    } else if (username && password) {
+      throw new Error('You need an api key to make authenticated requests')
+    } else if (this.token && this.isTokenValid === true) {
+      return this.token
     }
     return this.requestAnonymousToken()
   }
