@@ -1,16 +1,15 @@
-import btoa from 'btoa'
-import { EventEmitter } from 'events'
-import { resolve } from 'url'
-import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './@types'
-import { get, post } from './utils/request'
+import btoa from 'btoa-lite'
+import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
+import { get, postForm } from './utils/request'
 
-export default class AfpNewsAuth extends EventEmitter {
+export default class AfpNewsAuth {
   public token: Token | undefined
 
   protected baseUrl: string
 
-  private apiKey: string | undefined
+  private apiKey: string | undefined
   private customAuthUrl: string | undefined
+  private saveToken: Function
 
   constructor (
     {
@@ -18,12 +17,20 @@ export default class AfpNewsAuth extends EventEmitter {
       clientId,
       clientSecret,
       baseUrl,
-      customAuthUrl
-    }: ClientCredentials & { baseUrl?: string } = {}
+      customAuthUrl,
+      saveToken
+    }: ClientCredentials & {
+      baseUrl?: string,
+      saveToken?: (token: Token | null) => void
+    } = {}
   ) {
-    super()
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
+    if (saveToken) {
+      this.saveToken = saveToken
+    } else {
+      this.saveToken = (token: Token) => {} // tslint:disable-line
+    }
   }
 
   set credentials ({ clientId, clientSecret, apiKey, customAuthUrl }: ClientCredentials) {
@@ -43,7 +50,7 @@ export default class AfpNewsAuth extends EventEmitter {
     if (this.customAuthUrl) {
       return this.customAuthUrl
     }
-    return resolve(this.baseUrl, '/oauth/token')
+    return `${this.baseUrl}/oauth/token`
   }
 
   get isTokenValid (): boolean {
@@ -65,7 +72,7 @@ export default class AfpNewsAuth extends EventEmitter {
       } else if (this.isTokenValid === false) {
         return this.requestRefreshToken()
       } else {
-        return Promise.resolve(this.token)
+        return this.token
       }
     } else {
       if (username && password) {
@@ -74,31 +81,26 @@ export default class AfpNewsAuth extends EventEmitter {
         } else {
           throw new Error('You need an api key to make authenticated requests')
         }
-      } else if (this.token && this.isTokenValid === true) {
-        return Promise.resolve(this.token)
-      } else {
-        return this.requestAnonymousToken()
+      } else if (this.isTokenValid === true) {
+        return this.token as Token
       }
     }
+    return this.requestAnonymousToken()
   }
 
   public resetToken (): void {
     delete this.token
-    this.emit('resetToken')
+    this.saveToken(null)
   }
 
   private async requestAnonymousToken (): Promise<Token> {
-    try {
-      const token = await get(this.authUrl, {
-        params: {
-          grant_type: 'anonymous'
-        }
-      })
+    const token = await get(this.authUrl, {
+      params: {
+        grant_type: 'anonymous'
+      }
+    })
 
-      return this.parseToken(token, 'anonymous')
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    return this.parseToken(token, 'anonymous')
   }
 
   get authorizationBasicHeaders (): AuthorizationHeaders {
@@ -114,39 +116,33 @@ export default class AfpNewsAuth extends EventEmitter {
     { username, password }:
     { username: string, password: string }
   ): Promise<Token> {
-    try {
-      const token = await post(this.authUrl, {}, {
-        formData: {
-          grant_type: 'password',
-          password,
-          username
-        },
+    const token = await postForm(
+      this.authUrl,
+      {
+        grant_type: 'password',
+        password,
+        username
+      }, {
         headers: this.authorizationBasicHeaders
-      })
+      }
+    )
 
-      return this.parseToken(token, 'credentials')
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    return this.parseToken(token, 'credentials')
   }
 
   private async requestRefreshToken (): Promise<Token> {
-    try {
-      if (this.token === undefined) {
-        throw new Error('Token is invalid')
-      }
-      const newToken = await post(this.authUrl, {}, {
-        formData: {
-          grant_type: 'refresh_token',
-          refresh_token: this.token.refreshToken
-        },
+    const { refreshToken, authType } = this.token as Token
+    const newToken = await postForm(
+      this.authUrl,
+      {
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      }, {
         headers: this.authorizationBasicHeaders
-      })
+      }
+    )
 
-      return this.parseToken(newToken, this.token.authType)
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    return this.parseToken(newToken, authType)
   }
 
   private parseToken (
@@ -167,7 +163,7 @@ export default class AfpNewsAuth extends EventEmitter {
       refreshToken: refresh_token,
       tokenExpires: +new Date() + expires_in * 1000
     }
-    this.emit('setToken', this.token)
+    this.saveToken(this.token)
 
     return this.token
   }

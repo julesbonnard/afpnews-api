@@ -1,20 +1,26 @@
 {
   "name": "afpnews-api",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Node helper functions to authenticate and fetch AFP News API",
-  "main": "dist/umd/afpnews-api.node.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/typings/index.d.ts",
-  "engines": {
-    "node": ">= 6.0.0"
-  },
+  "main": "dist/afpnews-api.js",
+  "browser": "dist/afpnews-api.umd.js",
+  "module": "dist/afpnews-api.es.js",
+  "source": "src/afpnews-api.ts",
+  "typings": "dist/afpnews-api.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "clean": "rimraf dist stats.json",
-    "dev": "webpack --mode development --watch --display-error-details",
-    "build": "webpack --mode production",
-    "prebuild": "tsc",
-    "analyse": "webpack --mode production --json > stats.json && npx webpack-bundle-analyzer stats.json",
-    "test": "mocha --require @babel/register --colors --exit --timeout 5000 ./test/*.spec.js"
+    "clean": "rimraf -rf dist .rts2_cache_*",
+    "build:web": "microbundle -o dist -f umd --target web --name AfpNews --sourcemap --external none",
+    "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
+    "build": "npm run build:web && npm run build:node",
+    "lint": "tslint -p tsconfig.json -c tslint.json 'src/**/*.ts'",
+    "prepare": "npm run clean && npm run lint && npm run build",
+    "test": "jest --coverage"
+  },
+  "engines": {
+    "node": ">= 10.0.0"
   },
   "repository": {
     "type": "git",
@@ -27,42 +33,37 @@
     "Node"
   ],
   "author": "Jules Bonnard",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/julesbonnard/afpnews-api/issues"
   },
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
-    "@babel/cli": "^7.2.3",
-    "@babel/core": "^7.3.3",
-    "@babel/plugin-transform-runtime": "^7.2.0",
-    "@babel/preset-env": "^7.3.1",
-    "@babel/register": "^7.0.0",
-    "@types/btoa": "^1.2.2",
-    "@types/node": "^11.9.5",
-    "babel-eslint": "^10.0.1",
-    "babel-loader": "^8.0.5",
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
-    "dotenv": "^6.2.0",
-    "eslint": "^5.14.1",
-    "eslint-config-recommended": "^4.0.0",
-    "eslint-loader": "^2.1.2",
-    "mocha": "^6.0.1",
-    "ts-loader": "^5.3.3",
-    "tslint": "^5.12.1",
-    "tslint-loader": "^3.5.4",
-    "typescript": "^3.3.3333",
-    "webpack": "^4.29.5",
-    "webpack-bundle-analyzer": "^3.0.4",
-    "webpack-cli": "^3.2.3",
-    "webpack-node-externals": "^1.7.2"
+    "@types/jest": "^24.0.11",
+    "dotenv": "^7.0.0",
+    "jest": "^24.7.1",
+    "microbundle": "^0.11.0",
+    "rimraf": "^2.6.3",
+    "ts-jest": "^24.0.2",
+    "tslint": "^5.15.0",
+    "tslint-config-standard": "^8.0.1",
+    "typescript": "^3.4.3"
   },
   "dependencies": {
-    "@babel/runtime": "^7.3.1",
-    "axios": "^0.18.0",
-    "btoa": "^1.2.1",
+    "@types/node": "^11.13.4",
+    "btoa-lite": "^1.0.0",
     "form-data": "^2.3.3",
-    "lucene": "^2.0.3"
+    "lucene": "^2.0.3",
+    "node-fetch": "^2.3.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ],
+    "testRegex": "^.+\\.spec\\.ts$"
   }
 }

@@ -1,6 +1,24 @@
-import axios from 'axios'
+import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
-import { AuthorizationHeaders, Form, Params, Query } from '../@types'
+import { AuthorizationHeaders, Form, Query } from '../types'
+
+function buildUrl (url: string, params: Object): string {
+  const builtUrl = new URL(url)
+  Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, value))
+  return builtUrl.toString()
+}
+
+function buildHeaders (headers: Object) {
+  const builtHeaders = new Headers()
+  Object.entries(headers).forEach(([key, value]) => builtHeaders.append(key, value))
+  return builtHeaders
+}
+
+function buildForm (form: Object) {
+  const builtForm = new FormData()
+  Object.entries(form).forEach(([key, value]) => builtForm.append(key, value))
+  return builtForm
+}
 
 export async function get (
   url: string,
@@ -16,57 +34,48 @@ export async function get (
   headers = Object.assign({}, headers, {
     'Content-Type': 'application/json'
   })
-  try {
-    const response = await axios({
-      headers,
-      method: 'get',
-      params,
-      url
-    })
+  const response = await fetch(params ? buildUrl(url, params) : url, {
+    headers: buildHeaders(headers),
+    method: 'GET'
+  })
 
-    return response.data
-  } catch (e) {
-    return Promise.reject(e)
-  }
+  return response.json()
 }
 
 export async function post (
   url: string,
-  data: {} | Query = {},
+  data: Query,
   {
-    headers,
-    formData
+    headers
   }: {
-    headers?: AuthorizationHeaders,
-    formData?: Form
+    headers?: AuthorizationHeaders
   }) {
-  headers = Object.assign({}, headers, {
-    'Content-Type': 'application/json'
+  headers = Object.assign({ 'Content-Type': 'application/json' }, headers)
+
+  const response = await fetch(url, {
+    headers: buildHeaders(headers),
+    method: 'POST',
+    body: JSON.stringify(data)
   })
-  try {
-    if (typeof formData === 'object') {
-      const form = new FormData()
-      for (const item of Object.keys(formData)) {
-        form.append(item, formData[item])
-      }
 
-      if (typeof form.getHeaders === 'function') {
-        headers = Object.assign(headers, form.getHeaders(), { 'Content-Type': 'application/json' })
-      }
+  return response.json()
+}
 
-      const response = await axios.post(url, form, {
-        headers
-      })
+export async function postForm (
+  url: string,
+  formData: Form,
+  {
+    headers = {}
+  }: {
+    headers: AuthorizationHeaders
+  }) {
+  const form = buildForm(formData)
 
-      return response.data
-    } else {
-      const response = await axios.post(url, data, {
-        headers
-      })
+  const response = await fetch(url, {
+    headers: buildHeaders(headers),
+    method: 'POST',
+    body: form
+  })
 
-      return response.data
-    }
-  } catch (e) {
-    return Promise.reject(e)
-  }
+  return response.json()
 }

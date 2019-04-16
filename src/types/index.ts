@@ -2,7 +2,7 @@ export type Field =
   'news' |
   'slug' |
   'city' |
-  'country' |
+  'country' |
   'title' |
   'caption' |
   'creator' |
@@ -18,8 +18,8 @@ export interface Request {
   and?: Request[],
   or?: Request[],
   name?: Field,
-  in?: Array<string | number>,
-  exclude?: Array<string | number>
+  in?: Array<string | number>,
+  exclude?: Array<string | number>
 }
 
 export type Lang =

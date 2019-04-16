@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AFP News API</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<body>
+  <div class="container">
+    <div class="row mt-4">
+      <div class="col-12 col-md-4">
+          <form action="javascript:;" onsubmit="authenticate(this)">
+            <div class="form-group">
+              <label for="client-id">Client ID</label>
+              <input type="text" class="form-control" id="client-id" aria-describedby="clientId" placeholder="Client ID" name="client-id" required>
+            </div>
+            <div class="form-group">
+              <label for="client-secret">Client Secret</label>
+              <input type="text" class="form-control" id="client-secret" placeholder="Client Secret" name="client-secret" required>
+            </div>
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" class="form-control" id="username" placeholder="Username" name="username" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" class="form-control" id="password" placeholder="Password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Log in</button>
+            <button type="button" class="btn btn-danger" onclick="init()">Log out</button>
+          </form>
+          <textarea id="token" class="form-control mt-4" rows="10"></textarea>
+      </div>
+      <div class="col-12 col-md-8">
+        <input id="search" type="text" name="search" placeholder="Search..." oninput="search(this.value)" class="form-control form-control-lg" />
+        <div class="container">
+            <div id="results" class="mt-4 row"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../dist/afpnews-api.umd.js"></script>
+
+  <script type="text/javascript">
+    function saveToken (token) {
+      document.getElementById('token').value = JSON.stringify(token, null, 2)
+    }
+
+    let afpNews
+
+    function init () {
+      afpNews = new AfpNews({
+        saveToken
+      })
+      search()
+    }
+
+    function authenticate (form) {
+      const clientId = form.elements['client-id'].value
+      const clientSecret = form.elements['client-secret'].value
+      const username = form.elements['username'].value
+      const password = form.elements['password'].value
+      
+      afpNews = new AfpNews({
+        clientId,
+        clientSecret,
+        saveToken
+      })
+
+      afpNews.authenticate({ username, password })
+        .then(() => {
+          document.getElementById('search').value = ''
+          search()
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    }
+    
+    function search (query) {
+      afpNews.search({
+          query
+        })
+        .then(results => {
+          document.getElementById('results').innerHTML = ''
+          if (!results.documents) return
+          results.documents.forEach(doc => {
+            const el = document.createElement('div')
+            el.classList.add('card')
+            el.classList.add('col-12')
+            el.classList.add('col-sm-6')
+            el.classList.add('col-md-4')
+            if (doc.bagItem) {
+              const img = document.createElement('img')
+              img.classList.add('card-img-top')
+              img.setAttribute('src', doc.bagItem[0].medias[0].href)
+              el.appendChild(img)
+            }
+            const body = document.createElement('div')
+            body.classList.add('card-body')
+            const title = document.createElement('h5')
+            title.classList.add('card-title')
+            title.textContent = doc.title
+            body.appendChild(title)
+            el.appendChild(body)
+            el.onclick = () => {
+              console.log(doc)
+            }
+            document.getElementById('results').appendChild(el)
+          })
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    }
+
+    init()
+  </script>
+</body>
+</html>
