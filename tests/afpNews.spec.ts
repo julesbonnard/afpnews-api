@@ -61,6 +61,13 @@ describe('AFP News', () => {
       }
     )
     test(
+      'should throw if called with api key and wrong credentials',
+      async () => {
+        const afpNews = new AfpNews({ apiKey })
+        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Invalid token'))
+      }
+    )
+    test(
       'should return an authenticated token when called with api key and credentials',
       async () => {
         const afpNews = new AfpNews({ apiKey })
