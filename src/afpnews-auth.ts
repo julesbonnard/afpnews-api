@@ -167,6 +167,10 @@ export default class AfpNewsAuth {
     },
     authType: AuthType
   ): Token {
+    if (!access_token || !refresh_token || !expires_in || !authType) {
+      throw new Error('Invalid token')
+    }
+
     this.token = {
       accessToken: access_token,
       authType,
