@@ -20,6 +20,16 @@ function buildForm (form: Object) {
   return builtForm
 }
 
+async function fetchJson (url: string, options: Object) {
+  const response = await fetch(url, options)
+
+  if (response.ok === false) {
+    throw new Error(response.statusText)
+  }
+
+  return response.json()
+}
+
 export async function get (
   url: string,
   {
@@ -34,12 +44,11 @@ export async function get (
   headers = Object.assign({}, headers, {
     'Content-Type': 'application/json'
   })
-  const response = await fetch(params ? buildUrl(url, params) : url, {
+
+  return fetchJson(params ? buildUrl(url, params) : url, {
     headers: buildHeaders(headers),
     method: 'GET'
   })
-
-  return response.json()
 }
 
 export async function post (
@@ -52,13 +61,11 @@ export async function post (
   }) {
   headers = Object.assign({ 'Content-Type': 'application/json' }, headers)
 
-  const response = await fetch(url, {
+  return fetchJson(url, {
     headers: buildHeaders(headers),
     method: 'POST',
     body: JSON.stringify(data)
   })
-
-  return response.json()
 }
 
 export async function postForm (
@@ -71,11 +78,9 @@ export async function postForm (
   }) {
   const form = buildForm(formData)
 
-  const response = await fetch(url, {
+  return fetchJson(url, {
     headers: buildHeaders(headers),
     method: 'POST',
     body: form
   })
-
-  return response.json()
 }
