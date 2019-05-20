@@ -64,7 +64,7 @@ describe('AFP News', () => {
       'should throw if called with api key and wrong credentials',
       async () => {
         const afpNews = new AfpNews({ apiKey })
-        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Unauthorized'))
+        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Request rejected with status 401'))
       }
     )
     test(
