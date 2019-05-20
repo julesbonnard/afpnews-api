@@ -20,11 +20,19 @@ function buildForm (form: Object) {
   return builtForm
 }
 
+class NetworkError extends Error {
+  public code: Number
+  constructor (statusCode: Number) {
+    super(`Request rejected with status ${statusCode}`)
+    this.code = statusCode
+  }
+}
+
 async function fetchJson (url: string, options: Object) {
   const response = await fetch(url, options)
 
-  if (response.ok === false) {
-    throw new Error(response.statusText)
+  if (!response.ok) {
+    throw new NetworkError(response.status)
   }
 
   return response.json()

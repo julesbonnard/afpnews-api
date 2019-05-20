@@ -64,7 +64,7 @@ describe('AFP News', () => {
       'should throw if called with api key and wrong credentials',
       async () => {
         const afpNews = new AfpNews({ apiKey })
-        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Unauthorized'))
+        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Request rejected with status 401'))
       }
     )
     test(
@@ -212,7 +212,7 @@ describe('AFP News', () => {
     test('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
-      const uno = 'newsmlmmd.urn.newsml.afp.com.20190131.doc.1cw5ie'
+      const uno = 'newsml.afp.com.20190427T162036Z.doc-1fz5wl'
       const news = await afpNews.get(uno)
       expect(typeof news.document).toBe('object')
       expect(news.document.uno).toEqual(uno)
