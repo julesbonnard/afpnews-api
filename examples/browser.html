@@ -13,11 +13,15 @@
           <form action="javascript:;" onsubmit="authenticate(this)">
             <div class="form-group">
               <label for="client-id">Client ID</label>
-              <input type="text" class="form-control" id="client-id" aria-describedby="clientId" placeholder="Client ID" name="client-id" required>
+              <input type="text" class="form-control" id="client-id" aria-describedby="clientId" placeholder="Client ID" name="client-id">
             </div>
             <div class="form-group">
               <label for="client-secret">Client Secret</label>
-              <input type="text" class="form-control" id="client-secret" placeholder="Client Secret" name="client-secret" required>
+              <input type="text" class="form-control" id="client-secret" placeholder="Client Secret" name="client-secret">
+            </div>
+            <div class="form-group">
+              <label for="custom-auth-url">Client Secret</label>
+              <input type="text" class="form-control" id="custom-auth-url" placeholder="Custom Auth Url" name="custom-auth-url">
             </div>
             <div class="form-group">
               <label for="username">Username</label>
@@ -29,6 +33,7 @@
             </div>
             <button type="submit" class="btn btn-primary">Log in</button>
             <button type="button" class="btn btn-danger" onclick="init()">Log out</button>
+            <button type="button" class="btn btn-secondary" onclick="refresh()">Refresh</button>
           </form>
           <textarea id="token" class="form-control mt-4" rows="10"></textarea>
       </div>
@@ -57,15 +62,24 @@
       search()
     }
 
+    function refresh () {
+      if (afpNews.token) {
+        afpNews.token.tokenExpires = 0
+      }
+      afpNews.authenticate()
+    }
+
     function authenticate (form) {
       const clientId = form.elements['client-id'].value
       const clientSecret = form.elements['client-secret'].value
+      const customAuthUrl = form.elements['custom-auth-url'].value
       const username = form.elements['username'].value
       const password = form.elements['password'].value
       
       afpNews = new AfpNews({
         clientId,
         clientSecret,
+        customAuthUrl,
         saveToken
       })
 

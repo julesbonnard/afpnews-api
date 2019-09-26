@@ -9,7 +9,8 @@ const {
   AFPNEWS_CLIENT_SECRET: clientSecret,
   AFPNEWS_USERNAME: username,
   AFPNEWS_PASSWORD: password,
-  AFPNEWS_CUSTOM_AUTH_URL: customAuthUrl
+  AFPNEWS_CUSTOM_AUTH_URL: customAuthUrl,
+  AFPNEWS_TESTDOC_ID: testDocId
 } = process.env
 
 describe('AFP News', () => {
@@ -212,7 +213,7 @@ describe('AFP News', () => {
     test('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
-      const uno = 'newsml.afp.com.20190427T162036Z.doc-1fz5wl'
+      const uno = testDocId as string
       const news = await afpNews.get(uno)
       expect(typeof news.document).toBe('object')
       expect(news.document.uno).toEqual(uno)
