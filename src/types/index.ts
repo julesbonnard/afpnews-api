@@ -101,6 +101,26 @@ export type Status = 'Canceled' | 'Usable' | 'Embargoed'
 
 export interface AfpDocument {
   advisory: string,
+  afpentity: {
+    event: [
+      {
+        qcode: string,
+        keyword: string
+      }
+    ],
+    organisation: [
+      {
+        qcode: string,
+        keyword: string
+      }
+    ],
+    person: [
+      {
+        qcode: string,
+        keyword: string
+      }
+    ]
+  },
   bagItem: [
     {
       caption: string,
@@ -116,7 +136,10 @@ export interface AfpDocument {
       ],
       newslines: {
         headline: string,
-        byline: string
+        byline: string,
+        slug: string,
+        dateline: string,
+        copyright: string
       },
       provider: string,
       source: string,
@@ -125,14 +148,17 @@ export interface AfpDocument {
   ],
   bagUno: string[],
   caption: string[],
+  channel: string[],
   city: string,
   contributor: string,
   country: string,
   country_only: string[],
   created: string,
   creator: string,
+  dept: string,
   embargoed: string,
   entity_company: string[],
+  entity_departmeent: string[],
   entity_faces: [
     {
       faces: [
@@ -147,28 +173,39 @@ export interface AfpDocument {
       src: string
     }
   ],
+  entity_function: string[],
   entity_keyword: string[],
   entity_location: string[],
+  entity_media: string[],
+  entity_organisation: string[],
   entity_person: string[],
+  entity_region: string[],
   entity_video: string,
+  event: string[],
+  genre: string[],
   headline: string,
   href: string,
   iptc: string[],
+  keyword: string[],
   lang: Lang,
   language: string,
   location: {
     lon: number,
     lat: number
   },
+  mediatopic: string[],
   news: string[],
+  newsItemID: string,
   objectName: string,
   ofinterestof: string[],
   product: Product,
   provider: string,
   publicIdentifier: string,
   published: string,
+  region: string,
   revision: number,
   serial: string,
+  signal: string,
   slug: string[],
   source: string,
   status: Status,
