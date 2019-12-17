@@ -216,9 +216,21 @@ export interface AfpDocument {
   urgency: Urgency
 }
 
-export interface AfpResponse {
+export interface Topic {
+  name: string,
+  count: number
+}
+
+export interface AfpResponseDocuments {
   response: {
     docs: AfpDocument[],
+    numFound: number
+  }
+}
+
+export interface AfpResponseTopics {
+  response: {
+    topics: Topic[],
     numFound: number
   }
 }

@@ -1,6 +1,6 @@
 import AfpNewsAuth from './afpnews-auth'
 import defaultSearchParams from './default-search-params'
-import { AfpResponse, AuthorizationHeaders, ClientCredentials, Params, Query, Request, Token } from './types'
+import { AfpResponseDocuments, AfpResponseTopics, AuthorizationHeaders, ClientCredentials, Lang, Params, Query, Request, Token } from './types'
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
@@ -70,7 +70,7 @@ export default class AfpNews extends AfpNewsAuth {
       sortOrder
     }
 
-    const data: AfpResponse = await post(`${this.apiUrl}/search`, body, {
+    const data: AfpResponseDocuments = await post(`${this.apiUrl}/search`, body, {
       headers: this.authorizationBearerHeaders
     })
 
@@ -85,12 +85,61 @@ export default class AfpNews extends AfpNewsAuth {
   public async get (uno: string) {
     await this.authenticate()
 
-    const data: AfpResponse = await get(`${this.apiUrl}/get/${uno}`, {
+    const data: AfpResponseDocuments = await get(`${this.apiUrl}/get/${uno}`, {
       headers: this.authorizationBearerHeaders
     })
     const { docs } = data.response
     return {
       document: docs[0]
+    }
+  }
+
+  public async list (params?: { facet: string, minDocCount: number, dateFrom: string, dateTo: string, langs: Lang[], query: string }) {
+    const {
+      facet,
+      minDocCount,
+      dateFrom,
+      dateTo,
+      langs,
+      query
+    } = Object.assign({}, {
+      facet: 'slug',
+      minDocCount: 1,
+      dateFrom: 'now-1d',
+      dateTo: 'now',
+      langs: [],
+      query: ''
+    }, params)
+
+    await this.authenticate()
+
+    const request: Request = {
+      and: [
+        {
+          in: langs,
+          name: 'lang'
+        },
+        ...buildQuery(query)
+      ]
+    }
+
+    const body: any = {
+      dateRange: {
+        from: dateFrom,
+        to: dateTo
+      },
+      query: request
+    }
+
+    const data: AfpResponseTopics = await post(`${this.apiUrl}/list/${facet}?minDocCount=${minDocCount}`, body, {
+      headers: this.authorizationBearerHeaders
+    })
+
+    const { topics, numFound: count } = data.response
+
+    return {
+      count,
+      topics
     }
   }
 }
