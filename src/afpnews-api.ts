@@ -94,16 +94,14 @@ export default class AfpNews extends AfpNewsAuth {
     }
   }
 
-  public async list (params?: { facet: string, minDocCount: number, dateFrom: string, dateTo: string, langs: Lang[], query: string }) {
+  public async list (facet: string, params?: { minDocCount: number, dateFrom: string, dateTo: string, langs: Lang[], query: string }) {
     const {
-      facet,
       minDocCount,
       dateFrom,
       dateTo,
       langs,
       query
     } = Object.assign({}, {
-      facet: 'slug',
       minDocCount: 1,
       dateFrom: 'now-1d',
       dateTo: 'now',
