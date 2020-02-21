@@ -37,7 +37,8 @@ export default class AfpNews extends AfpNewsAuth {
       langs,
       sortField,
       sortOrder,
-      sources
+      sources,
+      topics
     } = Object.assign({}, this.defaultSearchParams, params)
 
     await this.authenticate()
@@ -59,6 +60,10 @@ export default class AfpNews extends AfpNewsAuth {
         {
           in: sources,
           name: 'source'
+        },
+        {
+          in: topics,
+          name: 'topic'
         },
         ...buildQuery(query)
       ]

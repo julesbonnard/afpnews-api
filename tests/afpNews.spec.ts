@@ -169,7 +169,8 @@ describe('AFP News', () => {
         'sortField',
         'sortOrder',
         'products',
-        'sources'
+        'sources',
+        'topics'
       ].sort())
     })
     test(
@@ -201,7 +202,8 @@ describe('AFP News', () => {
         sortField: 'published',
         sortOrder: 'asc',
         products: ['news'],
-        sources: ['afp']
+        sources: ['afp'],
+        topics: []
       }
       const news = await afpNews.search(customParams)
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
