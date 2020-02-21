@@ -7,5 +7,6 @@ export default {
   size: 10,
   sortField: 'published',
   sortOrder: 'desc',
-  urgencies: []
+  urgencies: [],
+  sources: ['afp']
 }

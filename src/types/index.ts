@@ -12,7 +12,8 @@ export type Field =
   'lang' |
   'product' |
   'urgency' |
-  'status'
+  'status' |
+  'source'
 
 export interface Request {
   and?: Request[],
@@ -59,7 +60,8 @@ export interface Params {
   dateTo: string,
   dateFrom: string,
   size: number,
-  products: Product[]
+  products: Product[],
+  sources: string[]
 }
 
 export type AuthType = 'anonymous' | 'credentials'
