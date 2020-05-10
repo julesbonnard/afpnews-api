@@ -1,6 +1,7 @@
 import AfpNewsAuth from './afpnews-auth'
 import defaultSearchParams from './default-search-params'
-import { AfpResponseDocuments, AfpResponseKeywords, AuthorizationHeaders, ClientCredentials, Lang, Params, Product, Urgency, Query, Request, Token } from './types'
+import defaultListParams from './default-list-params'
+import { AfpResponseDocuments, AfpResponseKeywords, AuthorizationHeaders, ClientCredentials, Lang, ListParams, Params, Product, Urgency, Query, Request, Token } from './types'
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
@@ -15,6 +16,10 @@ export default class AfpNews extends AfpNewsAuth {
 
   get defaultSearchParams (): Params {
     return defaultSearchParams as Params
+  }
+
+  get defaultListParams (): ListParams {
+    return defaultListParams as ListParams
   }
 
   get authorizationBearerHeaders (): AuthorizationHeaders {
@@ -104,28 +109,18 @@ export default class AfpNews extends AfpNewsAuth {
     }
   }
 
-  public async list (facet: string, params?: { products: Product[], urgencies: Urgency[], minDocCount: number, dateFrom: string, dateTo: string, langs: Lang[], query: string }) {
+  public async list (facet: string, listParams?: ListParams) {
     const {
       minDocCount,
+      products,
       dateFrom,
       dateTo,
-      langs,
-      query,
-      products,
       urgencies,
+      query,
+      langs,
       sources,
       topics
-    } = Object.assign({}, {
-      minDocCount: 1,
-      dateFrom: 'now-1d',
-      dateTo: 'now',
-      langs: [],
-      query: '',
-      products: [],
-      urgencies: [],
-      sources: [],
-      topics: []
-    }, params)
+    } = Object.assign({}, this.defaultListParams, listParams)
 
     await this.authenticate()
 

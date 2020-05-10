@@ -66,6 +66,18 @@ export interface Params {
   topics: string[]
 }
 
+export interface ListParams {
+  minDocCount: number,
+  query?: string,
+  langs: Lang[],
+  urgencies: Urgency[],
+  dateTo: string,
+  dateFrom: string,
+  products: Product[],
+  sources: string[],
+  topics: string[]
+}
+
 export type AuthType = 'anonymous' | 'credentials'
 
 export interface AuthorizationHeaders {
