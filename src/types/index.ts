@@ -12,7 +12,9 @@ export type Field =
   'lang' |
   'product' |
   'urgency' |
-  'status'
+  'status' |
+  'source' |
+  'topic'
 
 export interface Request {
   and?: Request[],
@@ -59,7 +61,21 @@ export interface Params {
   dateTo: string,
   dateFrom: string,
   size: number,
-  products: Product[]
+  products: Product[],
+  sources: string[],
+  topics: string[]
+}
+
+export interface ListParams {
+  minDocCount: number,
+  query?: string,
+  langs: Lang[],
+  urgencies: Urgency[],
+  dateTo: string,
+  dateFrom: string,
+  products: Product[],
+  sources: string[],
+  topics: string[]
 }
 
 export type AuthType = 'anonymous' | 'credentials'
@@ -216,9 +232,21 @@ export interface AfpDocument {
   urgency: Urgency
 }
 
-export interface AfpResponse {
+export interface Keyword {
+  name: string,
+  count: number
+}
+
+export interface AfpResponseDocuments {
   response: {
     docs: AfpDocument[],
+    numFound: number
+  }
+}
+
+export interface AfpResponseKeywords {
+  response: {
+    topics: Keyword[],
     numFound: number
   }
 }

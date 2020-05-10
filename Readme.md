@@ -59,6 +59,12 @@ afpNews
   .then(({ document }) => {
     console.log(document)
   })
+
+afpNews
+  .list('slug')
+  .then(({ topics }) => {
+    console.log(topics)
+  })
 ```
 
 ### Query parser

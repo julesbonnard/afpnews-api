@@ -1,12 +1,10 @@
 export default {
-  dateFrom: '2012-01-01',
+  dateFrom: 'now-7d',
   dateTo: 'now',
   langs: [],
   products: [],
   query: '',
-  size: 10,
-  sortField: 'published',
-  sortOrder: 'desc',
+  minDocCount: 1,
   urgencies: [],
   sources: [],
   topics: []

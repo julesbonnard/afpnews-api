@@ -1,5 +1,6 @@
 import AfpNews from '../src/afpnews-api'
 import { Params } from '../src/types'
+import { tsObjectKeyword } from '@babel/types'
 
 require('dotenv').config()
 
@@ -65,7 +66,12 @@ describe('AFP News', () => {
       'should throw if called with api key and wrong credentials',
       async () => {
         const afpNews = new AfpNews({ apiKey })
-        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Request rejected with status 401'))
+        try {
+          await afpNews.authenticate({ username: 'TEST', password: 'TEST' })
+        } catch (e) {
+          expect(e).toEqual(new Error('Bad credentials'))
+          expect(e.code).toEqual(401)
+        }
       }
     )
     test(
@@ -162,7 +168,9 @@ describe('AFP News', () => {
         'dateTo',
         'sortField',
         'sortOrder',
-        'products'
+        'products',
+        'sources',
+        'topics'
       ].sort())
     })
     test(
@@ -193,7 +201,9 @@ describe('AFP News', () => {
         size: 15,
         sortField: 'published',
         sortOrder: 'asc',
-        products: ['news']
+        products: ['news'],
+        sources: ['afp'],
+        topics: []
       }
       const news = await afpNews.search(customParams)
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
@@ -217,6 +227,17 @@ describe('AFP News', () => {
       const news = await afpNews.get(uno)
       expect(typeof news.document).toBe('object')
       expect(news.document.uno).toEqual(uno)
+    })
+  })
+  describe('List', () => {
+    test('should return some slugs', async () => {
+      const afpNews = new AfpNews({ clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const news = await afpNews.list('slug')
+      expect(Array.isArray(news.keywords)).toBeTruthy()
+      expect(typeof news.keywords[0]).toBe('object')
+      expect(typeof news.keywords[0].name).toBe('string')
+      expect(news.keywords[0].count).toBeGreaterThanOrEqual(1)
     })
   })
 })

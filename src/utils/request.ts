@@ -20,22 +20,27 @@ function buildForm (form: Object) {
   return builtForm
 }
 
-class NetworkError extends Error {
-  public code: Number
-  constructor (statusCode: Number) {
-    super(`Request rejected with status ${statusCode}`)
-    this.code = statusCode
-  }
+function apiError (code: number, message: string) {
+  const error: any = new Error(message || `Request rejected with status ${code}`)
+  error.code = code
+  return error
 }
 
 async function fetchJson (url: string, options: Object) {
   const response = await fetch(url, options)
 
-  if (!response.ok) {
-    throw new NetworkError(response.status)
+  let json
+  try {
+    json = await response.json()
+  } catch (e) {
+    throw apiError(406, 'Format not acceptable')
   }
 
-  return response.json()
+  if (response.ok) {
+    return json
+  } else {
+    throw apiError(response.status, json.error.message)
+  }
 }
 
 export async function get (
