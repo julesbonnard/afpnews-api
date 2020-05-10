@@ -1,6 +1,6 @@
 import AfpNewsAuth from './afpnews-auth'
 import defaultSearchParams from './default-search-params'
-import { AfpResponseDocuments, AfpResponseTopics, AuthorizationHeaders, ClientCredentials, Lang, Params, Product, Urgency, Query, Request, Token } from './types'
+import { AfpResponseDocuments, AfpResponseKeywords, AuthorizationHeaders, ClientCredentials, Lang, Params, Product, Urgency, Query, Request, Token } from './types'
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
@@ -112,7 +112,9 @@ export default class AfpNews extends AfpNewsAuth {
       langs,
       query,
       products,
-      urgencies
+      urgencies,
+      sources,
+      topics
     } = Object.assign({}, {
       minDocCount: 1,
       dateFrom: 'now-1d',
@@ -120,7 +122,9 @@ export default class AfpNews extends AfpNewsAuth {
       langs: [],
       query: '',
       products: [],
-      urgencies: []
+      urgencies: [],
+      sources: [],
+      topics: []
     }, params)
 
     await this.authenticate()
@@ -130,6 +134,22 @@ export default class AfpNews extends AfpNewsAuth {
         {
           in: langs,
           name: 'lang'
+        },
+        {
+          in: products,
+          name: 'product'
+        },
+        {
+          in: urgencies,
+          name: 'urgency'
+        },
+        {
+          in: sources,
+          name: 'source'
+        },
+        {
+          in: topics,
+          name: 'topic'
         },
         ...buildQuery(query)
       ]
@@ -143,15 +163,15 @@ export default class AfpNews extends AfpNewsAuth {
       query: request
     }
 
-    const data: AfpResponseTopics = await post(`${this.apiUrl}/list/${facet}?minDocCount=${minDocCount}`, body, {
+    const data: AfpResponseKeywords = await post(`${this.apiUrl}/list/${facet}?minDocCount=${minDocCount}`, body, {
       headers: this.authorizationBearerHeaders
     })
 
-    const { topics, numFound: count } = data.response
+    const { topics: keywords, numFound: count } = data.response
 
     return {
       count,
-      topics
+      keywords
     }
   }
 }

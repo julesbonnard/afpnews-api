@@ -220,7 +220,7 @@ export interface AfpDocument {
   urgency: Urgency
 }
 
-export interface Topic {
+export interface Keyword {
   name: string,
   count: number
 }
@@ -232,9 +232,9 @@ export interface AfpResponseDocuments {
   }
 }
 
-export interface AfpResponseTopics {
+export interface AfpResponseKeywords {
   response: {
-    topics: Topic[],
+    topics: Keyword[],
     numFound: number
   }
 }
