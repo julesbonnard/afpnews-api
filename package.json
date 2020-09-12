@@ -54,7 +54,7 @@
     "btoa-lite": "^1.0.0",
     "form-data": "^3.0.0",
     "lucene": "^2.1.1",
-    "node-fetch": "^2.6.0"
+    "node-fetch": "^2.6.1"
   },
   "jest": {
     "transform": {
