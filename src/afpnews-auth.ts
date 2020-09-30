@@ -58,8 +58,8 @@ export default class AfpNewsAuth {
   }
 
   public async authenticate (
-    { username, password }:
-    { username?: string, password?: string } = {}
+    { username, password, code }:
+    { username?: string, password?: string, code?: string } = {}
   ): Promise<Token> {
     if (this.apiKey) {
       if (username && password) {
@@ -89,6 +89,10 @@ export default class AfpNewsAuth {
 
     if (username && password) {
       throw new Error('You need an api key to make authenticated requests')
+    }
+
+    if (code) {
+      return this.requestTempToken({ code })
     }
 
     if (this.token && this.isTokenValid === true) {
@@ -132,6 +136,23 @@ export default class AfpNewsAuth {
         grant_type: 'password',
         password,
         username
+      }, {
+        headers: this.authorizationBasicHeaders
+      }
+    )
+
+    return this.parseToken(token, 'credentials')
+  }
+
+  private async requestTempToken (
+    { code }:
+    { code: string }
+  ): Promise<Token> {
+    const token = await postForm(
+      this.authUrl,
+      {
+        grant_type: 'authorization_code',
+        code
       }, {
         headers: this.authorizationBasicHeaders
       }
