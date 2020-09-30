@@ -169,4 +169,46 @@ export default class AfpNews extends AfpNewsAuth {
       keywords
     }
   }
+
+  public async topics (lang: string) {
+    await this.authenticate()
+
+    const data = await get(`${this.apiUrl}/onlinenews/api/topics?lang=${lang}`, {
+      headers: this.authorizationBearerHeaders
+    })
+
+    const { topics } = data.response
+
+    return {
+      topics
+    }
+  }
+
+  public async index (topic: string, lang: string) {
+    await this.authenticate()
+
+    const data = await get(`${this.apiUrl}/onlinenews/api/index?topic=${topic}&lang=${lang}`, {
+      headers: this.authorizationBearerHeaders
+    })
+
+    const { topics } = data.response
+
+    return {
+      topics
+    }
+  }
+
+  public async feed (topic: string, lang: string) {
+    await this.authenticate()
+
+    const data = await get(`${this.apiUrl}/onlinenews/api/feed?topic=${topic}&lang=${lang}`, {
+      headers: this.authorizationBearerHeaders
+    })
+
+    const { topics } = data.response
+
+    return {
+      topics
+    }
+  }
 }
