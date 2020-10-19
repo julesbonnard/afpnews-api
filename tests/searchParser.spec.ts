@@ -11,66 +11,12 @@ describe('AFP News Search Parser', () => {
         expect(query).toEqual([{
           'and': [{
             'or': [{
-              'name': 'news',
-              'in': ['cat']
-            }, {
-              'name': 'slug',
-              'in': ['cat']
-            }, {
-              'name': 'city',
-              'in': ['cat']
-            }, {
-              'name': 'country',
-              'in': ['cat']
-            }, {
-              'name': 'title',
-              'in': ['cat']
-            }, {
-              'name': 'caption',
-              'in': ['cat']
-            }, {
-              'name': 'creator',
-              'in': ['cat']
-            }, {
-              'name': 'headline',
-              'in': ['cat']
-            }, {
-              'name': 'entity_person',
-              'in': ['cat']
-            }, {
-              'name': 'entity_location',
+              'name': 'all',
               'in': ['cat']
             }]
           }, {
             'and': [{
-              'name': 'news',
-              'exclude': ['dog']
-            }, {
-              'name': 'slug',
-              'exclude': ['dog']
-            }, {
-              'name': 'city',
-              'exclude': ['dog']
-            }, {
-              'name': 'country',
-              'exclude': ['dog']
-            }, {
-              'name': 'title',
-              'exclude': ['dog']
-            }, {
-              'name': 'caption',
-              'exclude': ['dog']
-            }, {
-              'name': 'creator',
-              'exclude': ['dog']
-            }, {
-              'name': 'headline',
-              'exclude': ['dog']
-            }, {
-              'name': 'entity_person',
-              'exclude': ['dog']
-            }, {
-              'name': 'entity_location',
+              'name': 'all',
               'exclude': ['dog']
             }]
           }]
@@ -82,66 +28,12 @@ describe('AFP News Search Parser', () => {
       expect(query).toEqual([{
         'and': [{
           'or': [{
-            'name': 'news',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'slug',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'city',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'country',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'title',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'caption',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'creator',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'headline',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'entity_person',
-            'in': ['firstname lastname']
-          }, {
-            'name': 'entity_location',
+            'name': 'all',
             'in': ['firstname lastname']
           }]
         }, {
           'or': [{
-            'name': 'news',
-            'in': ['multi-word']
-          }, {
-            'name': 'slug',
-            'in': ['multi-word']
-          }, {
-            'name': 'city',
-            'in': ['multi-word']
-          }, {
-            'name': 'country',
-            'in': ['multi-word']
-          }, {
-            'name': 'title',
-            'in': ['multi-word']
-          }, {
-            'name': 'caption',
-            'in': ['multi-word']
-          }, {
-            'name': 'creator',
-            'in': ['multi-word']
-          }, {
-            'name': 'headline',
-            'in': ['multi-word']
-          }, {
-            'name': 'entity_person',
-            'in': ['multi-word']
-          }, {
-            'name': 'entity_location',
+            'name': 'all',
             'in': ['multi-word']
           }]
         }]

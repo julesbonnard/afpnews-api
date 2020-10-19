@@ -70,18 +70,7 @@ function recursiveBuild (query: LuceneQueryParsed): Request[] {
       }
       if (query.field === '<implicit>') {
         return [{
-          [query.prefix === '-' ? 'and' : 'or']: [
-            ...recursiveBuild({ ...query, field: 'news' }),
-            ...recursiveBuild({ ...query, field: 'slug' }),
-            ...recursiveBuild({ ...query, field: 'city' }),
-            ...recursiveBuild({ ...query, field: 'country' }),
-            ...recursiveBuild({ ...query, field: 'title' }),
-            ...recursiveBuild({ ...query, field: 'caption' }),
-            ...recursiveBuild({ ...query, field: 'creator' }),
-            ...recursiveBuild({ ...query, field: 'headline' }),
-            ...recursiveBuild({ ...query, field: 'entity_person' }),
-            ...recursiveBuild({ ...query, field: 'entity_location' })
-          ]
+          [query.prefix === '-' ? 'and' : 'or']: recursiveBuild({ ...query, field: 'all' })
         }]
       }
       const object: {
