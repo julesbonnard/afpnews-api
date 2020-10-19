@@ -1,5 +1,6 @@
 import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
+import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'
 
 function buildUrl (url: string, params: Object): string {
@@ -21,7 +22,7 @@ function buildForm (form: Object) {
 }
 
 function apiError (code: number, message: string) {
-  const error: any = new Error(message || `Request rejected with status ${code}`)
+  const error: any = new Error(message || status(code) || `Request rejected with status ${code}`)
   error.code = code
   return error
 }
@@ -30,16 +31,33 @@ async function fetchJson (url: string, options: Object) {
   const response = await fetch(url, options)
 
   let json
-  try {
-    json = await response.json()
-  } catch (e) {
-    throw apiError(406, 'Format not acceptable')
+  let httpStatus = {
+    code: response.status,
+    message: response.statusText
   }
 
-  if (response.ok) {
+  try {
+    json = await response.json()
+
+    if (json.error) {
+      httpStatus = {
+        code: json.error.code,
+        message: json.error.message
+      }
+    }
+  } catch (e) {
+    if (response.ok) {
+      httpStatus = {
+        code: 520,
+        message: 'Unknown error'
+      }
+    }
+  }
+
+  if (httpStatus.code < 300) {
     return json
   } else {
-    throw apiError(response.status, json.error.message)
+    throw apiError(httpStatus.code, httpStatus.message)
   }
 }
 

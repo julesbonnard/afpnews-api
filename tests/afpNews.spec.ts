@@ -66,12 +66,7 @@ describe('AFP News', () => {
       'should throw if called with api key and wrong credentials',
       async () => {
         const afpNews = new AfpNews({ apiKey })
-        try {
-          await afpNews.authenticate({ username: 'TEST', password: 'TEST' })
-        } catch (e) {
-          expect(e).toEqual(new Error('Bad credentials'))
-          expect(e.code).toEqual(401)
-        }
+        return expect(afpNews.authenticate({ username: 'TEST', password: 'TEST' })).rejects.toEqual(new Error('Bad credentials'))
       }
     )
     test(
@@ -145,6 +140,13 @@ describe('AFP News', () => {
       await afpNews.authenticate()
       afpNews.resetToken()
       expect(afpNews.token).toBeUndefined()
+    })
+    test('should throw if sending an incorrect access token', async () => {
+      const afpNews = new AfpNews({ clientId, clientSecret })
+      const token = await afpNews.authenticate({ username, password })
+      token.accessToken = 'false'
+      afpNews.token = token
+      return expect(afpNews.search()).rejects.toEqual(new Error('Unauthorized'))
     })
     test('should allow to save token', done => {
       const afpNews = new AfpNews({
