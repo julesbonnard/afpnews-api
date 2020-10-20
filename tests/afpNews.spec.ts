@@ -10,8 +10,7 @@ const {
   AFPNEWS_CLIENT_SECRET: clientSecret,
   AFPNEWS_USERNAME: username,
   AFPNEWS_PASSWORD: password,
-  AFPNEWS_CUSTOM_AUTH_URL: customAuthUrl,
-  AFPNEWS_TESTDOC_ID: testDocId
+  AFPNEWS_CUSTOM_AUTH_URL: customAuthUrl
 } = process.env
 
 describe('AFP News', () => {
@@ -188,7 +187,7 @@ describe('AFP News', () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
       const news = await afpNews.search()
-      expect(news.documents.length).toBeLessThanOrEqual(afpNews.defaultSearchParams.size)
+      expect(news.documents.length).toBeLessThanOrEqual(afpNews.defaultSearchParams.size as number)
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
       expect(news.count).toBeGreaterThanOrEqual(news.documents.length)
     })
@@ -209,12 +208,12 @@ describe('AFP News', () => {
       }
       const news = await afpNews.search(customParams)
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
-      expect(news.documents.length).toBeLessThanOrEqual(customParams.size)
+      expect(news.documents.length).toBeLessThanOrEqual(customParams.size as number)
       expect(news.count).toBeGreaterThanOrEqual(news.documents.length)
       const firstDocument = news.documents[0]
       expect(typeof firstDocument).toBe('object')
-      expect(firstDocument.lang).toBe(customParams.langs[0])
-      expect(firstDocument.urgency).toBe(customParams.urgencies[0])
+      expect(firstDocument.lang).toBe((customParams.langs as string[])[0])
+      expect(firstDocument.urgency).toBe((customParams.urgencies as number[])[0])
       const lastDocument = news.documents[news.documents.length - 1]
       expect(+new Date(firstDocument.published)).toBeLessThan(+new Date(lastDocument.published))
       expect(+new Date(firstDocument.published)).toBeLessThan(+new Date(Date.now() - 2419200)) // now-1M
@@ -225,10 +224,13 @@ describe('AFP News', () => {
     test('should return a document when authenticated', async () => {
       const afpNews = new AfpNews({ clientId, clientSecret })
       await afpNews.authenticate({ username, password })
-      const uno = testDocId as string
-      const news = await afpNews.get(uno)
-      expect(typeof news.document).toBe('object')
-      expect(news.document.uno).toEqual(uno)
+      const { documents } = await afpNews.search({
+        dateTo: 'now-1d'
+      })
+      const uno = documents[0].uno
+      const doc = await afpNews.get(uno)
+      expect(typeof doc).toBe('object')
+      expect(doc.uno).toEqual(uno)
     })
   })
   describe('List', () => {
@@ -240,6 +242,32 @@ describe('AFP News', () => {
       expect(typeof news.keywords[0]).toBe('object')
       expect(typeof news.keywords[0].name).toBe('string')
       expect(news.keywords[0].count).toBeGreaterThanOrEqual(1)
+    })
+  })
+  describe('Topics', () => {
+    test('should return some topics', async () => {
+      const afpNews = new AfpNews({ clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const topics = await afpNews.topics('fr')
+      expect(Array.isArray(topics)).toBeTruthy()
+      expect(typeof topics[0]).toBe('string')
+    })
+    test('should return some doc ids', async () => {
+      const afpNews = new AfpNews({ clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const ids = await afpNews.index('Sport', 'fr')
+      expect(Array.isArray(ids)).toBeTruthy()
+      expect(typeof ids[0]).toBe('string')
+      const doc = await afpNews.get(ids[0])
+      expect(doc.uno).toEqual(ids[0])
+    })
+    test('should return some feed', async () => {
+      const afpNews = new AfpNews({ clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const feed = await afpNews.feed('Sport', 'fr')
+      expect(Array.isArray(feed)).toBeTruthy()
+      expect(typeof feed[0]).toBe('object')
+      expect(typeof feed[0].uno).toBe('string')
     })
   })
 })
