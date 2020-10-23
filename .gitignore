@@ -4,7 +4,7 @@ node_modules
 .idea
 es
 coverage
-.env
+*.env
 stats.json
 .nyc_output
 coverage
