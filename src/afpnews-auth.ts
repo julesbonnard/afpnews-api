@@ -22,7 +22,7 @@ export default class AfpNewsAuth {
     }: ClientCredentials & {
       baseUrl?: string,
       saveToken?: (token: Token | null) => void
-    }
+    } = {}
   ) {
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
@@ -57,9 +57,18 @@ export default class AfpNewsAuth {
     return (this.token as Token).tokenExpires > +new Date()
   }
 
+  get authorizationBearerHeaders (): AuthorizationHeaders {
+    if (!this.token) {
+      return {}
+    }
+    return {
+      Authorization: `Bearer ${this.token.accessToken}`
+    }
+  }
+
   public async authenticate (
-    { username, password, code }:
-    { username?: string, password?: string, code?: string } = {}
+    { username, password }:
+    { username?: string, password?: string } = {}
   ): Promise<Token> {
     if (this.apiKey) {
       if (username && password) {
@@ -90,10 +99,6 @@ export default class AfpNewsAuth {
     if (username && password) {
       throw new Error('You need an api key to make authenticated requests')
     }
-
-    // if (code) {
-    //   return this.requestTempToken({ code })
-    // }
 
     if (this.token && this.isTokenValid === true) {
       return this.token
@@ -144,23 +149,6 @@ export default class AfpNewsAuth {
     return this.parseToken(token, 'credentials')
   }
 
-  // private async requestTempToken (
-  //   { code }:
-  //   { code: string }
-  // ): Promise<Token> {
-  //   const token = await postForm(
-  //     this.authUrl,
-  //     {
-  //       grant_type: 'authorization_code',
-  //       code
-  //     }, {
-  //       headers: this.authorizationBasicHeaders
-  //     }
-  //   )
-
-  //   return this.parseToken(token, 'credentials')
-  // }
-
   private async requestRefreshToken (): Promise<Token> {
     const { refreshToken, authType } = this.token as Token
     const newToken = await postForm(
@@ -198,4 +186,17 @@ export default class AfpNewsAuth {
 
     return this.token
   }
+
+  // public async me () {
+  //   await this.authenticate()
+
+  //   const { user } = await get(`${this.baseUrl}/v1/user/me`, {
+  //     headers: this.authorizationBearerHeaders
+  //   })
+
+  //   return {
+  //     username: user.username,
+  //     email: user.email
+  //   }
+  // }
 }

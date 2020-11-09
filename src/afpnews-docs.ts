@@ -1,0 +1,174 @@
+import AfpNewsAuth from './afpnews-auth'
+import defaultSearchParams from './default-search-params'
+import { AfpResponseDocuments, AfpResponseTopics, AfpResponseOnlineTopics, AfpResponseOnlineIndex, ClientCredentials, Lang, Params, Query, Request, Token, SortField, SortOrder } from './types'
+import buildQuery from './utils/query-builder'
+import { get, post } from './utils/request'
+
+export default class AfpNewsSearch extends AfpNewsAuth {
+  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
+    super(credentials)
+  }
+
+  get defaultSearchParams (): Params {
+    return defaultSearchParams as Params
+  }
+
+  public async search (params?: Params) {
+    const {
+      products,
+      size: maxRows,
+      dateFrom,
+      dateTo,
+      urgencies,
+      query,
+      langs,
+      sortField,
+      sortOrder,
+      sources,
+      topics
+    } = Object.assign({}, this.defaultSearchParams, params)
+
+    await this.authenticate()
+
+    const request: Request = {
+      and: [
+        {
+          in: langs,
+          name: 'lang'
+        },
+        {
+          in: products,
+          name: 'product'
+        },
+        {
+          in: urgencies,
+          name: 'urgency'
+        },
+        {
+          in: sources,
+          name: 'source'
+        },
+        {
+          in: topics,
+          name: 'topic'
+        },
+        ...buildQuery(query)
+      ]
+    }
+
+    const body: Query = {
+      dateRange: {
+        from: dateFrom as string,
+        to: dateTo as string
+      },
+      maxRows: maxRows as number,
+      query: request,
+      sortField: sortField as SortField,
+      sortOrder: sortOrder as SortOrder
+    }
+
+    const data: AfpResponseDocuments = await post(`${this.baseUrl}/v1/api/search`, body, {
+      headers: this.authorizationBearerHeaders
+    })
+
+    const { docs: documents, numFound: count } = data.response
+
+    return {
+      count,
+      documents
+    }
+  }
+
+  public async get (uno: string) {
+    await this.authenticate()
+
+    const data: AfpResponseDocuments = await get(`${this.baseUrl}/v1/api/get/${uno}`, {
+      headers: this.authorizationBearerHeaders
+    })
+    const docs = data.response.docs
+    return docs[0]
+  }
+
+  public async mlt (uno: string, lang: Lang, size: number = 10) {
+    await this.authenticate()
+
+    const data: AfpResponseDocuments = await get(`${this.baseUrl}/v1/api/mlt`, {
+      headers: this.authorizationBearerHeaders,
+      params: {
+        uno,
+        lang,
+        size
+      }
+    })
+
+    const { docs: documents, numFound: count } = data.response
+
+    return {
+      count,
+      documents
+    }
+  }
+
+  public async list (facet: string, params?: Params, minDocCount = 1) {
+    const {
+      products,
+      dateFrom,
+      dateTo,
+      urgencies,
+      query,
+      langs,
+      sources,
+      topics
+    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-7d' }, params)
+
+    await this.authenticate()
+
+    const request: Request = {
+      and: [
+        {
+          in: langs,
+          name: 'lang'
+        },
+        {
+          in: products,
+          name: 'product'
+        },
+        {
+          in: urgencies,
+          name: 'urgency'
+        },
+        {
+          in: sources,
+          name: 'source'
+        },
+        {
+          in: topics,
+          name: 'topic'
+        },
+        ...buildQuery(query)
+      ]
+    }
+
+    const body: any = {
+      dateRange: {
+        from: dateFrom,
+        to: dateTo
+      },
+      query: request
+    }
+
+    const data: AfpResponseTopics = await post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
+      headers: this.authorizationBearerHeaders,
+      params: {
+        minDocCount
+      }
+    })
+
+    const { topics: keywords, numFound: count } = data.response
+
+    return {
+      count,
+      keywords
+    }
+  }
+}

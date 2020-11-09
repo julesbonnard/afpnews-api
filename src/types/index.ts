@@ -66,18 +66,6 @@ export interface Params {
   topics?: string[]
 }
 
-export interface ListParams {
-  minDocCount: number,
-  query?: string,
-  langs: Lang[],
-  urgencies: Urgency[],
-  dateTo: string,
-  dateFrom: string,
-  products: Product[],
-  sources: string[],
-  topics: string[]
-}
-
 export type AuthType = 'anonymous' | 'credentials'
 
 export interface AuthorizationHeaders {
@@ -103,7 +91,8 @@ export interface Query {
     from: string,
     to: string
   },
-  query: Request
+  query: Request,
+  uno?: string
 }
 
 export interface ClientCredentials {
@@ -265,12 +254,9 @@ export interface AfpResponseOnlineTopics {
 
 export interface AfpResponseOnlineIndex {
   response: {
+    numFound: number,
     docs: {
-      documents: [
-        {
-          uno: string
-        }
-      ]
+      documents: [AfpDocument]
     }
   }
 }
