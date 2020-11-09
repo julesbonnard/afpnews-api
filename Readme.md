@@ -4,7 +4,7 @@
 
 This project is aimed to help javascript developers use the [AFP News API](https://api.afp.com/).
 
-It provides authentication, search and get functions.
+It provides authentication, searching for documents function, and online news product.
 
 ## Getting Started
 
@@ -35,6 +35,7 @@ import AfpNews from 'afpnews-api'
 ### Let's start using it
 
 ```js
+// Initialize the API
 const afpNews = new AfpNews({
   clientId: 'YOUR_CLIENT_ID',
   clientSecret: 'YOUR_CLIENT_SECRET',
@@ -44,37 +45,61 @@ const afpNews = new AfpNews({
   }
 })
 
+// Search for latest documents
 afpNews
   .authenticate({
     username: 'YOUR_USERNAME',
     password: 'YOUR_PASSWORD'
   })
   .then(() => afpNews.search())
-  .then(news => {
-    console.log(news)
+  .then(({ documents }) => {
+    console.log(documents)
   })
 
+// Get a specific document
 afpNews
   .get('A_SPECIFIC_UNO')
-  .then(({ document }) => {
+  .then(document => {
     console.log(document)
   })
 
+// Look for similar documents
+afpNews
+  .mlt('A_SPECIFIC_UNO')
+  .then(({ documents }) => {
+    console.log(documents)
+  })
+
+// Display the most used slugs
 afpNews
   .list('slug')
+  .then(({ keywords }) => {
+    console.log(keywords)
+  })
+
+// Display the available topics for a specific language
+afpNews
+  .topics('fr')
   .then(({ topics }) => {
     console.log(topics)
+  })
+
+// Display the editor's choice for a specific topic
+afpNews
+  .topicIndex('Sport', 'fr')
+  .then(({ documents }) => {
+    console.log(documents)
   })
 ```
 
 ### Query parser
 
-The above request use default parameters stored in ./src/defaultParams.js
+The above request use default parameters stored in ./src/default-search-params.js
 
 You can pass your own parameters to the search function, that will overide the defaults : 
 
 ```js
-const params = {
+afpNews.search({
   products: ['news'],
   langs: ['fr'],
   urgencies: [1, 2, 3, 4],
@@ -84,12 +109,7 @@ const params = {
   dateTo: 'now',
   sortField: 'published',
   sortOrder: 'desc'
-}
-
-afpNews.search(params)
-  .then(news => {
-    console.log(news)
-  })
+})
 ```
 
 The query parameter can be used to look precisely for a field (`title:Macron`) and may include logical parameters (`Macron OR Merkel`, `Macron AND NOT Merkel`, `title:(Macron OR Merkel) AND country:fra`).
@@ -103,6 +123,18 @@ Build and minify your work for browsers and node with `npm run build`
 ## Running the tests
 
 Just `npm test` to execute all tests in `./tests`
+
+You will need some environment variables in a .env file : 
+
+```
+AFPNEWS_BASE_URL=
+AFPNEWS_API_KEY=
+AFPNEWS_CLIENT_ID=
+AFPNEWS_CLIENT_SECRET=
+AFPNEWS_USERNAME=
+AFPNEWS_PASSWORD=
+AFPNEWS_CUSTOM_AUTH_URL=https://
+```
 
 ## Built With
 
