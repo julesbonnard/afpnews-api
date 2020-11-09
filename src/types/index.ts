@@ -53,29 +53,17 @@ export type SortField = 'published'
 export type SortOrder = 'asc' | 'desc'
 
 export interface Params {
-  sortOrder: SortOrder,
-  sortField: SortField,
+  sortOrder?: SortOrder,
+  sortField?: SortField,
   query?: string,
-  langs: Lang[],
-  urgencies: Urgency[],
-  dateTo: string,
-  dateFrom: string,
-  size: number,
-  products: Product[],
-  sources: string[],
-  topics: string[]
-}
-
-export interface ListParams {
-  minDocCount: number,
-  query?: string,
-  langs: Lang[],
-  urgencies: Urgency[],
-  dateTo: string,
-  dateFrom: string,
-  products: Product[],
-  sources: string[],
-  topics: string[]
+  langs?: Lang[],
+  urgencies?: Urgency[],
+  dateTo?: string,
+  dateFrom?: string,
+  size?: number,
+  products?: Product[],
+  sources?: string[],
+  topics?: string[]
 }
 
 export type AuthType = 'anonymous' | 'credentials'
@@ -103,7 +91,8 @@ export interface Query {
     from: string,
     to: string
   },
-  query: Request
+  query: Request,
+  uno?: string
 }
 
 export interface ClientCredentials {
@@ -232,11 +221,6 @@ export interface AfpDocument {
   urgency: Urgency
 }
 
-export interface Keyword {
-  name: string,
-  count: number
-}
-
 export interface AfpResponseDocuments {
   response: {
     docs: AfpDocument[],
@@ -244,9 +228,35 @@ export interface AfpResponseDocuments {
   }
 }
 
-export interface AfpResponseKeywords {
+export interface Topic {
+  name: string,
+  count: number
+}
+
+export interface AfpResponseTopics {
   response: {
-    topics: Keyword[],
+    topics: Topic[],
     numFound: number
+  }
+}
+
+export interface OnlineTopic {
+  name: string,
+  path: string
+}
+
+export interface AfpResponseOnlineTopics {
+  response: {
+    topics: OnlineTopic[],
+    numFound: number
+  }
+}
+
+export interface AfpResponseOnlineIndex {
+  response: {
+    numFound: number,
+    docs: {
+      documents: [AfpDocument]
+    }
   }
 }

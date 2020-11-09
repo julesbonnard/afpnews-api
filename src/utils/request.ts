@@ -1,5 +1,6 @@
 import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
+import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'
 
 function buildUrl (url: string, params: Object): string {
@@ -20,28 +21,78 @@ function buildForm (form: Object) {
   return builtForm
 }
 
-function apiError (code: number, message: string) {
-  const error: any = new Error(message || `Request rejected with status ${code}`)
+function apiError (code: number, message?: string) {
+  const error: any = new Error(message || status(code) || `Request rejected with status ${code}`)
   error.code = code
   return error
 }
 
-async function fetchJson (url: string, options: Object) {
-  const response = await fetch(url, options)
+async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
+  const response = await fetch(url, {
+    method,
+    headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
+    body
+  })
 
   let json
-  try {
-    json = await response.json()
-  } catch (e) {
-    throw apiError(406, 'Format not acceptable')
+  let httpStatus: { code: number, message?: string } = {
+    code: response.status,
+    message: response.statusText
   }
 
-  if (response.ok) {
+  try {
+    json = await response.json()
+
+    if (json.error) {
+      httpStatus = {
+        code: json.error.code,
+        message: json.error.message
+      }
+    }
+  } catch (e) {
+    if (response.ok) {
+      httpStatus = {
+        code: 520
+      }
+    }
+  }
+
+  if (httpStatus.code < 300) {
     return json
   } else {
-    throw apiError(response.status, json.error.message)
+    throw apiError(httpStatus.code, httpStatus.message)
   }
 }
+
+// async function fetchXml (url: string, method: string, headers: object = {}, body?: any) {
+//   const response = await fetch(url, {
+//     method,
+//     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/rss+xml' })),
+//     body
+//   })
+
+//   let xml
+//   let httpStatus: { code: number, message?: string } = {
+//     code: response.status,
+//     message: response.statusText
+//   }
+
+//   try {
+//     xml = await response.text()
+//   } catch (e) {
+//     if (response.ok) {
+//       httpStatus = {
+//         code: 520
+//       }
+//     }
+//   }
+
+//   if (httpStatus.code < 300) {
+//     return xml
+//   } else {
+//     throw apiError(httpStatus.code, httpStatus.message)
+//   }
+// }
 
 export async function get (
   url: string,
@@ -50,35 +101,42 @@ export async function get (
     params
   }: {
     params?: {
-      grant_type: string
+      [key: string]: string | number
     },
     headers?: AuthorizationHeaders
   }) {
-  headers = Object.assign({}, headers, {
-    'Content-Type': 'application/json'
-  })
-
-  return fetchJson(params ? buildUrl(url, params) : url, {
-    headers: buildHeaders(headers),
-    method: 'GET'
-  })
+  return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
 }
+
+// export async function getXml (
+//   url: string,
+//   {
+//     headers,
+//     params
+//   }: {
+//     params?: {
+//       [key: string]: string | number
+//     },
+//     headers?: AuthorizationHeaders
+//   }) {
+//   return fetchXml(params ? buildUrl(url, params) : url, 'GET', headers)
+// }
 
 export async function post (
   url: string,
   data: Query,
   {
-    headers
+    headers,
+    params
   }: {
+    params?: {
+      [key: string]: string | number
+    },
     headers?: AuthorizationHeaders
   }) {
-  headers = Object.assign({ 'Content-Type': 'application/json' }, headers)
+  headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
 
-  return fetchJson(url, {
-    headers: buildHeaders(headers),
-    method: 'POST',
-    body: JSON.stringify(data)
-  })
+  return fetchJson(params ? buildUrl(url, params) : url, 'POST', headers, JSON.stringify(data))
 }
 
 export async function postForm (
@@ -91,9 +149,5 @@ export async function postForm (
   }) {
   const form = buildForm(formData)
 
-  return fetchJson(url, {
-    headers: buildHeaders(headers),
-    method: 'POST',
-    body: form
-  })
+  return fetchJson(url, 'POST', headers, form)
 }

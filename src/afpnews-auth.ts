@@ -22,7 +22,7 @@ export default class AfpNewsAuth {
     }: ClientCredentials & {
       baseUrl?: string,
       saveToken?: (token: Token | null) => void
-    }
+    } = {}
   ) {
     this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
     this.baseUrl = baseUrl || 'https://api.afp.com'
@@ -55,6 +55,15 @@ export default class AfpNewsAuth {
 
   get isTokenValid (): boolean {
     return (this.token as Token).tokenExpires > +new Date()
+  }
+
+  get authorizationBearerHeaders (): AuthorizationHeaders {
+    if (!this.token) {
+      return {}
+    }
+    return {
+      Authorization: `Bearer ${this.token.accessToken}`
+    }
   }
 
   public async authenticate (
@@ -177,4 +186,17 @@ export default class AfpNewsAuth {
 
     return this.token
   }
+
+  // public async me () {
+  //   await this.authenticate()
+
+  //   const { user } = await get(`${this.baseUrl}/v1/user/me`, {
+  //     headers: this.authorizationBearerHeaders
+  //   })
+
+  //   return {
+  //     username: user.username,
+  //     email: user.email
+  //   }
+  // }
 }
