@@ -119,7 +119,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       langs,
       sources,
       topics
-    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-7d' }, params)
+    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params)
 
     await this.authenticate()
 
