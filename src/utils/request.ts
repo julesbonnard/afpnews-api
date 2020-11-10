@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
@@ -35,7 +36,7 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   })
 
   let json
-  let httpStatus: { code: number, message?: string } = {
+  let httpStatus: { code: number; message?: string } = {
     code: response.status,
     message: response.statusText
   }
@@ -102,7 +103,7 @@ export async function get (
   }: {
     params?: {
       [key: string]: string | number
-    },
+    }
     headers?: AuthorizationHeaders
   }) {
   return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
@@ -131,7 +132,7 @@ export async function post (
   }: {
     params?: {
       [key: string]: string | number
-    },
+    }
     headers?: AuthorizationHeaders
   }) {
   headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })

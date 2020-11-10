@@ -3,7 +3,7 @@ import { ClientCredentials, AfpResponseOnlineIndex, AfpResponseOnlineTopics, Tok
 import { get } from './utils/request'
 
 export default class AfpNewsTopics extends AfpNewsDocs {
-  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
   }
 

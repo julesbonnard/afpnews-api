@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import btoa from 'btoa-lite'
 import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
 import { get, postForm } from './utils/request'
@@ -20,7 +21,7 @@ export default class AfpNewsAuth {
       customAuthUrl,
       saveToken
     }: ClientCredentials & {
-      baseUrl?: string,
+      baseUrl?: string
       saveToken?: (token: Token | null) => void
     } = {}
   ) {
@@ -29,7 +30,8 @@ export default class AfpNewsAuth {
     if (saveToken) {
       this.saveToken = saveToken
     } else {
-      this.saveToken = (token: Token) => {} // tslint:disable-line
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      this.saveToken = (token: Token) => {}
     }
   }
 
@@ -68,7 +70,7 @@ export default class AfpNewsAuth {
 
   public async authenticate (
     { username, password }:
-    { username?: string, password?: string } = {}
+    { username?: string; password?: string } = {}
   ): Promise<Token> {
     if (this.apiKey) {
       if (username && password) {
@@ -133,7 +135,7 @@ export default class AfpNewsAuth {
 
   private async requestAuthenticatedToken (
     { username, password }:
-    { username: string, password: string }
+    { username: string; password: string }
   ): Promise<Token> {
     const token = await postForm(
       this.authUrl,
@@ -170,8 +172,8 @@ export default class AfpNewsAuth {
       refresh_token,
       expires_in
     }: {
-      access_token: string,
-      refresh_token: string,
+      access_token: string
+      refresh_token: string
       expires_in: number
     },
     authType: AuthType

@@ -20,73 +20,73 @@ function recursiveBuild (query: LuceneQueryParsed): Request[] {
     }
   }
   switch (query.operator) {
-    case '<implicit>': {
+  case '<implicit>': {
+    return [{
+      and: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(query.right)
+      ]
+    }]
+  }
+  case '&&':
+  case 'AND': {
+    return [{
+      and: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(query.right)
+      ]
+    }]
+  }
+  case '||':
+  case 'OR': {
+    return [{
+      or: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(query.right)
+      ]
+    }]
+  }
+  case 'AND NOT':
+  case 'NOT': {
+    return [{
+      and: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
+      ]
+    }]
+  }
+  case 'OR NOT':
+    return [{
+      or: [
+        ...recursiveBuild(query.left),
+        ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
+      ]
+    }]
+  default: {
+    if (query.left) {
+      return [
+        ...recursiveBuild(query.left)
+      ]
+    }
+    if (query.field === '<implicit>') {
       return [{
-        and: [
-          ...recursiveBuild(query.left),
-          ...recursiveBuild(query.right)
-        ]
+        [query.prefix === '-' ? 'and' : 'or']: recursiveBuild({ ...query, field: 'all' })
       }]
     }
-    case '&&':
-    case 'AND': {
-      return [{
-        and: [
-          ...recursiveBuild(query.left),
-          ...recursiveBuild(query.right)
-        ]
-      }]
-    }
-    case '||':
-    case 'OR': {
-      return [{
-        or: [
-          ...recursiveBuild(query.left),
-          ...recursiveBuild(query.right)
-        ]
-      }]
-    }
-    case 'AND NOT':
-    case 'NOT': {
-      return [{
-        and: [
-          ...recursiveBuild(query.left),
-          ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
-        ]
-      }]
-    }
-    case 'OR NOT':
-      return [{
-        or: [
-          ...recursiveBuild(query.left),
-          ...recursiveBuild(Object.assign(query.right, { prefix: '-' }))
-        ]
-      }]
-    default: {
-      if (query.left) {
-        return [
-          ...recursiveBuild(query.left)
-        ]
-      }
-      if (query.field === '<implicit>') {
-        return [{
-          [query.prefix === '-' ? 'and' : 'or']: recursiveBuild({ ...query, field: 'all' })
-        }]
-      }
-      const object: {
-        name: Field,
-        exclude?: Array<string | number>,
+    const object: {
+        name: Field
+        exclude?: Array<string | number>
         in?: Array<string | number>
       } = {
         name: normalize(query.field) as Field
       }
-      if (query.prefix === '-') {
-        object.exclude = [normalize(query.term)]
-      } else {
-        object.in = [normalize(query.term)]
-      }
-      return [object]
+    if (query.prefix === '-') {
+      object.exclude = [normalize(query.term)]
+    } else {
+      object.in = [normalize(query.term)]
     }
+    return [object]
+  }
   }
 }
 

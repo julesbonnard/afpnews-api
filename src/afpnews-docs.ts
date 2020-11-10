@@ -5,7 +5,7 @@ import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
 export default class AfpNewsSearch extends AfpNewsAuth {
-  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
   }
 

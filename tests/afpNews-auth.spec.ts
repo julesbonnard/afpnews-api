@@ -20,7 +20,7 @@ describe('AFP News Auth', () => {
       const afpNews = new AfpNews()
       expect(afpNews instanceof AfpNews).toBeTruthy()
       const auth = new AfpNewsAuth()
-      expect(auth instanceof AfpNews).toBeTruthy()
+      expect(auth instanceof AfpNewsAuth).toBeTruthy()
     })
     test('should reset token on init', () => {
       const afpNews = new AfpNews()
