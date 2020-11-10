@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 import AfpNews from '../src/afpnews-api'
+import AfpNewsAuth from '../src/afpnews-auth'
 
 dotenv.config({ path: process.env.DOTENV_CONFIG_PATH })
 
@@ -18,6 +19,8 @@ describe('AFP News Auth', () => {
     test('should return true when afpNews is instance of AfpNews', () => {
       const afpNews = new AfpNews()
       expect(afpNews instanceof AfpNews).toBeTruthy()
+      const auth = new AfpNewsAuth()
+      expect(auth instanceof AfpNews).toBeTruthy()
     })
     test('should reset token on init', () => {
       const afpNews = new AfpNews()
@@ -122,6 +125,13 @@ describe('AFP News Auth', () => {
     })
     test('should not refresh token when token is valid', async () => {
       const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
+      const token = await afpNews.authenticate({ username, password })
+      const newToken = await afpNews.authenticate()
+      expect(token.accessToken).toEqual(newToken.accessToken)
+      expect(token.authType).toBe('credentials')
+    })
+    test('should not refresh token when token is valid with custom auth url', async () => {
+      const afpNews = new AfpNews({ baseUrl, customAuthUrl })
       const token = await afpNews.authenticate({ username, password })
       const newToken = await afpNews.authenticate()
       expect(token.accessToken).toEqual(newToken.accessToken)
