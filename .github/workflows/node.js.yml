@@ -19,11 +19,10 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: '15.x'
-    - run: npm install
+    - run: npm ci
     - run: npm run build
     - run: npm test
       env:
-        CI: true
         AFPNEWS_BASE_URL: ${{ secrets.AFPNEWS_BASE_URL }}
         AFPNEWS_API_KEY: ${{ secrets.AFPNEWS_API_KEY }}
         AFPNEWS_CLIENT_ID: ${{ secrets.AFPNEWS_CLIENT_ID }}
