@@ -116,6 +116,6 @@ describe('AFP News Search', () => {
       expect(typeof news.keywords[0]).toBe('object')
       expect(typeof news.keywords[0].name).toBe('string')
       expect(news.keywords[0].count).toBeGreaterThanOrEqual(1)
-    }, 10000)
+    })
   })
 })
