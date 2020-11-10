@@ -90,6 +90,13 @@ afpNews
   .then(({ documents }) => {
     console.log(documents)
   })
+
+// Display the feed for a specific topic
+afpNews
+  .topicFeed('Sport', 'fr')
+  .then(({ documents }) => {
+    console.log(documents)
+  })
 ```
 
 ### Query parser
