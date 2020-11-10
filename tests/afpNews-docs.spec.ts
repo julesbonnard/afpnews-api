@@ -13,6 +13,10 @@ const {
 } = process.env
 
 describe('AFP News Search', () => {
+  test('should return true when afpNews is instance of AfpNews', () => {
+    const afpNews = new AfpNews()
+    expect(afpNews instanceof AfpNews).toBeTruthy()
+  })
   describe('Search', () => {
     test('should return the default search params', () => {
       const afpNews = new AfpNews({ baseUrl })

@@ -5,7 +5,7 @@ import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
 export default class AfpNewsSearch extends AfpNewsAuth {
-  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
   }
 
@@ -119,7 +119,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       langs,
       sources,
       topics
-    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-7d' }, params)
+    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params)
 
     await this.authenticate()
 
