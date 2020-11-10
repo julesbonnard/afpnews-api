@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
     "moduleResolution": "node",
-    "target": "esnext",
+    "module": "ESNext",
+    "target": "ESNext",
     "strict": true,
     "esModuleInterop": true
   },
   "include": [
-    ".eslintrc.js",
-    "src/**/*",
-    "tests/*.ts"
+    "src/**/*"
   ]
 }

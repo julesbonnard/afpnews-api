@@ -1,19 +1,19 @@
 {
   "name": "afpnews-api",
-  "version": "1.12.1",
+  "version": "1.12.3",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/afpnews-api.js",
   "browser": "dist/afpnews-api.umd.js",
   "module": "dist/afpnews-api.es.js",
   "source": "src/afpnews-api.ts",
-  "typings": "dist/afpnews-api.d.ts",
+  "types": "dist/afpnews-api.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
     "clean": "rm -rf dist .rts2_cache_*",
-    "build:web": "node ./node_modules/microbundle/dist/cli.js -o dist -f umd --target web --name AfpNews --sourcemap --external none",
-    "build:node": "node ./node_modules/microbundle/dist/cli.js -o dist -f es,cjs --target node --strict --sourcemap",
+    "build:web": "microbundle -o dist -f umd --target web --name AfpNews --sourcemap --external none",
+    "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
     "build": "npm run build:web && npm run build:node",
     "lint": "eslint 'src/**/*.ts'",
     "prepare": "npm run clean && npm run lint && npm run build",
