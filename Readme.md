@@ -1,6 +1,6 @@
 # AfpNews API
 
-[![Build Status](https://travis-ci.org/julesbonnard/afpnews-api.svg?branch=master)](https://travis-ci.org/julesbonnard/afpnews-api) [![Greenkeeper badge](https://badges.greenkeeper.io/julesbonnard/afpnews-api.svg)](https://greenkeeper.io/)
+![Build Status](https://github.com/julesbonnard/afpnews-api/workflows/NodeJS/badge.svg?branch=master)
 
 This project is aimed to help javascript developers use the [AFP News API](https://api.afp.com/).
 
@@ -87,6 +87,13 @@ afpNews
 // Display the editor's choice for a specific topic
 afpNews
   .topicIndex('Sport', 'fr')
+  .then(({ documents }) => {
+    console.log(documents)
+  })
+
+// Display the feed for a specific topic
+afpNews
+  .topicFeed('Sport', 'fr')
   .then(({ documents }) => {
     console.log(documents)
   })

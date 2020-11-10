@@ -1,13 +1,13 @@
 import AfpNewsDocs from './afpnews-docs'
-import { ClientCredentials, AfpResponseOnlineIndex, AfpResponseOnlineTopics, Token } from './types'
+import { ClientCredentials, AfpResponseOnlineIndex, AfpResponseOnlineTopics, Token, Lang, AfpDocument } from './types'
 import { get } from './utils/request'
 
 export default class AfpNewsTopics extends AfpNewsDocs {
-  constructor (credentials: ClientCredentials & { baseUrl?: string, saveToken?: (token: Token | null) => void } = {}) {
+  constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
   }
 
-  public async topics (lang: string) {
+  public async topics (lang: Lang) {
     await this.authenticate()
 
     const data: AfpResponseOnlineTopics = await get(`${this.baseUrl}/onlinenews/api/topics`, {
@@ -25,7 +25,7 @@ export default class AfpNewsTopics extends AfpNewsDocs {
     }
   }
 
-  public async topicIndex (topic: string, lang: string, onlyPreviews = false) {
+  public async topicIndex (topic: string, lang: Lang, onlyPreviews = false) {
     await this.authenticate()
 
     const data: AfpResponseOnlineIndex = await get(`${this.baseUrl}/onlinenews/api/index`, {
@@ -36,33 +36,36 @@ export default class AfpNewsTopics extends AfpNewsDocs {
       }
     })
 
-    const { docs, numFound } = data.response
+    const documents: [AfpDocument] | [] = Array.isArray(data.response.docs.documents) ? data.response.docs.documents : []
 
-    if (onlyPreviews === true) {
+    if (onlyPreviews === true || documents.length === 0) {
       return {
-        count: numFound,
-        documents: docs.documents
+        count: data.response.numFound,
+        documents: documents
       }
     }
 
-    const index = docs.documents.map(d => d.uno)
-    const { documents, count } = await this.search({
+    const index = documents.map(d => d.uno)
+    const news = await this.search({
       query: `uno:(${index.join(' OR ')})`
     })
 
     return {
-      count,
-      documents: documents.sort((a, b) => index.indexOf(a.uno) - index.indexOf(b.uno))
+      count: news.count,
+      documents: news.documents.sort((a, b) => index.indexOf(a.uno) - index.indexOf(b.uno))
     }
   }
 
-  // public async topicFeed (topic: string, lang: string) {
-  //   await this.authenticate()
+  public async topicFeed (topic: string, lang: Lang) {
+    await this.authenticate()
 
-  //   const data = await getXml(`${this.baseUrl}/onlinenews/api/feed?topic=${topic}&lang=${lang}`, {
-  //     headers: this.authorizationBearerHeaders
-  //   })
+    // return getXml(`${this.baseUrl}/onlinenews/api/feed?topic=${topic}&lang=${lang}`, {
+    //   headers: this.authorizationBearerHeaders
+    // })
 
-  //   return data
-  // }
+    return this.search({
+      query: `topic:${topic}`,
+      langs: [lang]
+    })
+  }
 }
