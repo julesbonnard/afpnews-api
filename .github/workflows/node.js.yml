@@ -25,6 +25,6 @@ jobs:
         AFPNEWS_PASSWORD: ${{ secrets.AFPNEWS_PASSWORD }}
         AFPNEWS_CUSTOM_AUTH_URL: ${{ secrets.AFPNEWS_CUSTOM_AUTH_URL }}
     - run: npm publish --access public
-      if: github.event_name == 'tag' && github.ref == 'refs/heads/master'
+      if: github.event_name == 'tag'
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
