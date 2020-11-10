@@ -158,7 +158,7 @@ describe('AFP News Auth', () => {
           done()
         }
       })
-      afpNews.authenticate()
+      void afpNews.authenticate()
     })
   })
   // describe('User', () => {
