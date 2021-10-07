@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import fetch, { Headers } from 'node-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'
+
+const fetch = window.fetch || require('node-fetch')
+const Headers = window.Headers || require('node-fetch').Headers
 
 function buildUrl (url: string, params: Object): string {
   const builtUrl = new URL(url)
