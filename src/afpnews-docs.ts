@@ -13,7 +13,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
     return defaultSearchParams as Params
   }
 
-  public async search (params?: Params) {
+  public async search (params?: Params | null, fields?: string[]) {
     const {
       products,
       size: maxRows,
@@ -30,12 +30,22 @@ export default class AfpNewsSearch extends AfpNewsAuth {
 
     await this.authenticate()
 
-    const request: Request = {
-      and: [
-        {
+    const optionnalParams: any = {}
+    const optionnalRequest: [any?] = []
+
+    if (langs) {
+      if (langs.length === 1) {
+        optionnalParams.lang = langs[0]
+      } else if (langs.length > 1) {
+        optionnalRequest.push({
           in: langs,
           name: 'lang'
-        },
+        })
+      }
+    }
+
+    const request: Request = {
+      and: [
         {
           in: products,
           name: 'product'
@@ -52,6 +62,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
           in: topics,
           name: 'topic'
         },
+        ...optionnalRequest,
         ...buildQuery(query)
       ]
     }
@@ -63,6 +74,8 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       },
       maxRows: maxRows as number,
       query: request,
+      ...optionnalParams,
+      fields,
       sortField: sortField as SortField,
       sortOrder: sortOrder as SortOrder
     }
