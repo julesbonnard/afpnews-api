@@ -94,7 +94,6 @@ describe('AFP News Search', () => {
       const news = await afpNews.search({ langs: ['fr', 'en'], size: 100, products: ['news'] }, ['lang'])
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
       const langs = news.documents.map(doc => doc.lang)
-      console.log(langs)
       expect(langs.includes('fr')).toBeTruthy()
       expect(langs.includes('en')).toBeTruthy()
     })
