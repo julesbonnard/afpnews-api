@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import fetch, { Headers } from 'node-fetch'
+import fetch, { Headers } from 'cross-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'

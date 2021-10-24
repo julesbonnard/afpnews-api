@@ -79,6 +79,24 @@ describe('AFP News Search', () => {
       expect(+new Date(firstDocument.published)).toBeLessThan(+new Date(Date.now() - 2419200)) // now-1M
       expect(+new Date(lastDocument.published)).toBeLessThan(+new Date(Date.now() - 86400)) // now-1d
     })
+    test('should react to custom fields', async () => {
+      const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const news = await afpNews.search(null, ['title'])
+      expect(news.documents.length).toBeGreaterThanOrEqual(1)
+      const firstDocument = news.documents[0]
+      expect(typeof firstDocument).toBe('object')
+      expect(Object.keys(firstDocument).sort()).toEqual(['title', 'published'].sort())
+    })
+    test('should work with multiple languages', async () => {
+      const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
+      await afpNews.authenticate({ username, password })
+      const news = await afpNews.search({ langs: ['fr', 'en'] }, ['lang'])
+      expect(news.documents.length).toBeGreaterThanOrEqual(1)
+      const langs = news.documents.map(doc => doc.lang)
+      expect(langs.includes('fr')).toBeTruthy()
+      expect(langs.includes('en')).toBeTruthy()
+    })
   })
   describe('Get', () => {
     test('should return a document when authenticated', async () => {

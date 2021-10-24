@@ -1,37 +1,42 @@
 module.exports = {
-  'env': {
-    'browser': true,
-    'es6': true,
-    'node': true
+  env: {
+    browser: true,
+    es6: true,
+    node: true
   },
-  'extends': [
+  extends: [
     'prettier'
   ],
-  'parser': '@typescript-eslint/parser',
-  'parserOptions': {
-    'project': 'tsconfig.json',
-    'sourceType': 'module'
-  },
-  'plugins': [
+  parser: '@typescript-eslint/parser',
+  overrides: [
+    {
+      files: ['*.ts', '*.tsx'],
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        sourceType: 'module'
+      },
+    }
+  ],
+  plugins: [
     'eslint-plugin-import',
     'eslint-plugin-jsdoc',
     '@typescript-eslint',
     '@typescript-eslint/tslint'
   ],
-  'rules': {
-    'indent': ['error', 2],
+  rules: {
+    indent: ['error', 2],
     '@typescript-eslint/await-thenable': 'error',
     '@typescript-eslint/consistent-type-assertions': 'error',
     '@typescript-eslint/member-delimiter-style': [
       'error',
       {
-        'multiline': {
-          'delimiter': 'none',
-          'requireLast': true
+        multiline: {
+          delimiter: 'none',
+          requireLast: true
         },
-        'singleline': {
-          'delimiter': 'semi',
-          'requireLast': false
+        singleline: {
+          delimiter: 'semi',
+          requireLast: false
         }
       }
     ],
@@ -44,8 +49,8 @@ module.exports = {
     '@typescript-eslint/no-unused-expressions': [
       'error',
       {
-        'allowTaggedTemplates': true,
-        'allowShortCircuit': true
+        allowTaggedTemplates: true,
+        allowShortCircuit: true
       }
     ],
     '@typescript-eslint/prefer-namespace-keyword': 'error',
@@ -53,7 +58,7 @@ module.exports = {
       'error',
       'single',
       {
-        'avoidEscape': true
+        avoidEscape: true
       }
     ],
     '@typescript-eslint/semi': [
@@ -63,9 +68,9 @@ module.exports = {
     '@typescript-eslint/triple-slash-reference': [
       'error',
       {
-        'path': 'always',
-        'types': 'prefer-import',
-        'lib': 'always'
+        path: 'always',
+        types: 'prefer-import',
+        lib: 'always'
       }
     ],
     '@typescript-eslint/tslint/config': [
@@ -73,7 +78,7 @@ module.exports = {
       {
         'rules': {
           'strict-type-predicates': true,
-          'whitespace': true
+          whitespace: true
         }
       }
     ],
