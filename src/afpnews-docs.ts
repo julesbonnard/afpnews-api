@@ -44,24 +44,36 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       }
     }
 
+    if (products && products.length > 0) {
+      optionnalRequest.push({
+        in: products,
+        name: 'product'
+      })
+    }
+
+    if (urgencies && urgencies.length > 0) {
+      optionnalRequest.push({
+        in: urgencies,
+        name: 'urgency'
+      })
+    }
+
+    if (sources && sources.length > 0) {
+      optionnalRequest.push({
+        in: sources,
+        name: 'source'
+      })
+    }
+
+    if (topics && topics.length > 0) {
+      optionnalRequest.push({
+        in: topics,
+        name: 'topic'
+      })
+    }
+
     const request: Request = {
       and: [
-        {
-          in: products,
-          name: 'product'
-        },
-        {
-          in: urgencies,
-          name: 'urgency'
-        },
-        {
-          in: sources,
-          name: 'source'
-        },
-        {
-          in: topics,
-          name: 'topic'
-        },
         ...optionnalRequest,
         ...buildQuery(query)
       ]
