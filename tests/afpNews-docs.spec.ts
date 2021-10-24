@@ -91,9 +91,10 @@ describe('AFP News Search', () => {
     test('should work with multiple languages', async () => {
       const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
       await afpNews.authenticate({ username, password })
-      const news = await afpNews.search({ langs: ['fr', 'en'] }, ['lang'])
+      const news = await afpNews.search({ langs: ['fr', 'en'], size: 100, products: ['news'] }, ['lang'])
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
       const langs = news.documents.map(doc => doc.lang)
+      console.log(langs)
       expect(langs.includes('fr')).toBeTruthy()
       expect(langs.includes('en')).toBeTruthy()
     })
