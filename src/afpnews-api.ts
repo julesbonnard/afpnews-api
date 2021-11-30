@@ -1,1 +1,1 @@
-export { default } from './afpnews-topics'
+export { default } from './afpnews-docs'
