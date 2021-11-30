@@ -64,7 +64,7 @@ describe('AFP News Search', () => {
         sortOrder: 'asc',
         products: ['news'],
         sources: ['afp'],
-        topics: []
+        topics: ['service-eco-fr']
       }
       const news = await afpNews.search(customParams)
       expect(news.documents.length).toBeGreaterThanOrEqual(1)
