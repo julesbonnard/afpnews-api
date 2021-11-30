@@ -77,8 +77,10 @@ function recursiveBuild (query: LuceneQueryParsed): Request[] {
         name: Field
         exclude?: Array<string | number>
         in?: Array<string | number>
+        fullText?: boolean
       } = {
-        name: normalize(query.field) as Field
+        name: normalize(query.field) as Field,
+        fullText: true
       }
     if (query.prefix === '-') {
       object.exclude = [normalize(query.term)]

@@ -12,12 +12,14 @@ describe('AFP News Search Parser', () => {
           'and': [{
             'or': [{
               'name': 'all',
-              'in': ['cat']
+              'in': ['cat'],
+              'fullText': true
             }]
           }, {
             'and': [{
               'name': 'all',
-              'exclude': ['dog']
+              'exclude': ['dog'],
+              'fullText': true
             }]
           }]
         }])
@@ -29,12 +31,14 @@ describe('AFP News Search Parser', () => {
         'and': [{
           'or': [{
             'name': 'all',
-            'in': ['firstname lastname']
+            'in': ['firstname lastname'],
+            'fullText': true
           }]
         }, {
           'or': [{
             'name': 'all',
-            'in': ['multi-word']
+            'in': ['multi-word'],
+            'fullText': true
           }]
         }]
       }])
@@ -45,7 +49,8 @@ describe('AFP News Search Parser', () => {
       const query = buildQuery('title:AFP')
       expect(query).toEqual([{
         'name': 'title',
-        'in': ['afp']
+        'in': ['afp'],
+        'fullText': true
       }])
     })
   })
@@ -53,8 +58,8 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit AND operator', () => {
       const answer = [{
         'and': [
-          { 'name': 'animal', 'in': ['cat'] },
-          { 'name': 'animal', 'in': ['dog'] }
+          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
+          { 'name': 'animal', 'in': ['dog'], 'fullText': true }
         ]
       }]
       expect(buildQuery('animal:cat AND animal:dog')).toEqual(answer)
@@ -63,8 +68,8 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit OR operator', () => {
       const answer = [{
         'or': [
-          { 'name': 'animal', 'in': ['cat'] },
-          { 'name': 'animal', 'in': ['duck'] }
+          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
+          { 'name': 'animal', 'in': ['duck'], 'fullText': true }
         ]
       }]
       expect(buildQuery('animal:cat OR animal:duck')).toEqual(answer)
@@ -73,14 +78,14 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit NOT operator', () => {
       const answerAnd = [{
         'and': [
-          { 'name': 'animal', 'in': ['cat'] },
-          { 'name': 'animal', 'exclude': ['dog'] }
+          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
+          { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
         ]
       }]
       const answerOr = [{
         'or': [
-          { 'name': 'animal', 'in': ['cat'] },
-          { 'name': 'animal', 'exclude': ['dog'] }
+          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
+          { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
         ]
       }]
       expect(buildQuery('animal:cat NOT animal:dog')).toEqual(answerAnd)
@@ -91,11 +96,11 @@ describe('AFP News Search Parser', () => {
       const query = buildQuery('animal:cat AND animal:(dog OR duck)')
       expect(query).toEqual([{
         'and': [
-          { 'name': 'animal', 'in': ['cat'] },
+          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
           {
             'or': [
-              { 'name': 'animal', 'in': ['dog'] },
-              { 'name': 'animal', 'in': ['duck'] }
+              { 'name': 'animal', 'in': ['dog'], 'fullText': true },
+              { 'name': 'animal', 'in': ['duck'], 'fullText': true }
             ]
           }
         ]
@@ -108,11 +113,11 @@ describe('AFP News Search Parser', () => {
       expect(query).toEqual([
         {
           'and': [
-            { 'name': 'animal', 'in': ['duck'] },
+            { 'name': 'animal', 'in': ['duck'], 'fullText': true },
             {
               'and': [
-                { 'name': 'animal', 'exclude': ['cat'] },
-                { 'name': 'animal', 'exclude': ['dog'] }
+                { 'name': 'animal', 'exclude': ['cat'], 'fullText': true },
+                { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
               ]
             }
           ]
