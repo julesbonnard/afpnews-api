@@ -12,14 +12,12 @@ describe('AFP News Search Parser', () => {
           'and': [{
             'or': [{
               'name': 'all',
-              'in': ['cat'],
-              'fullText': true
+              'contains': ['cat']
             }]
           }, {
             'and': [{
               'name': 'all',
-              'exclude': ['dog'],
-              'fullText': true
+              'exclude': ['dog']
             }]
           }]
         }])
@@ -31,14 +29,12 @@ describe('AFP News Search Parser', () => {
         'and': [{
           'or': [{
             'name': 'all',
-            'in': ['firstname lastname'],
-            'fullText': true
+            'contains': ['firstname lastname']
           }]
         }, {
           'or': [{
             'name': 'all',
-            'in': ['multi-word'],
-            'fullText': true
+            'contains': ['multi-word']
           }]
         }]
       }])
@@ -49,8 +45,7 @@ describe('AFP News Search Parser', () => {
       const query = buildQuery('title:AFP')
       expect(query).toEqual([{
         'name': 'title',
-        'in': ['afp'],
-        'fullText': true
+        'contains': ['afp']
       }])
     })
   })
@@ -58,8 +53,8 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit AND operator', () => {
       const answer = [{
         'and': [
-          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
-          { 'name': 'animal', 'in': ['dog'], 'fullText': true }
+          { 'name': 'animal', 'contains': ['cat'] },
+          { 'name': 'animal', 'contains': ['dog'] }
         ]
       }]
       expect(buildQuery('animal:cat AND animal:dog')).toEqual(answer)
@@ -68,8 +63,8 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit OR operator', () => {
       const answer = [{
         'or': [
-          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
-          { 'name': 'animal', 'in': ['duck'], 'fullText': true }
+          { 'name': 'animal', 'contains': ['cat'] },
+          { 'name': 'animal', 'contains': ['duck'] }
         ]
       }]
       expect(buildQuery('animal:cat OR animal:duck')).toEqual(answer)
@@ -78,14 +73,14 @@ describe('AFP News Search Parser', () => {
     test('should build query with explicit NOT operator', () => {
       const answerAnd = [{
         'and': [
-          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
-          { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
+          { 'name': 'animal', 'contains': ['cat'] },
+          { 'name': 'animal', 'exclude': ['dog'] }
         ]
       }]
       const answerOr = [{
         'or': [
-          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
-          { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
+          { 'name': 'animal', 'contains': ['cat'] },
+          { 'name': 'animal', 'exclude': ['dog'] }
         ]
       }]
       expect(buildQuery('animal:cat NOT animal:dog')).toEqual(answerAnd)
@@ -96,11 +91,11 @@ describe('AFP News Search Parser', () => {
       const query = buildQuery('animal:cat AND animal:(dog OR duck)')
       expect(query).toEqual([{
         'and': [
-          { 'name': 'animal', 'in': ['cat'], 'fullText': true },
+          { 'name': 'animal', 'contains': ['cat'] },
           {
             'or': [
-              { 'name': 'animal', 'in': ['dog'], 'fullText': true },
-              { 'name': 'animal', 'in': ['duck'], 'fullText': true }
+              { 'name': 'animal', 'contains': ['dog'] },
+              { 'name': 'animal', 'contains': ['duck'] }
             ]
           }
         ]
@@ -113,11 +108,11 @@ describe('AFP News Search Parser', () => {
       expect(query).toEqual([
         {
           'and': [
-            { 'name': 'animal', 'in': ['duck'], 'fullText': true },
+            { 'name': 'animal', 'contains': ['duck'] },
             {
               'and': [
-                { 'name': 'animal', 'exclude': ['cat'], 'fullText': true },
-                { 'name': 'animal', 'exclude': ['dog'], 'fullText': true }
+                { 'name': 'animal', 'exclude': ['cat'] },
+                { 'name': 'animal', 'exclude': ['dog'] }
               ]
             }
           ]
