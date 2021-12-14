@@ -76,27 +76,6 @@ afpNews
   .then(({ keywords }) => {
     console.log(keywords)
   })
-
-// Display the available topics for a specific language
-afpNews
-  .topics('fr')
-  .then(({ topics }) => {
-    console.log(topics)
-  })
-
-// Display the editor's choice for a specific topic
-afpNews
-  .topicIndex('Sport', 'fr')
-  .then(({ documents }) => {
-    console.log(documents)
-  })
-
-// Display the feed for a specific topic
-afpNews
-  .topicFeed('Sport', 'fr')
-  .then(({ documents }) => {
-    console.log(documents)
-  })
 ```
 
 ### Query parser
