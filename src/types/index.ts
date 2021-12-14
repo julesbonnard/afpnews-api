@@ -22,6 +22,7 @@ export interface Request {
   or?: Request[]
   name?: Field
   in?: Array<string | number>
+  fullText?: boolean
   exclude?: Array<string | number>
 }
 

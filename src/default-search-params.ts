@@ -1,12 +1,12 @@
 export default {
-  dateFrom: '2012-01-01',
-  dateTo: 'now',
+  dateFrom: undefined,
+  dateTo: undefined,
   langs: [],
   products: [],
   query: '',
   size: 10,
-  sortField: 'published',
-  sortOrder: 'desc',
+  sortField: undefined,
+  sortOrder: undefined,
   urgencies: [],
   sources: [],
   topics: []

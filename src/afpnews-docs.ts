@@ -1,6 +1,6 @@
 import AfpNewsAuth from './afpnews-auth'
 import defaultSearchParams from './default-search-params'
-import { AfpResponseDocuments, AfpResponseTopics, AfpResponseOnlineTopics, AfpResponseOnlineIndex, ClientCredentials, Lang, Params, Query, Request, Token, SortField, SortOrder } from './types'
+import { AfpResponseDocuments, AfpResponseTopics, ClientCredentials, Lang, Params, Query, Request, Token, SortField, SortOrder } from './types'
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
@@ -13,7 +13,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
     return defaultSearchParams as Params
   }
 
-  public async search (params?: Params | null, fields?: string[]) {
+  private prepareRequest (params: Params, fields: string[]) {
     const {
       products,
       size: maxRows,
@@ -28,20 +28,11 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       topics
     } = Object.assign({}, this.defaultSearchParams, params)
 
-    await this.authenticate()
-
     const optionnalParams: any = {}
     const optionnalRequest: [any?] = []
 
-    if (langs) {
-      if (langs.length === 1) {
-        optionnalParams.lang = langs[0]
-      } else if (langs.length > 1) {
-        optionnalRequest.push({
-          in: langs,
-          name: 'lang'
-        })
-      }
+    if (langs && langs.length > 0 && (!topics || topics.length === 0)) {
+      optionnalParams.lang = langs.join(',')
     }
 
     if (products && products.length > 0) {
@@ -72,25 +63,42 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       })
     }
 
-    const request: Request = {
-      and: [
-        ...optionnalRequest,
-        ...buildQuery(query)
-      ]
+    const builtQuery = buildQuery(query)
+    let request: Request = {}
+    if (optionnalRequest.length > 0) {
+      request = {
+        and: [
+          ...optionnalRequest,
+          builtQuery
+        ]
+      }
+    } else {
+      request = builtQuery
     }
 
     const body: Query = {
-      dateRange: {
-        from: dateFrom as string,
-        to: dateTo as string
-      },
       maxRows: maxRows as number,
       query: request,
       ...optionnalParams,
-      fields,
+      fields: fields.length > 0 ? fields : undefined,
       sortField: sortField as SortField,
       sortOrder: sortOrder as SortOrder
     }
+
+    if (dateFrom || dateTo) {
+      body.dateRange = {
+        from: dateFrom as string,
+        to: dateTo as string
+      }
+    }
+
+    return body
+  }
+
+  public async search (params: Params = {}, fields: string[] = []) {
+    const body = this.prepareRequest(params, fields)
+
+    await this.authenticate()
 
     const data: AfpResponseDocuments = await post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders
@@ -134,53 +142,10 @@ export default class AfpNewsSearch extends AfpNewsAuth {
     }
   }
 
-  public async list (facet: string, params?: Params, minDocCount = 1) {
-    const {
-      products,
-      dateFrom,
-      dateTo,
-      urgencies,
-      query,
-      langs,
-      sources,
-      topics
-    } = Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params)
+  public async list (facet: string, params: Params = {}, minDocCount = 1) {
+    const body = this.prepareRequest(Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
 
     await this.authenticate()
-
-    const request: Request = {
-      and: [
-        {
-          in: langs,
-          name: 'lang'
-        },
-        {
-          in: products,
-          name: 'product'
-        },
-        {
-          in: urgencies,
-          name: 'urgency'
-        },
-        {
-          in: sources,
-          name: 'source'
-        },
-        {
-          in: topics,
-          name: 'topic'
-        },
-        ...buildQuery(query)
-      ]
-    }
-
-    const body: any = {
-      dateRange: {
-        from: dateFrom,
-        to: dateTo
-      },
-      query: request
-    }
 
     const data: AfpResponseTopics = await post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
       headers: this.authorizationBearerHeaders,
