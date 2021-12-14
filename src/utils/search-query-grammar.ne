@@ -6,8 +6,14 @@
 	import moo from 'moo'
 	const lexer = moo.compile({
 	  ws: / +/,
-	  doublequoted: /"(?:[^"\\]|\\.)*"?/,
-	  singlequoted: /'(?:[^'\\]|\\.)*'?/,
+	  doublequoted: {
+		  match: /"(?:[^"\\]|\\.)*"?/,
+		  value: (s: string) => s.slice(1, -1)
+	  },
+	  singlequoted: {
+		  match: /'(?:[^'\\]|\\.)*'?/,
+		  value: (s: string) => s.slice(1, -1)
+	  },
 	  facet: {
 		  match: /[a-zA-Z\._-]+[=:]/,
 		  value: (s: string) => s.slice(0, -1)
@@ -25,10 +31,10 @@
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
 
-	function flattenText (data: any): string {
+	function flattenText (data: any[], allowQuoted: true) {
 		return data.flat(Infinity)
-			.filter((d: any) => d && d.type !== 'ws')
-			.map((d: any) => d && d.text)
+			.filter((d: any) => d.type !== 'ws')
+			.map((d: any) => allowQuoted ? d.text : d.value)
 	}
 	
 	function recursive ([left, rest]: any[]): any {
@@ -47,29 +53,28 @@
 
 STATEMENT -> NODE (__ (OPERATOR __):? NODE):* {% recursive %}
 
-NODE -> 
-GROUPED_EXPRESSIONS {% id %}
+NODE -> lparen STATEMENT rparen {% ([lparen, logical]) => logical %}
 | LOGICAL_EXPRESSION {% id %}
-
-GROUPED_EXPRESSIONS -> lparen STATEMENT rparen {% ([lparen, logical]) => logical %}
 
 LOGICAL_EXPRESSION -> TEXT_FACET_EXPRESSION (__ (OPERATOR __):? TEXT_FACET_EXPRESSION):* {% recursive %}
 
 TEXT_FACET_EXPRESSION -> 
 FACET:? EXCLUDE:? lparen WORDS rparen {% ([facet, exclude, lparen, text, rparen], i, reject) => {
+const fullText = facet ? facet.fullText : true
 return {
 		name: facet && facet.name || 'all',
-		exclude: facet && facet.exclude || exclude ? flattenText(text) : undefined,
-		in: facet && facet.exclude || exclude ? undefined : flattenText(text),
-		fullText: facet ? facet.fullText : true
+		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
+		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
+		fullText
 	}
 } %}
 | FACET:? EXCLUDE:? WORD {% ([facet, exclude, text], i, reject) => {
+const fullText = facet ? facet.fullText : true
 return {
 		name: facet && facet.name || 'all',
-		exclude: facet && facet.exclude || exclude ? flattenText(text) : undefined,
-		in: facet && facet.exclude || exclude ? undefined : flattenText(text),
-		fullText: facet ? facet.fullText : true
+		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
+		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
+		fullText
 	}
 } %}
 

@@ -23,8 +23,14 @@ declare var ws: any;
 
 	const lexer = moo.compile({
 	  ws: / +/,
-	  doublequoted: /"(?:[^"\\]|\\.)*"?/,
-	  singlequoted: /'(?:[^'\\]|\\.)*'?/,
+	  doublequoted: {
+		  match: /"(?:[^"\\]|\\.)*"?/,
+		  value: (s: string) => s.slice(1, -1)
+	  },
+	  singlequoted: {
+		  match: /'(?:[^'\\]|\\.)*'?/,
+		  value: (s: string) => s.slice(1, -1)
+	  },
 	  facet: {
 		  match: /[a-zA-Z\._-]+[=:]/,
 		  value: (s: string) => s.slice(0, -1)
@@ -42,10 +48,10 @@ declare var ws: any;
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
 
-	function flattenText (data: any): string {
+	function flattenText (data: any[], allowQuoted: true) {
 		return data.flat(Infinity)
-			.filter((d: any) => d && d.type !== 'ws')
-			.map((d: any) => d && d.text)
+			.filter((d: any) => d.type !== 'ws')
+			.map((d: any) => allowQuoted ? d.text : d.value)
 	}
 	
 	function recursive ([left, rest]: any[]): any {
@@ -95,9 +101,8 @@ const grammar: Grammar = {
     {"name": "STATEMENT$ebnf$1$subexpression$1", "symbols": ["__", "STATEMENT$ebnf$1$subexpression$1$ebnf$1", "NODE"]},
     {"name": "STATEMENT$ebnf$1", "symbols": ["STATEMENT$ebnf$1", "STATEMENT$ebnf$1$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
     {"name": "STATEMENT", "symbols": ["NODE", "STATEMENT$ebnf$1"], "postprocess": recursive},
-    {"name": "NODE", "symbols": ["GROUPED_EXPRESSIONS"], "postprocess": id},
+    {"name": "NODE", "symbols": ["lparen", "STATEMENT", "rparen"], "postprocess": ([lparen, logical]) => logical},
     {"name": "NODE", "symbols": ["LOGICAL_EXPRESSION"], "postprocess": id},
-    {"name": "GROUPED_EXPRESSIONS", "symbols": ["lparen", "STATEMENT", "rparen"], "postprocess": ([lparen, logical]) => logical},
     {"name": "LOGICAL_EXPRESSION$ebnf$1", "symbols": []},
     {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["OPERATOR", "__"]},
     {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1", "symbols": ["LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
@@ -110,11 +115,12 @@ const grammar: Grammar = {
     {"name": "TEXT_FACET_EXPRESSION$ebnf$2", "symbols": ["EXCLUDE"], "postprocess": id},
     {"name": "TEXT_FACET_EXPRESSION$ebnf$2", "symbols": [], "postprocess": () => null},
     {"name": "TEXT_FACET_EXPRESSION", "symbols": ["TEXT_FACET_EXPRESSION$ebnf$1", "TEXT_FACET_EXPRESSION$ebnf$2", "lparen", "WORDS", "rparen"], "postprocess":  ([facet, exclude, lparen, text, rparen], i, reject) => {
+        const fullText = facet ? facet.fullText : true
         return {
         		name: facet && facet.name || 'all',
-        		exclude: facet && facet.exclude || exclude ? flattenText(text) : undefined,
-        		in: facet && facet.exclude || exclude ? undefined : flattenText(text),
-        		fullText: facet ? facet.fullText : true
+        		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
+        		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
+        		fullText
         	}
         } },
     {"name": "TEXT_FACET_EXPRESSION$ebnf$3", "symbols": ["FACET"], "postprocess": id},
@@ -122,11 +128,12 @@ const grammar: Grammar = {
     {"name": "TEXT_FACET_EXPRESSION$ebnf$4", "symbols": ["EXCLUDE"], "postprocess": id},
     {"name": "TEXT_FACET_EXPRESSION$ebnf$4", "symbols": [], "postprocess": () => null},
     {"name": "TEXT_FACET_EXPRESSION", "symbols": ["TEXT_FACET_EXPRESSION$ebnf$3", "TEXT_FACET_EXPRESSION$ebnf$4", "WORD"], "postprocess":  ([facet, exclude, text], i, reject) => {
+        const fullText = facet ? facet.fullText : true
         return {
         		name: facet && facet.name || 'all',
-        		exclude: facet && facet.exclude || exclude ? flattenText(text) : undefined,
-        		in: facet && facet.exclude || exclude ? undefined : flattenText(text),
-        		fullText: facet ? facet.fullText : true
+        		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
+        		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
+        		fullText
         	}
         } },
     {"name": "FACET$ebnf$1", "symbols": ["EXCLUDE"], "postprocess": id},
