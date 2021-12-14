@@ -20,7 +20,7 @@
 	  andbis: '&&',
 	  or: 'OR',
 	  orbis: '||',
-	  word: /[a-zA-ZÀ-ÿ0-9-]+/
+	  word: /[a-zA-ZÀ-ÿ0-9\.-]+/
 	})
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
@@ -51,7 +51,7 @@ NODE ->
 GROUPED_EXPRESSIONS {% id %}
 | LOGICAL_EXPRESSION {% id %}
 
-GROUPED_EXPRESSIONS -> lparen LOGICAL_EXPRESSION rparen {% ([lparen, logical]) => logical %}
+GROUPED_EXPRESSIONS -> lparen STATEMENT rparen {% ([lparen, logical]) => logical %}
 
 LOGICAL_EXPRESSION -> TEXT_FACET_EXPRESSION (__ (OPERATOR __):? TEXT_FACET_EXPRESSION):* {% recursive %}
 

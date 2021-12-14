@@ -37,7 +37,7 @@ declare var ws: any;
 	  andbis: '&&',
 	  or: 'OR',
 	  orbis: '||',
-	  word: /[a-zA-ZÀ-ÿ0-9-]+/
+	  word: /[a-zA-ZÀ-ÿ0-9\.-]+/
 	})
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
@@ -97,7 +97,7 @@ const grammar: Grammar = {
     {"name": "STATEMENT", "symbols": ["NODE", "STATEMENT$ebnf$1"], "postprocess": recursive},
     {"name": "NODE", "symbols": ["GROUPED_EXPRESSIONS"], "postprocess": id},
     {"name": "NODE", "symbols": ["LOGICAL_EXPRESSION"], "postprocess": id},
-    {"name": "GROUPED_EXPRESSIONS", "symbols": ["lparen", "LOGICAL_EXPRESSION", "rparen"], "postprocess": ([lparen, logical]) => logical},
+    {"name": "GROUPED_EXPRESSIONS", "symbols": ["lparen", "STATEMENT", "rparen"], "postprocess": ([lparen, logical]) => logical},
     {"name": "LOGICAL_EXPRESSION$ebnf$1", "symbols": []},
     {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["OPERATOR", "__"]},
     {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1", "symbols": ["LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
