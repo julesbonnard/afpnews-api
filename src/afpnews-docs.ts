@@ -64,7 +64,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
     }
 
     const builtQuery = buildQuery(query)
-    let request: Request = {}
+    let request: Request | undefined
     if (optionnalRequest.length > 0) {
       request = {
         and: [

@@ -3,9 +3,9 @@ import { Request } from '../types'
 import { Parser, Grammar } from 'nearley'
 import grammar from './search-query-grammar'
 
-export default function buildQuery (query: string | undefined): Request {
-  if (!query || query === '') {
-    return {}
+export default function buildQuery (query: string | undefined): Request | undefined {
+  if (!query || query.trim() === '') {
+    return undefined
   }
   const parser = new Parser(Grammar.fromCompiled(grammar))
   parser.feed(query.trim())

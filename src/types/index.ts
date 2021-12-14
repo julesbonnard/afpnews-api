@@ -166,9 +166,9 @@ export interface AfpDocument {
   embargoed: string
   entity_company: string[]
   entity_departmeent: string[]
-  entity_faces: [
+  faces: [
     {
-      faces: [
+      items: [
         {
           height: number
           href: string
