@@ -4,6 +4,11 @@ import { AfpResponseDocuments, AfpResponseTopics, ClientCredentials, Lang, Param
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
+function removeUndefinedKeys (obj: any): any {
+  Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key])
+  return obj
+}
+
 export default class AfpNewsSearch extends AfpNewsAuth {
   constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)
@@ -13,7 +18,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
     return defaultSearchParams as Params
   }
 
-  private prepareRequest (params: Params, fields: string[]) {
+  private prepareRequest (params: Params, fields: string[] = []) {
     const {
       products,
       size: maxRows,
@@ -28,10 +33,11 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       topics
     } = Object.assign({}, this.defaultSearchParams, params)
 
+    const builtQuery = buildQuery(query)
     const optionnalParams: any = {}
     const optionnalRequest: [any?] = []
 
-    if (langs && langs.length > 0 && (!topics || topics.length === 0)) {
+    if ((!query || !query.includes('lang:')) && langs && langs.length > 0 && (!topics || topics.length === 0)) {
       optionnalParams.lang = langs.join(',')
     }
 
@@ -63,7 +69,6 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       })
     }
 
-    const builtQuery = buildQuery(query)
     let request: Request | undefined
     if (optionnalRequest.length > 0) {
       request = {
@@ -92,6 +97,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       }
     }
 
+    removeUndefinedKeys(body)
     return body
   }
 

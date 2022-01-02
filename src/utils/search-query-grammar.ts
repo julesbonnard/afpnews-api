@@ -1,9 +1,9 @@
 // Generated automatically by nearley, version 2.20.1
 // http://github.com/Hardmath123/nearley
-// Bypasses TS6133. Allow declared but unused functions.
-// @ts-ignore
 import moo from 'moo'
-function id(d: any[]): any { return d[0]; }
+
+function id(x: any[]) { return x[0]; }
+
 declare var facet: any;
 declare var excludeoperator: any;
 declare var excludeword: any;
@@ -24,15 +24,15 @@ declare var ws: any;
 	const lexer = moo.compile({
 	  ws: / +/,
 	  doublequoted: {
-		  match: /"(?:[^"\\]|\\.)*"?/,
+		  match: /"(?:[^"\\]|\\.)*"/,
 		  value: (s: string) => s.slice(1, -1)
 	  },
 	  singlequoted: {
-		  match: /'(?:[^'\\]|\\.)*'?/,
+		  match: /'(?:[^'\\]|\\.)*'/,
 		  value: (s: string) => s.slice(1, -1)
 	  },
 	  facet: {
-		  match: /[a-zA-Z\._-]+[=:]/,
+		  match: /[a-zA-Z\._]+[=:]/,
 		  value: (s: string) => s.slice(0, -1)
 	  },
 	  lparen: '(',
@@ -43,137 +43,143 @@ declare var ws: any;
 	  andbis: '&&',
 	  or: 'OR',
 	  orbis: '||',
-	  word: /[a-zA-ZÀ-ÿ0-9\.-]+/
+	  word: /[a-zA-ZÀ-ÿ0-9'\.-]+/
 	})
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
-
-	function flattenText (data: any[], allowQuoted: true) {
-		return data.flat(Infinity)
-			.filter((d: any) => d.type !== 'ws')
-			.map((d: any) => allowQuoted ? d.text : d.value)
-	}
 	
-	function recursive ([left, rest]: any[]): any {
+	function recursive ([left, rest]: [any, any]): any {
 		if (rest && rest.length > 0) {
-			const [_, operator, right] = rest.shift()
+			const [, operator,, right] = rest.shift()
+			const operatorType = operator.type
 			return {
-				[operator && operator[0] || 'and']: [left, recursive([right, rest])]
+				[operatorType]: [left, recursive([right, rest])].flat()
 			}
 		}
 		return left
 	}
 
-interface NearleyToken {
-  value: any;
-  [key: string]: any;
-};
+	function implicit ([left, rest]: [any, any]) {
+		return {
+				and: [left, ...rest.map(([, right]: [any, any]) => right)]
+			}
+	}
 
-interface NearleyLexer {
-  reset: (chunk: string, info: any) => void;
-  next: () => NearleyToken | undefined;
-  save: () => any;
-  formatError: (token: never) => string;
-  has: (tokenType: string) => boolean;
-};
+	function inverse (data: any) {
+		if (data.in) {
+			return {
+				...data,
+				in: undefined,
+				exclude: data.in
+			}
+		}
+		if (data.exclude) {
+			return {
+				...data,
+				in: data.exclude,
+				exclude: undefined
+			}
+		}
+		const operator = data.or ? 'or' : 'and'
+		return {
+			[operator] : data[operator].map(inverse)
+		}
+	}
 
-interface NearleyRule {
-  name: string;
-  symbols: NearleySymbol[];
-  postprocess?: (d: any[], loc?: number, reject?: {}) => any;
-};
-
-type NearleySymbol = string | { literal: any } | { test: (token: any) => boolean };
-
-interface Grammar {
-  Lexer: NearleyLexer | undefined;
-  ParserRules: NearleyRule[];
-  ParserStart: string;
-};
-
-const grammar: Grammar = {
-  Lexer: lexer,
-  ParserRules: [
-    {"name": "STATEMENT$ebnf$1", "symbols": []},
-    {"name": "STATEMENT$ebnf$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["OPERATOR", "__"]},
-    {"name": "STATEMENT$ebnf$1$subexpression$1$ebnf$1", "symbols": ["STATEMENT$ebnf$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
-    {"name": "STATEMENT$ebnf$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "STATEMENT$ebnf$1$subexpression$1", "symbols": ["__", "STATEMENT$ebnf$1$subexpression$1$ebnf$1", "NODE"]},
-    {"name": "STATEMENT$ebnf$1", "symbols": ["STATEMENT$ebnf$1", "STATEMENT$ebnf$1$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
+	function applyFacet (data: any, facetName: string) {
+		if (data.in || data.exclude) {
+			return {
+				...data,
+				name: facetName,
+				fullText: fullTextFacet.includes(facetName)
+			}
+		}
+		const operator = data.or ? 'or' : 'and'
+		return {
+			[operator] : data[operator].map((d: any) => applyFacet(d, facetName))
+		}
+	}
+var grammar = {
+    Lexer: lexer,
+    ParserRules: [
+    {"name": "STATEMENT", "symbols": ["NODE"], "postprocess": id},
+    {"name": "STATEMENT$ebnf$1$subexpression$1", "symbols": ["__", "OPERATOR", "__", "STATEMENT"]},
+    {"name": "STATEMENT$ebnf$1", "symbols": ["STATEMENT$ebnf$1$subexpression$1"]},
+    {"name": "STATEMENT$ebnf$1$subexpression$2", "symbols": ["__", "OPERATOR", "__", "STATEMENT"]},
+    {"name": "STATEMENT$ebnf$1", "symbols": ["STATEMENT$ebnf$1", "STATEMENT$ebnf$1$subexpression$2"], "postprocess": function arrpush(d: any) {return d[0].concat([d[1]]);}},
     {"name": "STATEMENT", "symbols": ["NODE", "STATEMENT$ebnf$1"], "postprocess": recursive},
-    {"name": "NODE", "symbols": ["lparen", "STATEMENT", "rparen"], "postprocess": ([lparen, logical]) => logical},
-    {"name": "NODE", "symbols": ["LOGICAL_EXPRESSION"], "postprocess": id},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1", "symbols": []},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["OPERATOR", "__"]},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1", "symbols": ["LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1$subexpression$1", "symbols": ["__", "LOGICAL_EXPRESSION$ebnf$1$subexpression$1$ebnf$1", "TEXT_FACET_EXPRESSION"]},
-    {"name": "LOGICAL_EXPRESSION$ebnf$1", "symbols": ["LOGICAL_EXPRESSION$ebnf$1", "LOGICAL_EXPRESSION$ebnf$1$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "LOGICAL_EXPRESSION", "symbols": ["TEXT_FACET_EXPRESSION", "LOGICAL_EXPRESSION$ebnf$1"], "postprocess": recursive},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$1", "symbols": ["FACET"], "postprocess": id},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$2", "symbols": ["EXCLUDE"], "postprocess": id},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$2", "symbols": [], "postprocess": () => null},
-    {"name": "TEXT_FACET_EXPRESSION", "symbols": ["TEXT_FACET_EXPRESSION$ebnf$1", "TEXT_FACET_EXPRESSION$ebnf$2", "lparen", "WORDS", "rparen"], "postprocess":  ([facet, exclude, lparen, text, rparen], i, reject) => {
-        const fullText = facet ? facet.fullText : true
-        return {
-        		name: facet && facet.name || 'all',
-        		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
-        		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
-        		fullText
-        	}
-        } },
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$3", "symbols": ["FACET"], "postprocess": id},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$3", "symbols": [], "postprocess": () => null},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$4", "symbols": ["EXCLUDE"], "postprocess": id},
-    {"name": "TEXT_FACET_EXPRESSION$ebnf$4", "symbols": [], "postprocess": () => null},
-    {"name": "TEXT_FACET_EXPRESSION", "symbols": ["TEXT_FACET_EXPRESSION$ebnf$3", "TEXT_FACET_EXPRESSION$ebnf$4", "WORD"], "postprocess":  ([facet, exclude, text], i, reject) => {
-        const fullText = facet ? facet.fullText : true
-        return {
-        		name: facet && facet.name || 'all',
-        		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
-        		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
-        		fullText
-        	}
-        } },
-    {"name": "FACET$ebnf$1", "symbols": ["EXCLUDE"], "postprocess": id},
-    {"name": "FACET$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "FACET", "symbols": ["FACET$ebnf$1", (lexer.has("facet") ? {type: "facet"} : facet)], "postprocess":  ([exclude, facet]) => ({
-        	exclude: exclude !== null,
-        	name: facet.value,
-        	fullText: fullTextFacet.includes(facet.value) || undefined
+    {"name": "STATEMENT$ebnf$2$subexpression$1", "symbols": ["__", "STATEMENT"]},
+    {"name": "STATEMENT$ebnf$2", "symbols": ["STATEMENT$ebnf$2$subexpression$1"]},
+    {"name": "STATEMENT$ebnf$2$subexpression$2", "symbols": ["__", "STATEMENT"]},
+    {"name": "STATEMENT$ebnf$2", "symbols": ["STATEMENT$ebnf$2", "STATEMENT$ebnf$2$subexpression$2"], "postprocess": function arrpush(d: any) {return d[0].concat([d[1]]);}},
+    {"name": "STATEMENT", "symbols": ["NODE", "STATEMENT$ebnf$2"], "postprocess": implicit},
+    {"name": "NODE", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), "STATEMENT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([, logical]: any[]) => logical},
+    {"name": "NODE", "symbols": ["EXCLUDE", (lexer.has("lparen") ? {type: "lparen"} : lparen), "STATEMENT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([,, logical]: any[]) => inverse(logical)},
+    {"name": "NODE", "symbols": ["NODE_FACET"], "postprocess": id},
+    {"name": "NODE", "symbols": ["NODE_TEXT"], "postprocess": id},
+    {"name": "NODE_FACET", "symbols": ["EXCLUDE", "FACET", "FACET_TEXT"], "postprocess": ([, facet, node]: any[]) => inverse(applyFacet(node, facet.value))},
+    {"name": "NODE_FACET", "symbols": ["FACET", "FACET_TEXT"], "postprocess": ([facet, node]: any[]) => applyFacet(node, facet.value)},
+    {"name": "FACET_TEXT", "symbols": ["TEXT_EXPRESSION"], "postprocess": id},
+    {"name": "FACET_TEXT", "symbols": ["EXCLUDE_TEXT_EXPRESSION"], "postprocess": id},
+    {"name": "FACET_TEXT", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), "STATEMENT_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([, logical]: any[]) => logical},
+    {"name": "FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet)], "postprocess": id},
+    {"name": "STATEMENT_TEXT", "symbols": ["NODE_TEXT"], "postprocess": id},
+    {"name": "STATEMENT_TEXT$ebnf$1$subexpression$1", "symbols": ["__", "OPERATOR", "__", "NODE_TEXT"]},
+    {"name": "STATEMENT_TEXT$ebnf$1", "symbols": ["STATEMENT_TEXT$ebnf$1$subexpression$1"]},
+    {"name": "STATEMENT_TEXT$ebnf$1$subexpression$2", "symbols": ["__", "OPERATOR", "__", "NODE_TEXT"]},
+    {"name": "STATEMENT_TEXT$ebnf$1", "symbols": ["STATEMENT_TEXT$ebnf$1", "STATEMENT_TEXT$ebnf$1$subexpression$2"], "postprocess": function arrpush(d: any) {return d[0].concat([d[1]]);}},
+    {"name": "STATEMENT_TEXT", "symbols": ["NODE_TEXT", "STATEMENT_TEXT$ebnf$1"], "postprocess": recursive},
+    {"name": "STATEMENT_TEXT$ebnf$2$subexpression$1", "symbols": ["__", "NODE_TEXT"]},
+    {"name": "STATEMENT_TEXT$ebnf$2", "symbols": ["STATEMENT_TEXT$ebnf$2$subexpression$1"]},
+    {"name": "STATEMENT_TEXT$ebnf$2$subexpression$2", "symbols": ["__", "NODE_TEXT"]},
+    {"name": "STATEMENT_TEXT$ebnf$2", "symbols": ["STATEMENT_TEXT$ebnf$2", "STATEMENT_TEXT$ebnf$2$subexpression$2"], "postprocess": function arrpush(d: any) {return d[0].concat([d[1]]);}},
+    {"name": "STATEMENT_TEXT", "symbols": ["NODE_TEXT", "STATEMENT_TEXT$ebnf$2"], "postprocess": implicit},
+    {"name": "NODE_TEXT", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), "STATEMENT_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([, logical]: any[]) => logical},
+    {"name": "NODE_TEXT", "symbols": ["EXCLUDE", (lexer.has("lparen") ? {type: "lparen"} : lparen), "STATEMENT_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([,, logical]: any[]) => inverse(logical)},
+    {"name": "NODE_TEXT", "symbols": ["EXCLUDE_TEXT_EXPRESSION"], "postprocess": id},
+    {"name": "NODE_TEXT", "symbols": ["MULTIPLE_TEXT_EXPRESSION"], "postprocess": id},
+    {"name": "NODE_TEXT", "symbols": ["TEXT_EXPRESSION"], "postprocess": id},
+    {"name": "MULTIPLE_TEXT_EXPRESSION$ebnf$1$subexpression$1", "symbols": ["__", "TEXT"]},
+    {"name": "MULTIPLE_TEXT_EXPRESSION$ebnf$1", "symbols": ["MULTIPLE_TEXT_EXPRESSION$ebnf$1$subexpression$1"]},
+    {"name": "MULTIPLE_TEXT_EXPRESSION$ebnf$1$subexpression$2", "symbols": ["__", "TEXT"]},
+    {"name": "MULTIPLE_TEXT_EXPRESSION$ebnf$1", "symbols": ["MULTIPLE_TEXT_EXPRESSION$ebnf$1", "MULTIPLE_TEXT_EXPRESSION$ebnf$1$subexpression$2"], "postprocess": function arrpush(d: any) {return d[0].concat([d[1]]);}},
+    {"name": "MULTIPLE_TEXT_EXPRESSION", "symbols": ["TEXT", "MULTIPLE_TEXT_EXPRESSION$ebnf$1"], "postprocess":  ([text, rest]: any[]) => ({
+        	in: [text.value, ...rest.map((d: any) => d[1].value)],
+        	name: 'all',
+        	fullText: true
         }) },
-    {"name": "EXCLUDE$subexpression$1", "symbols": [(lexer.has("excludeoperator") ? {type: "excludeoperator"} : excludeoperator)]},
-    {"name": "EXCLUDE$subexpression$1", "symbols": [(lexer.has("excludeword") ? {type: "excludeword"} : excludeword), "__"]},
-    {"name": "EXCLUDE", "symbols": ["EXCLUDE$subexpression$1"], "postprocess": id},
-    {"name": "OPERATOR$subexpression$1", "symbols": ["AND"]},
-    {"name": "OPERATOR$subexpression$1", "symbols": ["OR"]},
-    {"name": "OPERATOR", "symbols": ["OPERATOR$subexpression$1"]},
+    {"name": "EXCLUDE_TEXT_EXPRESSION", "symbols": ["EXCLUDE", "TEXT"], "postprocess":  ([exclude, text]: any[]) => ({
+        	exclude: [text.value],
+        	name: 'all',
+        	fullText: true
+        }) },
+    {"name": "TEXT_EXPRESSION", "symbols": ["TEXT"], "postprocess":  ([text]: any[]) => ({
+        	in: [text.value],
+        	name: 'all',
+        	fullText: true
+        }) },
+    {"name": "TEXT", "symbols": [(lexer.has("word") ? {type: "word"} : word)], "postprocess": id},
+    {"name": "TEXT", "symbols": ["QUOTED"], "postprocess": id},
+    {"name": "EXCLUDE", "symbols": [(lexer.has("excludeoperator") ? {type: "excludeoperator"} : excludeoperator)], "postprocess": id},
+    {"name": "EXCLUDE", "symbols": [(lexer.has("excludeword") ? {type: "excludeword"} : excludeword), "__"], "postprocess": id},
+    {"name": "OPERATOR", "symbols": ["AND"], "postprocess": id},
+    {"name": "OPERATOR", "symbols": ["OR"], "postprocess": id},
     {"name": "AND$subexpression$1", "symbols": [(lexer.has("and") ? {type: "and"} : and)]},
     {"name": "AND$subexpression$1", "symbols": [(lexer.has("andbis") ? {type: "andbis"} : andbis)]},
-    {"name": "AND", "symbols": ["AND$subexpression$1"], "postprocess": d => 'and'},
+    {"name": "AND", "symbols": ["AND$subexpression$1"], "postprocess": () => ({ type: 'and' })},
     {"name": "OR$subexpression$1", "symbols": [(lexer.has("or") ? {type: "or"} : or)]},
     {"name": "OR$subexpression$1", "symbols": [(lexer.has("orbis") ? {type: "orbis"} : orbis)]},
-    {"name": "OR", "symbols": ["OR$subexpression$1"], "postprocess": d => 'or'},
-    {"name": "WORDS$ebnf$1", "symbols": []},
-    {"name": "WORDS$ebnf$1$subexpression$1", "symbols": ["__", "WORD"]},
-    {"name": "WORDS$ebnf$1", "symbols": ["WORDS$ebnf$1", "WORDS$ebnf$1$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "WORDS", "symbols": ["WORD", "WORDS$ebnf$1"]},
-    {"name": "WORD", "symbols": [(lexer.has("word") ? {type: "word"} : word)]},
-    {"name": "WORD", "symbols": ["QUOTED"]},
-    {"name": "QUOTED$subexpression$1", "symbols": ["SINGLEQUOTED"]},
-    {"name": "QUOTED$subexpression$1", "symbols": ["DOUBLEQUOTED"]},
-    {"name": "QUOTED", "symbols": ["QUOTED$subexpression$1"]},
-    {"name": "SINGLEQUOTED", "symbols": [(lexer.has("singlequoted") ? {type: "singlequoted"} : singlequoted)]},
-    {"name": "DOUBLEQUOTED", "symbols": [(lexer.has("doublequoted") ? {type: "doublequoted"} : doublequoted)]},
-    {"name": "lparen", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen)], "postprocess": undefined},
-    {"name": "rparen", "symbols": [(lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": undefined},
+    {"name": "OR", "symbols": ["OR$subexpression$1"], "postprocess": () => ({ type: 'or' })},
+    {"name": "QUOTED", "symbols": ["SINGLEQUOTED"], "postprocess": id},
+    {"name": "QUOTED", "symbols": ["DOUBLEQUOTED"], "postprocess": id},
+    {"name": "SINGLEQUOTED", "symbols": [(lexer.has("singlequoted") ? {type: "singlequoted"} : singlequoted)], "postprocess": id},
+    {"name": "DOUBLEQUOTED", "symbols": [(lexer.has("doublequoted") ? {type: "doublequoted"} : doublequoted)], "postprocess": id},
     {"name": "_$ebnf$1", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": id},
-    {"name": "_$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "_", "symbols": ["_$ebnf$1"], "postprocess": undefined},
-    {"name": "__", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": undefined}
-  ],
-  ParserStart: "STATEMENT",
+    {"name": "_$ebnf$1", "symbols": [], "postprocess": function(d: any) {return null;}},
+    {"name": "_", "symbols": ["_$ebnf$1"], "postprocess": id},
+    {"name": "__", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": id}
+]
+  , ParserStart: "STATEMENT"
 };
 
 export default grammar;

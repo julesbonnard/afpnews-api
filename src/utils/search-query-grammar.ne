@@ -1,4 +1,3 @@
-@preprocessor typescript
 @{%
 	// Moo lexer documention is here:
 	// https://github.com/no-context/moo
@@ -7,15 +6,15 @@
 	const lexer = moo.compile({
 	  ws: / +/,
 	  doublequoted: {
-		  match: /"(?:[^"\\]|\\.)*"?/,
+		  match: /"(?:[^"\\]|\\.)*"/,
 		  value: (s: string) => s.slice(1, -1)
 	  },
 	  singlequoted: {
-		  match: /'(?:[^'\\]|\\.)*'?/,
+		  match: /'(?:[^'\\]|\\.)*'/,
 		  value: (s: string) => s.slice(1, -1)
 	  },
 	  facet: {
-		  match: /[a-zA-Z\._-]+[=:]/,
+		  match: /[a-zA-Z\._]+[=:]/,
 		  value: (s: string) => s.slice(0, -1)
 	  },
 	  lparen: '(',
@@ -26,77 +25,127 @@
 	  andbis: '&&',
 	  or: 'OR',
 	  orbis: '||',
-	  word: /[a-zA-ZÀ-ÿ0-9\.-]+/
+	  word: /[a-zA-ZÀ-ÿ0-9'\.-]+/
 	})
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
-
-	function flattenText (data: any[], allowQuoted: true) {
-		return data.flat(Infinity)
-			.filter((d: any) => d.type !== 'ws')
-			.map((d: any) => allowQuoted ? d.text : d.value)
-	}
 	
-	function recursive ([left, rest]: any[]): any {
+	function recursive ([left, rest]: [any, any]) {
 		if (rest && rest.length > 0) {
-			const [_, operator, right] = rest.shift()
+			const [, operator,, right] = rest.shift()
+			const operatorType = operator.type
 			return {
-				[operator && operator[0] || 'and']: [left, recursive([right, rest])]
+				[operatorType]: [left, recursive([right, rest])].flat()
 			}
 		}
 		return left
+	}
+
+	function implicit ([left, rest]: [any, any]) {
+		return {
+				and: [left, ...rest.map(([, right]: [any, any]) => right)]
+			}
+	}
+
+	function inverse (data: any) {
+		if (data.in) {
+			return {
+				...data,
+				in: undefined,
+				exclude: data.in
+			}
+		}
+		if (data.exclude) {
+			return {
+				...data,
+				in: data.exclude,
+				exclude: undefined
+			}
+		}
+		const operator = data.or ? 'or' : 'and'
+		return {
+			[operator] : data[operator].map(inverse)
+		}
+	}
+
+	function applyFacet (data: any, facetName: string) {
+		if (data.in || data.exclude) {
+			return {
+				...data,
+				name: facetName,
+				fullText: fullTextFacet.includes(facetName)
+			}
+		}
+		const operator = data.or ? 'or' : 'and'
+		return {
+			[operator] : data[operator].map((d: any) => applyFacet(d, facetName))
+		}
 	}
 %}
 
 # Pass your lexer with @lexer:
 @lexer lexer
 
-STATEMENT -> NODE (__ (OPERATOR __):? NODE):* {% recursive %}
+STATEMENT -> NODE {% id %}
+| NODE (__ OPERATOR __ STATEMENT):+ {% recursive %}
+| NODE (__ STATEMENT):+ {% implicit %}
 
-NODE -> lparen STATEMENT rparen {% ([lparen, logical]) => logical %}
-| LOGICAL_EXPRESSION {% id %}
+NODE -> %lparen STATEMENT %rparen {% ([, logical]) => logical %}
+| EXCLUDE %lparen STATEMENT %rparen {% ([,, logical]) => inverse(logical) %}
+| NODE_FACET {% id %}
+| NODE_TEXT {% id %}
 
-LOGICAL_EXPRESSION -> TEXT_FACET_EXPRESSION (__ (OPERATOR __):? TEXT_FACET_EXPRESSION):* {% recursive %}
+NODE_FACET -> 
+EXCLUDE FACET FACET_TEXT {% ([, facet, node]) => inverse(applyFacet(node, facet.value)) %}
+| FACET FACET_TEXT {% ([facet, node]) => applyFacet(node, facet.value) %}
 
-TEXT_FACET_EXPRESSION -> 
-FACET:? EXCLUDE:? lparen WORDS rparen {% ([facet, exclude, lparen, text, rparen], i, reject) => {
-const fullText = facet ? facet.fullText : true
-return {
-		name: facet && facet.name || 'all',
-		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
-		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
-		fullText
-	}
-} %}
-| FACET:? EXCLUDE:? WORD {% ([facet, exclude, text], i, reject) => {
-const fullText = facet ? facet.fullText : true
-return {
-		name: facet && facet.name || 'all',
-		exclude: facet && facet.exclude || exclude ? flattenText(text, fullText) : undefined,
-		in: facet && facet.exclude || exclude ? undefined : flattenText(text, fullText),
-		fullText
-	}
-} %}
+FACET_TEXT -> TEXT_EXPRESSION {% id %}
+| EXCLUDE_TEXT_EXPRESSION {% id %}
+| %lparen STATEMENT_TEXT %rparen {% ([, logical]) => logical %}
 
-FACET -> EXCLUDE:? %facet {% ([exclude, facet]) => ({
-	exclude: exclude !== null,
-	name: facet.value,
-	fullText: fullTextFacet.includes(facet.value) || undefined
+FACET -> %facet {% id %}
+
+STATEMENT_TEXT -> 
+NODE_TEXT {% id %}
+| NODE_TEXT (__ OPERATOR __ NODE_TEXT):+ {% recursive %}
+| NODE_TEXT (__ NODE_TEXT):+ {% implicit %}
+
+NODE_TEXT -> 
+%lparen STATEMENT_TEXT %rparen {% ([, logical]) => logical %}
+| EXCLUDE %lparen STATEMENT_TEXT %rparen {% ([,, logical]) => inverse(logical) %}
+| EXCLUDE_TEXT_EXPRESSION {% id %}
+| MULTIPLE_TEXT_EXPRESSION {% id %}
+| TEXT_EXPRESSION {% id %}
+
+MULTIPLE_TEXT_EXPRESSION -> TEXT (__ TEXT):+ {% ([text, rest]) => ({
+	in: [text.value, ...rest.map(d => d[1].value)],
+	name: 'all',
+	fullText: true
 }) %}
 
-EXCLUDE -> (%excludeoperator | %excludeword __) {% id %}
+EXCLUDE_TEXT_EXPRESSION -> EXCLUDE TEXT {% ([exclude, text]) => ({
+	exclude: [text.value],
+	name: 'all',
+	fullText: true
+}) %}
 
-OPERATOR -> (AND | OR)
-AND -> (%and | %andbis) {% d => 'and' %}
-OR -> (%or | %orbis) {% d => 'or' %}
+TEXT_EXPRESSION -> TEXT {% ([text]) => ({
+	in: [text.value],
+	name: 'all',
+	fullText: true
+}) %}
 
-WORDS -> WORD (__ WORD):*
-WORD -> %word | QUOTED
-QUOTED -> (SINGLEQUOTED | DOUBLEQUOTED)
-SINGLEQUOTED -> %singlequoted
-DOUBLEQUOTED -> %doublequoted
+TEXT -> %word {% id %} | QUOTED {% id %}
 
-lparen -> %lparen {% undefined %}
-rparen -> %rparen {% undefined %}
-_ -> %ws:? {% undefined %}
-__ -> %ws {% undefined %}
+EXCLUDE -> %excludeoperator {% id %} | %excludeword __ {% id %}
+
+OPERATOR -> AND {% id %} | OR {% id %}
+AND -> (%and | %andbis) {% () => ({ type: 'and' }) %}
+OR -> (%or | %orbis) {% () => ({ type: 'or' }) %}
+
+QUOTED -> SINGLEQUOTED {% id %} | DOUBLEQUOTED {% id %}
+SINGLEQUOTED -> %singlequoted {% id %}
+DOUBLEQUOTED -> %doublequoted {% id %}
+
+_ -> %ws:? {% id %}
+__ -> %ws {% id %}
