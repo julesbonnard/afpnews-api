@@ -12,6 +12,10 @@
       <div class="col-12 col-md-4">
           <form action="javascript:;" onsubmit="authenticate(this)">
             <div class="form-group">
+              <label for="base-url">Base Url</label>
+              <input type="text" class="form-control" id="base-url" placeholder="Base Url" name="base-url" value="https://api.afp.com">
+            </div>
+            <div class="form-group">
               <label for="client-id">Client ID</label>
               <input type="text" class="form-control" id="client-id" aria-describedby="clientId" placeholder="Client ID" name="client-id">
             </div>
@@ -38,7 +42,7 @@
           <textarea id="token" class="form-control mt-4" rows="10"></textarea>
       </div>
       <div class="col-12 col-md-8">
-        <input id="search" type="text" name="search" placeholder="Search..." oninput="search(this.value)" class="form-control form-control-lg" />
+        <input id="search" type="text" name="search" placeholder="Search..." onchange="search(this.value)" class="form-control form-control-lg" />
         <div class="container">
             <div id="results" class="mt-4 row"></div>
         </div>
@@ -70,6 +74,7 @@
     }
 
     function authenticate (form) {
+      const baseUrl = form.elements['base-url'].value
       const clientId = form.elements['client-id'].value
       const clientSecret = form.elements['client-secret'].value
       const customAuthUrl = form.elements['custom-auth-url'].value
@@ -77,6 +82,7 @@
       const password = form.elements['password'].value
       
       afpNews = new AfpNews({
+        baseUrl,
         clientId,
         clientSecret,
         customAuthUrl,
