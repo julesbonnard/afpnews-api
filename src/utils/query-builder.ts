@@ -11,7 +11,7 @@ export default function buildQuery (query: string | undefined): Request | undefi
   try {
     parser.feed(query.trim())
   } catch (parseError: any) {
-    console.log(parseError)
+    return
   }
   if (!parser.results || parser.results.length === 0) {
     throw new Error('Invalid query')
