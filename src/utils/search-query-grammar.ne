@@ -2,20 +2,14 @@
 	// Moo lexer documention is here:
 	// https://github.com/no-context/moo
 
-	import moo from 'moo'
+	const moo = require('moo')
 	const lexer = moo.compile({
 	  ws: / +/,
-	  doublequoted: {
-		  match: /"(?:[^"\\]|\\.)*"/,
-		  value: (s: string) => s.slice(1, -1)
-	  },
-	  singlequoted: {
-		  match: /'(?:[^'\\]|\\.)*'/,
-		  value: (s: string) => s.slice(1, -1)
-	  },
+	  doublequoted: /"(?:[^"\\]|\\.)*"/,
+	  singlequoted: /'(?:[^'\\]|\\.)*'/,
 	  facet: {
 		  match: /[a-zA-Z\._]+[=:]/,
-		  value: (s: string) => s.slice(0, -1)
+		  value: (s) => s.slice(0, -1)
 	  },
 	  lparen: '(',
       rparen: ')',
@@ -29,37 +23,31 @@
 	})
 	
 	const fullTextFacet = ['all', 'news', 'title', 'headline', 'advisory', 'comment', 'copyright', 'disclaimer', 'doc_creator_name', 'summary']
-	
-	function recursive ([left, rest]: [any, any]) {
-		if (rest && rest.length > 0) {
-			const [, operator,, right] = rest.shift()
-			const operatorType = operator.type
-			return {
-				[operatorType]: [left, recursive([right, rest])].flat()
+
+	function logical (left, right, operator = 'and') {
+		if (operator === 'and' && left.name && right.name && left.name === right.name) {
+			const leftKey = left.and ? 'and' : 'exclude'
+			const rightKey = right.and ? 'and' : 'exclude'
+			if (leftKey === rightKey && left.fullText === right.fullText) {
+				return {
+					...left,
+					[leftKey]: [...left[leftKey], ...right[rightKey]]
+				}
 			}
 		}
-		return left
-	}
-
-	function implicit ([left, rest]: [any, any]) {
+		left = (left[operator] && !left.name) ? left[operator] : [left]
+		right = (right[operator] && !right.name) ? right[operator] : [right]
 		return {
-				and: [left, ...rest.map(([, right]: [any, any]) => right)]
-			}
+			[operator]: [...left, ...right]
+		}
 	}
 
-	function inverse (data: any) {
-		if (data.in) {
+	function inverse (data) {
+		if (data.name) {
 			return {
-				...data,
-				in: undefined,
-				exclude: data.in
-			}
-		}
-		if (data.exclude) {
-			return {
-				...data,
-				in: data.exclude,
-				exclude: undefined
+				name: data.name,
+				fullText: data.fullText,
+				[data.and ? 'exclude' : 'and']: data[data.and ? 'and' : 'exclude']
 			}
 		}
 		const operator = data.or ? 'or' : 'and'
@@ -68,17 +56,34 @@
 		}
 	}
 
-	function applyFacet (data: any, facetName: string) {
-		if (data.in || data.exclude) {
+	function handleQuotes (text, isFullText) {
+		if (!isFullText && (text[0] === "'" || text[0] === "\"")) {
+			return text.slice(1, -1)
+		}
+		return text
+	}
+
+	function applyFacet (data, facetName) {
+		const isFullText = fullTextFacet.includes(facetName)
+		if (data.name) {
+			const key = data.and ? 'and' : 'exclude'
 			return {
-				...data,
 				name: facetName,
-				fullText: fullTextFacet.includes(facetName)
+				fullText: isFullText,
+				[key]: data[key].map(d => handleQuotes(d, isFullText))
 			}
 		}
 		const operator = data.or ? 'or' : 'and'
 		return {
-			[operator] : data[operator].map((d: any) => applyFacet(d, facetName))
+			[operator] : data[operator].map((d) => applyFacet(d, facetName))
+		}
+	}
+
+	function concatenateText (left, right, key = 'and') {
+		return {
+			[key]: right ? [...left[key], ...right[key]] : [left.text],
+			name: 'all',
+			fullText: true
 		}
 	}
 %}
@@ -86,54 +91,42 @@
 # Pass your lexer with @lexer:
 @lexer lexer
 
-STATEMENT -> NODE {% id %}
-| NODE (__ OPERATOR __ STATEMENT):+ {% recursive %}
-| NODE (__ STATEMENT):+ {% implicit %}
-
-NODE -> %lparen STATEMENT %rparen {% ([, logical]) => logical %}
-| EXCLUDE %lparen STATEMENT %rparen {% ([,, logical]) => inverse(logical) %}
+STATEMENT ->
+STATEMENT __ STATEMENT {% ([left,, right]) => logical(left, right) %}
+| STATEMENT __ OR __ STATEMENT {% ([left,,operator,,right]) => logical(left, right, 'or') %}
+| STATEMENT __ AND __ STATEMENT {% ([left,,operator,,right]) => logical(left, right, 'and') %}
+| EXCLUDE %lparen STATEMENT %rparen {% ([,, statement]) => inverse(statement) %}
+| %lparen STATEMENT %rparen {% ([, statement]) => statement %}
 | NODE_FACET {% id %}
 | NODE_TEXT {% id %}
 
 NODE_FACET -> 
-EXCLUDE FACET FACET_TEXT {% ([, facet, node]) => inverse(applyFacet(node, facet.value)) %}
-| FACET FACET_TEXT {% ([facet, node]) => applyFacet(node, facet.value) %}
-
-FACET_TEXT -> TEXT_EXPRESSION {% id %}
-| EXCLUDE_TEXT_EXPRESSION {% id %}
-| %lparen STATEMENT_TEXT %rparen {% ([, logical]) => logical %}
-
-FACET -> %facet {% id %}
-
-STATEMENT_TEXT -> 
-NODE_TEXT {% id %}
-| NODE_TEXT (__ OPERATOR __ NODE_TEXT):+ {% recursive %}
-| NODE_TEXT (__ NODE_TEXT):+ {% implicit %}
+EXCLUDE %facet %lparen NODE_TEXT %rparen {% ([, facet,, node]) => inverse(applyFacet(node, facet.value)) %}
+| %facet EXCLUDE %lparen NODE_TEXT %rparen {% ([facet,,, node]) => inverse(applyFacet(node, facet.value)) %}
+| %facet EXCLUDE_TEXT_EXPRESSION {% ([facet, node]) => inverse(applyFacet(node, facet.value)) %}
+| %facet %lparen NODE_TEXT %rparen {% ([facet,, node]) => applyFacet(node, facet.value) %}
+| %facet TEXT_EXPRESSION {% ([facet, node]) => applyFacet(node, facet.value) %}
 
 NODE_TEXT -> 
-%lparen STATEMENT_TEXT %rparen {% ([, logical]) => logical %}
-| EXCLUDE %lparen STATEMENT_TEXT %rparen {% ([,, logical]) => inverse(logical) %}
-| EXCLUDE_TEXT_EXPRESSION {% id %}
+%lparen NODE_TEXT %rparen {% ([, node]) => node %}
+| EXCLUDE %lparen NODE_TEXT %rparen {% ([,, node]) => inverse(node) %}
+| NODE_TEXT __ OR __ NODE_TEXT {% ([left,, operator,, right]) => logical(left, right, 'or') %}
+| NODE_TEXT __ AND __ NODE_TEXT {% ([left,, operator,, right]) => logical(left, right, 'and') %}
+| NODE_TEXT __ NODE_TEXT {% ([left,, right]) => logical(left, right) %}
+| MULTIPLE_EXCLUDE_TEXT_EXPRESSION {% id %}
 | MULTIPLE_TEXT_EXPRESSION {% id %}
-| TEXT_EXPRESSION {% id %}
 
-MULTIPLE_TEXT_EXPRESSION -> TEXT (__ TEXT):+ {% ([text, rest]) => ({
-	in: [text.value, ...rest.map(d => d[1].value)],
-	name: 'all',
-	fullText: true
-}) %}
+MULTIPLE_TEXT_EXPRESSION -> TEXT_EXPRESSION {% id %}
+| MULTIPLE_TEXT_EXPRESSION __ TEXT_EXPRESSION {% ([left,, right]) => concatenateText(left, right) %}
+| MULTIPLE_TEXT_EXPRESSION __ AND __ TEXT_EXPRESSION {% ([left,,,, right]) => concatenateText(left, right) %}
 
-EXCLUDE_TEXT_EXPRESSION -> EXCLUDE TEXT {% ([exclude, text]) => ({
-	exclude: [text.value],
-	name: 'all',
-	fullText: true
-}) %}
+MULTIPLE_EXCLUDE_TEXT_EXPRESSION -> EXCLUDE_TEXT_EXPRESSION {% id %}
+| MULTIPLE_EXCLUDE_TEXT_EXPRESSION __ EXCLUDE_TEXT_EXPRESSION {% ([left,, right]) => concatenateText(left, right, 'exclude') %}
+| MULTIPLE_EXCLUDE_TEXT_EXPRESSION __ AND __ EXCLUDE_TEXT_EXPRESSION {% ([left,,,, right]) => concatenateText(left, right, 'exclude') %}
 
-TEXT_EXPRESSION -> TEXT {% ([text]) => ({
-	in: [text.value],
-	name: 'all',
-	fullText: true
-}) %}
+EXCLUDE_TEXT_EXPRESSION -> EXCLUDE TEXT {% ([, text]) => concatenateText(text, null, 'exclude') %}
+
+TEXT_EXPRESSION -> TEXT {% ([text]) => concatenateText(text) %}
 
 TEXT -> %word {% id %} | QUOTED {% id %}
 
