@@ -33,13 +33,21 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       topics
     } = Object.assign({}, this.defaultSearchParams, params)
 
-    const builtQuery = buildQuery(query)
-    const optionnalParams: any = {}
-    const optionnalRequest: [any?] = []
+    const body: Query = {
+      dateRange: {
+        from: dateFrom as string,
+        to: dateTo as string
+      },
+      maxRows: maxRows as number,
+      sortField: sortField as SortField,
+      sortOrder: sortOrder as SortOrder
+    }
 
     if ((!query || !query.includes('lang:')) && langs && langs.length > 0 && (!topics || topics.length === 0)) {
-      optionnalParams.lang = langs.join(',')
+      body.lang = langs.join(',')
     }
+
+    const optionnalRequest: [any?] = []
 
     if (products && products.length > 0) {
       optionnalRequest.push({
@@ -69,6 +77,7 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       })
     }
 
+    const builtQuery = buildQuery(query)
     let request: Request | undefined
     if (optionnalRequest.length > 0) {
       request = {
@@ -81,23 +90,9 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       request = builtQuery
     }
 
-    const body: Query = {
-      maxRows: maxRows as number,
-      query: request,
-      ...optionnalParams,
-      fields: fields.length > 0 ? fields : undefined,
-      sortField: sortField as SortField,
-      sortOrder: sortOrder as SortOrder
-    }
+    if (request) body.query = request
+    if (fields.length > 0) body.fields = fields
 
-    if (dateFrom || dateTo) {
-      body.dateRange = {
-        from: dateFrom as string,
-        to: dateTo as string
-      }
-    }
-
-    removeUndefinedKeys(body)
     return body
   }
 

@@ -93,8 +93,10 @@ export interface Query {
     from: string
     to: string
   }
-  query: Request
+  query?: Request
   uno?: string
+  fields?: string[]
+  lang?: string
 }
 
 export interface ClientCredentials {
