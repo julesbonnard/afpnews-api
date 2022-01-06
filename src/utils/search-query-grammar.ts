@@ -115,7 +115,7 @@ var grammar = {
     {"name": "STATEMENT", "symbols": ["NODE_TEXT"], "postprocess": id},
     {"name": "NODE_FACET", "symbols": ["EXCLUDE", (lexer.has("facet") ? {type: "facet"} : facet), (lexer.has("lparen") ? {type: "lparen"} : lparen), "NODE_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([, facet,, node]: any[]) => inverse(applyFacet(node, facet.value))},
     {"name": "NODE_FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet), "EXCLUDE", (lexer.has("lparen") ? {type: "lparen"} : lparen), "NODE_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([facet,,, node]: any[]) => inverse(applyFacet(node, facet.value))},
-    {"name": "NODE_FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet), "EXCLUDE_TEXT_EXPRESSION"], "postprocess": ([facet, node]: any[]) => inverse(applyFacet(node, facet.value))},
+    {"name": "NODE_FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet), "EXCLUDE_TEXT_EXPRESSION"], "postprocess": ([facet, node]: any[]) => applyFacet(node, facet.value)},
     {"name": "NODE_FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet), (lexer.has("lparen") ? {type: "lparen"} : lparen), "NODE_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([facet,, node]: any[]) => applyFacet(node, facet.value)},
     {"name": "NODE_FACET", "symbols": [(lexer.has("facet") ? {type: "facet"} : facet), "TEXT_EXPRESSION"], "postprocess": ([facet, node]: any[]) => applyFacet(node, facet.value)},
     {"name": "NODE_TEXT", "symbols": [(lexer.has("lparen") ? {type: "lparen"} : lparen), "NODE_TEXT", (lexer.has("rparen") ? {type: "rparen"} : rparen)], "postprocess": ([, node]: any[]) => node},
