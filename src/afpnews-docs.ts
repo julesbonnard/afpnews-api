@@ -4,11 +4,6 @@ import { AfpResponseDocuments, AfpResponseTopics, ClientCredentials, Lang, Param
 import buildQuery from './utils/query-builder'
 import { get, post } from './utils/request'
 
-function removeUndefinedKeys (obj: any): any {
-  Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key])
-  return obj
-}
-
 export default class AfpNewsSearch extends AfpNewsAuth {
   constructor (credentials: ClientCredentials & { baseUrl?: string; saveToken?: (token: Token | null) => void } = {}) {
     super(credentials)

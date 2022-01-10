@@ -65,36 +65,6 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   }
 }
 
-// async function fetchXml (url: string, method: string, headers: object = {}, body?: any) {
-//   const response = await fetch(url, {
-//     method,
-//     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/rss+xml' })),
-//     body
-//   })
-
-//   let xml
-//   let httpStatus: { code: number, message?: string } = {
-//     code: response.status,
-//     message: response.statusText
-//   }
-
-//   try {
-//     xml = await response.text()
-//   } catch (e) {
-//     if (response.ok) {
-//       httpStatus = {
-//         code: 520
-//       }
-//     }
-//   }
-
-//   if (httpStatus.code < 300) {
-//     return xml
-//   } else {
-//     throw apiError(httpStatus.code, httpStatus.message)
-//   }
-// }
-
 export async function get (
   url: string,
   {
@@ -108,20 +78,6 @@ export async function get (
   }) {
   return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
 }
-
-// export async function getXml (
-//   url: string,
-//   {
-//     headers,
-//     params
-//   }: {
-//     params?: {
-//       [key: string]: string | number
-//     },
-//     headers?: AuthorizationHeaders
-//   }) {
-//   return fetchXml(params ? buildUrl(url, params) : url, 'GET', headers)
-// }
 
 export async function post (
   url: string,

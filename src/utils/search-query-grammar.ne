@@ -103,8 +103,8 @@ STATEMENT __ STATEMENT {% ([left,, right]) => logical(left, right) %}
 NODE_FACET -> 
 EXCLUDE %facet %lparen NODE_TEXT %rparen {% ([, facet,, node]) => inverse(applyFacet(node, facet.value)) %}
 | %facet EXCLUDE %lparen NODE_TEXT %rparen {% ([facet,,, node]) => inverse(applyFacet(node, facet.value)) %}
-| %facet EXCLUDE_TEXT_EXPRESSION {% ([facet, node]) => applyFacet(node, facet.value) %}
 | %facet %lparen NODE_TEXT %rparen {% ([facet,, node]) => applyFacet(node, facet.value) %}
+| %facet EXCLUDE_TEXT_EXPRESSION {% ([facet, node]) => applyFacet(node, facet.value) %}
 | %facet TEXT_EXPRESSION {% ([facet, node]) => applyFacet(node, facet.value) %}
 
 NODE_TEXT -> 
