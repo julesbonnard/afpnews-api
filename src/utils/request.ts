@@ -4,7 +4,7 @@ import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'
 
-function buildUrl (url: string, params: Object): string {
+function buildUrl (url: string, params: Object) {
   const builtUrl = new URL(url)
   Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, value))
   return builtUrl.toString()
@@ -22,10 +22,23 @@ function buildForm (form: Object) {
   return builtForm
 }
 
+class ApiError extends Error {
+  public code
+  constructor (message = 'Unknown Error', code = 520, ...params: any) {
+    super(message, ...params)
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError)
+    }
+
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
+
 function apiError (code: number, message?: string) {
-  const error: any = new Error(message || status(code) || `Request rejected with status ${code}`)
-  error.code = code
-  return error
+  return new ApiError(message?.split(';')[0] || status(code) || `Request rejected with status ${code}`, code)
 }
 
 async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
@@ -35,34 +48,17 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  let json
-  let httpStatus: { code: number; message?: string } = {
-    code: response.status,
-    message: response.statusText
+  if (response.status < 300) {
+    return response.json()
   }
 
-  try {
-    json = await response.json()
+  const { error } = await response.json() as { error: { code: number; message: string }}
 
-    if (json.error) {
-      httpStatus = {
-        code: json.error.code,
-        message: json.error.message
-      }
-    }
-  } catch (e) {
-    if (response.ok) {
-      httpStatus = {
-        code: 520
-      }
-    }
+  if (error) {
+    throw apiError(error.code, error.message)
   }
 
-  if (httpStatus.code < 300) {
-    return json
-  } else {
-    throw apiError(httpStatus.code, httpStatus.message)
-  }
+  throw apiError(response.status, response.statusText)
 }
 
 export async function get (
@@ -89,7 +85,7 @@ export async function post (
     params?: {
       [key: string]: string | number
     }
-    headers?: AuthorizationHeaders
+    headers: AuthorizationHeaders
   }) {
   headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
 

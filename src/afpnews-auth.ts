@@ -1,133 +1,80 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import btoa from 'btoa-lite'
-import { AuthorizationHeaders, AuthType, ClientCredentials, Token } from './types'
+import { AuthorizationHeaders, AuthType, ClientCredentials, Token, UserCredentials } from './types'
 import { get, postForm } from './utils/request'
+import { EventEmitter } from 'events'
+import { z } from 'zod'
 
-export default class AfpNewsAuth {
-  public token: Token | undefined
+const tokenSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string(),
+  expires_in: z.number()
+})
 
-  protected baseUrl: string
-
-  private apiKey: string | undefined
-  private customAuthUrl: string | undefined
-  private saveToken: Function
+export default class AfpNewsAuth extends EventEmitter {
+  public token?: Token
+  protected baseUrl
+  private apiKey
 
   constructor (
     {
+      baseUrl,
       apiKey,
       clientId,
-      clientSecret,
-      baseUrl,
-      customAuthUrl,
-      saveToken
-    }: ClientCredentials & {
-      baseUrl?: string
-      saveToken?: (token: Token | null) => void
-    } = {}
+      clientSecret
+    }: ClientCredentials
   ) {
-    this.credentials = { apiKey, clientId, clientSecret, customAuthUrl }
-    this.baseUrl = baseUrl || 'https://api.afp.com'
-    if (saveToken) {
-      this.saveToken = saveToken
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      this.saveToken = (token: Token) => {}
-    }
-  }
-
-  set credentials ({ clientId, clientSecret, apiKey, customAuthUrl }: ClientCredentials) {
-    if (clientId && clientSecret) {
-      delete this.customAuthUrl
-      this.apiKey = btoa(`${clientId}:${clientSecret}`)
-    } else if (apiKey) {
-      delete this.customAuthUrl
+    super()
+    if (apiKey) {
       this.apiKey = apiKey
-    } else if (customAuthUrl) {
-      delete this.apiKey
-      this.customAuthUrl = customAuthUrl
+    } else if (clientId) {
+      this.apiKey = btoa(`${clientId}:${clientSecret}`)
+    } else {
+      throw new Error('Missing API key or client credentials')
     }
+    this.baseUrl = baseUrl || 'https://afp-apicore-prod.afp.com'
   }
 
-  get authUrl (): string {
-    if (this.customAuthUrl) {
-      return this.customAuthUrl
-    }
+  get authUrl () {
     return `${this.baseUrl}/oauth/token`
   }
 
-  get isTokenValid (): boolean {
-    return (this.token as Token).tokenExpires > +new Date()
+  get isTokenValid () {
+    return this.token ? this.token.tokenExpires > +new Date() : false
   }
 
   get authorizationBearerHeaders (): AuthorizationHeaders {
-    if (!this.token) {
-      return {}
-    }
     return {
-      Authorization: `Bearer ${this.token.accessToken}`
+      Authorization: this.token && `Bearer ${this.token.accessToken}`
     }
   }
 
-  public async authenticate (
-    { username, password }:
-    { username?: string; password?: string } = {}
-  ): Promise<Token> {
-    if (this.apiKey) {
-      if (username && password) {
-        return this.requestAuthenticatedToken({ username, password })
-      }
+  public async authenticate (credentials?: UserCredentials) {
+    if (credentials) return this.requestAuthenticatedToken(credentials)
 
-      if (this.token === undefined) {
-        throw new Error('You need to authenticate with credentials once')
-      }
+    if (!this.token) return this.requestAnonymousToken()
 
-      if (this.isTokenValid === false) {
-        return this.requestRefreshToken()
-      }
+    if (!this.isTokenValid) return this.requestRefreshToken()
 
-      return this.token
-    }
-
-    if (this.customAuthUrl) {
-      if (username && password) {
-        return this.requestAuthenticatedToken({ username, password })
-      }
-
-      if (this.token && this.isTokenValid === false && this.token.authType === 'credentials') {
-        return this.requestRefreshToken()
-      }
-    }
-
-    if (username && password) {
-      throw new Error('You need an api key to make authenticated requests')
-    }
-
-    if (this.token && this.isTokenValid === true) {
-      return this.token
-    }
-
-    return this.requestAnonymousToken()
+    return this.token
   }
 
-  public resetToken (): void {
+  public resetToken () {
     delete this.token
-    this.saveToken(null)
+    this.emit('tokenChanged')
   }
 
-  private async requestAnonymousToken (): Promise<Token> {
-    const token = await get(this.authUrl, {
+  private async requestAnonymousToken () {
+    const token = tokenSchema.parse(await get(this.authUrl, {
       params: {
         grant_type: 'anonymous'
       }
-    })
+    }))
 
     return this.parseToken(token, 'anonymous')
   }
 
   get authorizationBasicHeaders (): AuthorizationHeaders {
-    if (this.customAuthUrl || !this.apiKey) {
-      return {}
-    }
     return {
       Authorization: `Basic ${this.apiKey}`
     }
@@ -135,9 +82,9 @@ export default class AfpNewsAuth {
 
   private async requestAuthenticatedToken (
     { username, password }:
-    { username: string; password: string }
-  ): Promise<Token> {
-    const token = await postForm(
+    UserCredentials
+  ) {
+    const token = tokenSchema.parse(await postForm(
       this.authUrl,
       {
         grant_type: 'password',
@@ -146,14 +93,14 @@ export default class AfpNewsAuth {
       }, {
         headers: this.authorizationBasicHeaders
       }
-    )
+    ))
 
     return this.parseToken(token, 'credentials')
   }
 
-  private async requestRefreshToken (): Promise<Token> {
+  private async requestRefreshToken () {
     const { refreshToken, authType } = this.token as Token
-    const newToken = await postForm(
+    const newToken = tokenSchema.parse(await postForm(
       this.authUrl,
       {
         grant_type: 'refresh_token',
@@ -161,44 +108,27 @@ export default class AfpNewsAuth {
       }, {
         headers: this.authorizationBasicHeaders
       }
-    )
+    ))
 
     return this.parseToken(newToken, authType)
   }
 
   private parseToken (
     {
-      access_token,
-      refresh_token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       expires_in
-    }: {
-      access_token: string
-      refresh_token: string
-      expires_in: number
-    },
+    }: z.infer<typeof tokenSchema>,
     authType: AuthType
-  ): Token {
+  ) {
     this.token = {
-      accessToken: access_token,
+      accessToken,
       authType,
-      refreshToken: refresh_token,
+      refreshToken,
       tokenExpires: +new Date() + expires_in * 1000
     }
-    this.saveToken(this.token)
+    this.emit('tokenChanged', this.token)
 
     return this.token
   }
-
-  // public async me () {
-  //   await this.authenticate()
-
-  //   const { user } = await get(`${this.baseUrl}/v1/user/me`, {
-  //     headers: this.authorizationBearerHeaders
-  //   })
-
-  //   return {
-  //     username: user.username,
-  //     email: user.email
-  //   }
-  // }
 }

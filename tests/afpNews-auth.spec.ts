@@ -91,20 +91,6 @@ describe('AFP News Auth', () => {
         expect(token).toEqual(afpNews.token)
       }
     )
-    test('should authorization headers be an empty object when token is not set and use customAuthUrl', () => {
-      const afpNews = new AfpNews({ baseUrl, customAuthUrl })
-      expect(afpNews.authorizationBearerHeaders).toEqual({})
-    })
-    test('should return an authenticated token when called without apiKey but credentials and a custom auth url', async () => {
-      const afpNews = new AfpNews({ baseUrl, customAuthUrl })
-      expect(afpNews.authUrl).toBe(customAuthUrl)
-      const token = await afpNews.authenticate({ username, password })
-      expect(typeof token.accessToken).toBe('string')
-      expect(typeof token.refreshToken).toBe('string')
-      expect(typeof token.tokenExpires).toBe('number')
-      expect(token.authType).toBe('credentials')
-      expect(token).toEqual(afpNews.token)
-    })
     test('should refresh token when token expires with api key', async () => {
       const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
       const token = await afpNews.authenticate({ username, password })
@@ -114,24 +100,8 @@ describe('AFP News Auth', () => {
       expect(newToken.accessToken).not.toEqual(token.accessToken)
       expect(newToken.authType).toBe('credentials')
     })
-    test('should refresh token when token expires with custom auth url', async () => {
-      const afpNews = new AfpNews({ baseUrl, customAuthUrl })
-      const token = await afpNews.authenticate({ username, password })
-      expect(token.authType).toBe('credentials')
-      afpNews.token = { ...token, tokenExpires: 0 }
-      const newToken = await afpNews.authenticate()
-      expect(newToken.accessToken).not.toEqual(token.accessToken)
-      expect(newToken.authType).toBe('credentials')
-    })
     test('should not refresh token when token is valid', async () => {
       const afpNews = new AfpNews({ baseUrl, clientId, clientSecret })
-      const token = await afpNews.authenticate({ username, password })
-      const newToken = await afpNews.authenticate()
-      expect(token.accessToken).toEqual(newToken.accessToken)
-      expect(token.authType).toBe('credentials')
-    })
-    test('should not refresh token when token is valid with custom auth url', async () => {
-      const afpNews = new AfpNews({ baseUrl, customAuthUrl })
       const token = await afpNews.authenticate({ username, password })
       const newToken = await afpNews.authenticate()
       expect(token.accessToken).toEqual(newToken.accessToken)
@@ -149,16 +119,6 @@ describe('AFP News Auth', () => {
       token.accessToken = 'false'
       afpNews.token = token
       return expect(afpNews.search()).rejects.toEqual(new Error('Invalid access token: false'))
-    })
-    test('should allow to save token', done => {
-      const afpNews = new AfpNews({
-        baseUrl,
-        saveToken: token => {
-          expect(token).toEqual(afpNews.token)
-          done()
-        }
-      })
-      void afpNews.authenticate()
     })
   })
   // describe('User', () => {
