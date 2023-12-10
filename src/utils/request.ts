@@ -32,8 +32,8 @@ function buildForm (form: Object) {
 
 class ApiError extends Error {
   public code
-  constructor (message = 'Unknown Error', code = 520, ...params: any) {
-    super(message, ...params)
+  constructor (message = 'Unknown Error', code = 520) {
+    super(message)
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, ApiError)
