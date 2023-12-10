@@ -48,7 +48,7 @@ function apiError (code: number, message?: string) {
   return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
 }
 
-async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
+async function fetchJson (url: string, method: string, headers: object = {}, body?: any): Promise<object> {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
@@ -57,6 +57,26 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
 
   if (response.status < 300) {
     return response.json()
+  }
+
+  const errorData = errorSchema.safeParse(await response.json())
+
+  if (errorData.success) {
+    throw apiError(errorData.data.error.code, errorData.data.error.message)
+  }
+
+  throw apiError(response.status, response.statusText)
+}
+
+async function fetchText (url: string, method: string, headers: object = {}, body?: any): Promise<string> {
+  const response = await fetch(url, {
+    method,
+    headers: buildHeaders(Object.assign({}, headers, { Accept: 'text/*' })),
+    body
+  })
+
+  if (response.status < 300) {
+    return response.text()
   }
 
   const errorData = errorSchema.safeParse(await response.json())
@@ -78,7 +98,9 @@ export async function get (
       [key: string]: string | number
     }
     headers?: AuthorizationHeaders
-  }) {
+  },
+  type: 'json' | 'text' = 'json') {
+  if (type === 'text') return fetchText(params ? buildUrl(url, params) : url, 'GET', headers)
   return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
 }
 

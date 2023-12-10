@@ -1,9 +1,10 @@
-import AfpNewsAuth from './afpnews-auth'
-import defaultSearchParams from './default-search-params'
-import { AdditionalParams, ClientCredentials, Params, Query, Request } from './types'
-import buildQuery from './utils/query-builder'
-import { get, post } from './utils/request'
+import defaultSearchParams from '../default-search-params'
+import { AdditionalParams, ClientCredentials, Params, Query, Request } from '../types'
+import buildQuery from '../utils/query-builder'
+import { get, post } from '../utils/request'
 import { z } from 'zod'
+import Auth from './auth'
+import getStoryHtml from './story'
 
 const searchResponse = z.object({
   response: z.object({
@@ -28,7 +29,7 @@ const getResponse = z.object({
   })
 })
 
-export default class AfpNewsSearch extends AfpNewsAuth {
+export default class Docs extends Auth {
   constructor (credentials: ClientCredentials) {
     super(credentials)
   }
@@ -54,12 +55,12 @@ export default class AfpNewsSearch extends AfpNewsAuth {
         from: dateFrom,
         to: dateTo
       },
-      maxRows: 1,
+      maxRows,
       sortField,
       sortOrder
     } as Query
 
-    if (langs && (!query || !query.includes('lang:'))) {
+    if (langs && langs.length > 0 && (!query || !query.includes('lang:'))) {
       body.lang = langs.join(',')
     }
 
@@ -103,7 +104,6 @@ export default class AfpNewsSearch extends AfpNewsAuth {
 
     body.fields = fields
 
-    console.log(JSON.stringify(body, null, 2))
     return body
   }
 
@@ -172,5 +172,9 @@ export default class AfpNewsSearch extends AfpNewsAuth {
       count,
       keywords
     }
+  }
+
+  public getStoryHtml (doc: unknown) {
+    return getStoryHtml.call(this, doc)
   }
 }

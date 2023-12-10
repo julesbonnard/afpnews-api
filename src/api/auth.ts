@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import btoa from 'btoa-lite'
-import { AuthorizationHeaders, AuthType, ClientCredentials, Token, UserCredentials } from './types'
-import { get, postForm } from './utils/request'
+import { AuthorizationHeaders, AuthType, ClientCredentials, Token, UserCredentials } from '../types'
+import { get, postForm } from '../utils/request'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 
@@ -11,7 +11,7 @@ const tokenSchema = z.object({
   expires_in: z.number()
 })
 
-export default class AfpNewsAuth extends EventEmitter {
+export default class Auth extends EventEmitter {
   public token?: Token
   protected baseUrl
   private apiKey
@@ -29,9 +29,8 @@ export default class AfpNewsAuth extends EventEmitter {
       this.apiKey = apiKey
     } else if (clientId) {
       this.apiKey = btoa(`${clientId}:${clientSecret}`)
-    } else {
-      throw new Error('Missing API key or client credentials')
     }
+
     this.baseUrl = baseUrl || 'https://afp-apicore-prod.afp.com'
   }
 
@@ -50,13 +49,17 @@ export default class AfpNewsAuth extends EventEmitter {
   }
 
   public async authenticate (credentials?: UserCredentials) {
-    if (credentials) return this.requestAuthenticatedToken(credentials)
-
-    if (!this.token) return this.requestAnonymousToken()
-
-    if (!this.isTokenValid) return this.requestRefreshToken()
-
-    return this.token
+    if (credentials) {
+      if (!this.apiKey) throw new Error('Missing API Key to make authenticated requests')
+      return this.requestAuthenticatedToken(credentials)
+    }
+    if (this.token) {
+      if (this.isTokenValid) return this.token
+      if (this.token.authType === 'anonymous') return this.requestAnonymousToken()
+      if (!this.apiKey) throw new Error('Invalid token')
+      return this.requestRefreshToken()
+    }
+    return this.requestAnonymousToken()
   }
 
   public resetToken () {

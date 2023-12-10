@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "Node helper functions to authenticate and fetch AFP News API",
   "main": "dist/afpnews-api.js",
   "browser": "dist/afpnews-api.umd.js",
@@ -60,6 +60,7 @@
   "dependencies": {
     "btoa-lite": "^1.0.0",
     "cross-fetch": "4.0.0",
+    "events": "^3.3.0",
     "form-data": "^4.0.0",
     "liqe": "^3.8.0",
     "statuses": "^2.0.1",

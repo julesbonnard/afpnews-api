@@ -61,7 +61,7 @@ export type Query = {
   lang?: string
 }
 
-export type ClientCredentials = { baseUrl?: string; apiKey: string; clientId?: never; clientSecret?: never } | { baseUrl?: string; apiKey?: never; clientId: string; clientSecret: string}
+export type ClientCredentials = { baseUrl?: string; apiKey?: string; clientId?: never; clientSecret?: never } | { baseUrl?: string; apiKey?: never; clientId: string; clientSecret: string}
 
 export type UserCredentials = {
   username: string
