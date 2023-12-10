@@ -56,7 +56,7 @@ const serviceListSchema = z.object({
       lastRegisteredDate: z.coerce.date(),
       shared: z.boolean(),
       serviceDatas: serviceData
-    }).array()
+    }).array().default([])
   })
 })
 
@@ -65,7 +65,16 @@ const subscriptionListSchema = z.object({
     subscriptions: z.object({
       name: z.string(),
       identifier: z.string()
-    }).array()
+    }).array().default([])
+  })
+})
+
+const subscriptionDeleteSchema = z.object({
+  response: z.object({
+    names: z.object({
+      name: z.string(),
+      status: z.string()
+    }).array().default([])
   })
 })
 
@@ -121,6 +130,18 @@ export default function (this: Api) {
 
       return subscriptionListSchema.parse(data).response.subscriptions
     },
+    deleteSubscription: async (service: string, name: string) => {
+      await this.authenticate()
+      const data = await del(`${baseNotificationUrl}/subscription/delete`, {
+        headers: this.authorizationBearerHeaders,
+        params: {
+          service,
+          name
+        }
+      })
+
+      return data
+    },
     removeSubscriptionsFromService: async (service: string, subscriptions: string[]) => {
       await this.authenticate()
       const data = await del(`${baseNotificationUrl}/service/remove`, {
@@ -130,7 +151,7 @@ export default function (this: Api) {
         }
       }, subscriptions)
 
-      return data.response
+      return subscriptionDeleteSchema.parse(data).response.names
     },
     subscriptionsInService: async (service: string) => {
       await this.authenticate()
