@@ -16,7 +16,7 @@ function insert (mainString: string, insString: string, pos: number) {
   return mainString.slice(0, pos) + insString + mainString.slice(pos)
 }
 
-export default async function getStoryHtml (this: Api, doc: unknown) {
+export default async function (this: Api, doc: unknown) {
   const docHref = docStorySchema.parse(doc).href
   const data = await get(docHref, {
     headers: this.authorizationBearerHeaders

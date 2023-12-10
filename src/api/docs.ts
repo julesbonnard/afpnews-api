@@ -5,6 +5,7 @@ import { get, post } from '../utils/request'
 import { z } from 'zod'
 import Auth from './auth'
 import getStoryHtml from './story'
+import NotificationCenter from './notification'
 
 const searchResponse = z.object({
   response: z.object({
@@ -38,7 +39,7 @@ export default class Docs extends Auth {
     return defaultSearchParams
   }
 
-  private prepareRequest (params: Params, fields: string[] = []) {
+  protected prepareRequest (params: Params, fields: string[] = []) {
     const {
       size: maxRows,
       dateFrom,
@@ -176,5 +177,9 @@ export default class Docs extends Auth {
 
   public getStoryHtml (doc: unknown) {
     return getStoryHtml.call(this, doc)
+  }
+
+  get notificationCenter () {
+    return NotificationCenter.call(this)
   }
 }

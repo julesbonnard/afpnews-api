@@ -48,7 +48,7 @@ function apiError (code: number, message?: string) {
   return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
 }
 
-async function fetchJson (url: string, method: string, headers: object = {}, body?: any): Promise<object> {
+async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
@@ -68,7 +68,7 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   throw apiError(response.status, response.statusText)
 }
 
-async function fetchText (url: string, method: string, headers: object = {}, body?: any): Promise<string> {
+async function fetchText (url: string, method: string, headers: object = {}, body?: any) {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'text/*' })),
@@ -106,7 +106,7 @@ export async function get (
 
 export async function post (
   url: string,
-  data: Query,
+  data: any,
   {
     headers,
     params
@@ -132,4 +132,20 @@ export async function postForm (
   const form = buildForm(formData)
 
   return fetchJson(url, 'POST', headers, form)
+}
+
+export async function del (
+  url: string,
+  {
+    headers,
+    params
+  }: {
+    params?: {
+      [key: string]: string | number
+    }
+    headers?: AuthorizationHeaders
+  }, body?: unknown) {
+  headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
+
+  return fetchJson(params ? buildUrl(url, params) : url, 'DELETE', headers, body && JSON.stringify(body))
 }
