@@ -3,6 +3,14 @@ import fetch, { Headers } from 'cross-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, Form, Query } from '../types'
+import { z } from 'zod'
+
+const errorSchema = z.object({
+  error: z.object({
+    code: z.number(),
+    message: z.string().transform(val => val.split(';')[0])
+  })
+})
 
 function buildUrl (url: string, params: Object) {
   const builtUrl = new URL(url)
@@ -36,9 +44,8 @@ class ApiError extends Error {
   }
 }
 
-
 function apiError (code: number, message?: string) {
-  return new ApiError(message?.split(';')[0] || status(code) || `Request rejected with status ${code}`, code)
+  return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
 }
 
 async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
@@ -52,10 +59,10 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
     return response.json()
   }
 
-  const { error } = await response.json() as { error: { code: number; message: string }}
+  const errorData = errorSchema.safeParse(await response.json())
 
-  if (error) {
-    throw apiError(error.code, error.message)
+  if (errorData.success) {
+    throw apiError(errorData.data.error.code, errorData.data.error.message)
   }
 
   throw apiError(response.status, response.statusText)
