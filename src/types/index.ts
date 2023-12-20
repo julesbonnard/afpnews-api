@@ -10,25 +10,21 @@ export type Request = {
 
 export type SortOrder = 'asc' | 'desc'
 
-export type BasicParams = {
-  sortOrder?: SortOrder
-  sortField?: string
-  query?: string
-  dateTo?: string
-  dateFrom?: string
-  size?: number
-  langs?: string[]
-}
-
-export type AdditionalParamValue = string | number | [string | number] | {
+export type AdditionalParamValue = string | number | string[] | number[] | {
   in?: [string | number]
   exclude?: [string | number]
 }
-export type AdditionalParams = {
-  [key: string]: AdditionalParamValue
-}
 
-export type Params = BasicParams | AdditionalParams
+export type Params = Partial<{
+  sortOrder: SortOrder
+  sortField: string
+  query: string
+  dateTo: string
+  dateFrom: string
+  size: number
+  langs: string[]
+  [key: string]: AdditionalParamValue
+}>
 
 export type AuthType = 'anonymous' | 'credentials'
 

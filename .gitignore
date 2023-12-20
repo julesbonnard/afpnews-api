@@ -10,3 +10,4 @@ stats.json
 coverage
 dist
 .rts2_cache_*
+test.ts

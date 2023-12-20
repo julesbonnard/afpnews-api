@@ -38,12 +38,19 @@ import AfpNews from 'afpnews-api'
 // Initialize the API
 const afpNews = new AfpNews({ clientId, clientSecret })
 
+// Authenticate
+await afpNews.authenticate({ username, password })
+
 // Get token changed
 afpNews.on('tokenChanged', token => console.log(token))
 
 // Search for latest documents
-await afpNews.authenticate({ username, password })
 const { documents } = await afpNews.search()
+
+// Or using a generator to crawl multiple pages
+for await (const doc of afpNews.searchAll()) {
+  console.log(doc)
+}
 
 // Get a specific document
 const document = await afpNews.get(uno)

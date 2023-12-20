@@ -1,11 +1,15 @@
 import defaultSearchParams from '../default-search-params'
-import { AdditionalParams, ClientCredentials, Params, Query, Request } from '../types'
+import { ClientCredentials, Params, Query, Request } from '../types'
 import buildQuery from '../utils/query-builder'
 import { get, post } from '../utils/request'
 import { z } from 'zod'
 import Auth from './auth'
 import getStoryHtml from './story'
 import NotificationCenter from './notification'
+
+const docParser = z.object({
+  published: z.string()
+})
 
 const searchResponse = z.object({
   response: z.object({
@@ -70,11 +74,12 @@ export default class Docs extends Auth {
     }
     if (Object.keys(rest).length > 0) {
       for (const name in rest) {
+        const value = rest[name]
+        if (!value) continue
         const param: Request = {
           name
         }
-        const value = (rest as AdditionalParams)[name]
-        if (typeof value === 'number' ||typeof value === 'string') {
+        if (typeof value === 'number' || typeof value === 'string') {
           param['in'] = [value]
         } else if (Array.isArray(value)) {
           param['in'] = value
@@ -122,6 +127,20 @@ export default class Docs extends Auth {
     return {
       count,
       documents
+    }
+  }
+
+  public async * searchAll (params: Params = {}, fields: string[] = []) {
+    const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    let i = 0
+    while (true) {
+      const { count, documents } = await this.search(params, fields)
+      for (const doc of documents) {
+        yield doc
+      }
+      i += documents.length
+      if (i === Math.min(count, (params.size || defaultSearchParams.size))) return
+      params[direction] = docParser.parse(documents.pop()).published
     }
   }
 
