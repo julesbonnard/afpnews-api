@@ -82,6 +82,7 @@ export default class Docs extends Auth {
         if (typeof value === 'number' || typeof value === 'string') {
           param['in'] = [value]
         } else if (Array.isArray(value)) {
+          if (value.length === 0) continue
           param['in'] = value
         } else {
           if (value.in) {
