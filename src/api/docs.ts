@@ -132,16 +132,18 @@ export default class Docs extends Auth {
 
   public async * searchAll (params: Params = {}, fields: string[] = []) {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    const maxRequestSize = 1000
     const maxSize = params.size || defaultSearchParams.size
     let i = 0
     while (i < maxSize) {
-      params.size = Math.min(maxSize - i, 1000)
-      const { documents } = await this.search(params, fields)
+      params.size = Math.min(maxSize - i, maxRequestSize)
+      const { count, documents } = await this.search(params, fields)
       if (!documents.length) return
       for (const doc of documents) {
         i++
         yield doc
       }
+      if (documents.length < params.size || count <= documents.length) return
       params[direction] = docParser.parse(documents.pop()).published
     }
   }
