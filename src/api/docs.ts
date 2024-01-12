@@ -118,7 +118,6 @@ export default class Docs extends Auth {
     const body = this.prepareRequest(params, fields)
 
     await this.authenticate()
-
     const data = await post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders
     })
@@ -133,14 +132,16 @@ export default class Docs extends Auth {
 
   public async * searchAll (params: Params = {}, fields: string[] = []) {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    const maxSize = params.size || defaultSearchParams.size
     let i = 0
-    while (true) {
-      const { count, documents } = await this.search(params, fields)
+    while (i < maxSize) {
+      params.size = Math.min(maxSize - i, 1000)
+      const { documents } = await this.search(params, fields)
+      if (!documents.length) return
       for (const doc of documents) {
+        i++
         yield doc
       }
-      i += documents.length
-      if (i === Math.min(count, (params.size || defaultSearchParams.size))) return
       params[direction] = docParser.parse(documents.pop()).published
     }
   }
