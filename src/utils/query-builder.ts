@@ -24,32 +24,25 @@ const quote = (value: string, quotes: 'double' | 'single') => {
 }
 
 const serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
-  if (expression.type === 'LiteralExpression') {
-    if (!field || (field && ['title', 'news', 'creator', 'advisory'].includes(field.name))) {
-      if (expression.quoted) {
-        return {
-          name: field?.name || 'all',
-          [exclude ? 'exclude' : 'contains']: [quote(expression.value, expression.quotes)]
-        }
-      } else {
-        return {
-          name: field?.name || 'all',
-          [exclude ? 'exclude' : 'contains']: [expression.value]
-        }
-      }
-    }
+  if (expression.type !== 'LiteralExpression') throw new Error('Unexpected expression token')
 
-    return {
-      name: field?.name || 'all',
-      [exclude ? 'exclude' : 'in']: [normalize(String(expression.value))]
-    }
+  const fieldName = field?.name || 'all'
+  const fieldOperator = ['all', 'title', 'news'].includes(fieldName) ? 'contains' : 'in'
+  const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value, expression.quotes)] : [normalize(String(expression.value))]
+
+  const results = [{
+    name: fieldName,
+    [fieldOperator]: fieldValue
+  }]
+
+  if (fieldOperator === 'contains') {
+    results.push({
+      name: `translated.fr.${fieldName}`,
+      [fieldOperator]: fieldValue
+    })
   }
 
-  // if (expression.type === 'EmptyExpression') {
-  //   return ''
-  // }
-
-  throw new Error('Unexpected expression token')
+  return results
 }
 
 const serializeTag = (ast: TagToken, exclude = false) => {
@@ -71,7 +64,9 @@ export const serialize = (ast: LiqeQuery, exclude = false): Request | undefined 
   }
 
   if (ast.type === 'Tag') {
-    return serializeTag(ast, exclude)
+    return {
+      ['or']: serializeTag(ast, exclude)
+    }
   }
 
   if (ast.type === 'LogicalExpression') {
