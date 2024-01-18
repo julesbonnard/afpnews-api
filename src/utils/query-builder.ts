@@ -5,7 +5,7 @@ import {
   ExpressionToken,
   FieldToken,
   TagToken
-} from 'liqe'
+} from '@julesbonnard/liqe'
 import { normalize } from './normalizer'
 import { z } from 'zod'
 
@@ -25,10 +25,17 @@ const quote = (value: string, quotes: 'double' | 'single') => {
 
 const serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
   if (expression.type === 'LiteralExpression') {
-    if (expression.quoted) {
-      return {
-        name: field?.name || 'all',
-        [exclude ? 'exclude' : 'in']: [quote(expression.value, expression.quotes)]
+    if (!field || (field && ['title', 'news', 'creator', 'advisory'].includes(field.name))) {
+      if (expression.quoted) {
+        return {
+          name: field?.name || 'all',
+          [exclude ? 'exclude' : 'contains']: [quote(expression.value, expression.quotes)]
+        }
+      } else {
+        return {
+          name: field?.name || 'all',
+          [exclude ? 'exclude' : 'contains']: [expression.value]
+        }
       }
     }
 
