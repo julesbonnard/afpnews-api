@@ -141,7 +141,7 @@ export default class Docs extends Auth {
       if (!documents.length) return
       for (const doc of documents) {
         i++
-        yield { count, doc }
+        yield doc
       }
       if (documents.length < params.size || count <= documents.length) return
       params[direction] = docParser.parse(documents.pop()).published

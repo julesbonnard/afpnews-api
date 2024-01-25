@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "2.0.15",
+  "version": "2.0.16",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/afpnews-api.js",
   "browser": "dist/afpnews-api.umd.js",
