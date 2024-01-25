@@ -48,7 +48,7 @@ afpNews.on('tokenChanged', token => console.log(token))
 const { documents } = await afpNews.search()
 
 // Or using a generator to crawl multiple pages
-for await (const doc of afpNews.searchAll()) {
+for await (const { doc } of afpNews.searchAll()) {
   console.log(doc)
 }
 
