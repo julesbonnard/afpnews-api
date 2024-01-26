@@ -4,7 +4,7 @@
 	// Moo lexer documention is here:
 	// https://github.com/no-context/moo
 
-	const moo = require("moo")
+	import moo from 'moo'
 	const lexer = moo.compile({
 	newline: { match: /\r?\n/, lineBreaks: true },
 		space: { match: /[\t\s]/, lineBreaks: true },
