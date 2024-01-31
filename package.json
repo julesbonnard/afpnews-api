@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "2.0.17",
+  "version": "2.0.18",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/afpnews-api.js",
   "browser": "dist/afpnews-api.umd.js",
@@ -60,7 +60,6 @@
     "tslint": "^6.1.3"
   },
   "dependencies": {
-    "@julesbonnard/liqe": "^1.0.3",
     "btoa-lite": "^1.0.0",
     "cross-fetch": "4.0.0",
     "events": "^3.3.0",
