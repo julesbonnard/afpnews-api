@@ -83,7 +83,7 @@ const serializeExpression = (expression: ExpressionToken, exclude = false, field
   if (expression.type !== 'LiteralExpression') throw new Error('Unexpected expression token')
 
   const fieldName = field?.name || 'all'
-  const fieldOperator = ['all', 'title', 'news'].includes(fieldName) ? 'contains' : 'in'
+  const fieldOperator = exclude ? 'exclude' : ['all', 'title', 'news'].includes(fieldName) ? 'contains' : 'in'
   const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
 
   const results = [{
