@@ -1,5 +1,5 @@
 import { Request } from '../types'
-import nearley from 'nearley'
+import * as nearley from 'nearley'
 import grammar from '../grammar'
 import { normalize } from './normalizer'
 import { z } from 'zod'
