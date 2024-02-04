@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import fetch, { Headers } from 'cross-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
-import { AuthorizationHeaders, Form, Query } from '../types'
+import { AuthorizationHeaders, Form } from '../types'
 import { z } from 'zod'
 
 const errorSchema = z.object({
@@ -12,19 +11,19 @@ const errorSchema = z.object({
   })
 })
 
-function buildUrl (url: string, params: Object) {
+function buildUrl (url: string, params: object) {
   const builtUrl = new URL(url)
   Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, value))
   return builtUrl.toString()
 }
 
-function buildHeaders (headers: Object) {
+function buildHeaders (headers: object) {
   const builtHeaders = new Headers()
   Object.entries(headers).forEach(([key, value]) => builtHeaders.append(key, value))
   return builtHeaders
 }
 
-function buildForm (form: Object) {
+function buildForm (form: object) {
   const builtForm = new FormData()
   Object.entries(form).forEach(([key, value]) => builtForm.append(key, value))
   return builtForm
@@ -48,10 +47,11 @@ function apiError (code: number, message?: string) {
   return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
 }
 
-async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
+async function fetchJson (url: string, method: string, headers: object = {}, body?: string | FormData) {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
+    //@ts-expect-error Type FormData is not compatible with BodyInit
     body
   })
 
@@ -68,7 +68,7 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   throw apiError(response.status, response.statusText)
 }
 
-async function fetchText (url: string, method: string, headers: object = {}, body?: any) {
+async function fetchText (url: string, method: string, headers: object = {}, body?: string) {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'text/*' })),
@@ -106,7 +106,7 @@ export async function get (
 
 export async function post (
   url: string,
-  data: any,
+  data: object,
   {
     headers,
     params
@@ -144,7 +144,7 @@ export async function del (
       [key: string]: string | number
     }
     headers?: AuthorizationHeaders
-  }, body?: unknown) {
+  }, body?: object) {
   headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
 
   return fetchJson(params ? buildUrl(url, params) : url, 'DELETE', headers, body && JSON.stringify(body))

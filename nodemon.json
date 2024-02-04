@@ -1,0 +1,3 @@
+{
+  "ignore": ["**/*.test.*", "node_modules", "dist", "src/grammar/index.ts", "test.js"]
+}

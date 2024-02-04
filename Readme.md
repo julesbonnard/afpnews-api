@@ -1,7 +1,5 @@
 # AfpNews API
 
-![Build Status](https://github.com/julesbonnard/afpnews-api/workflows/NodeJS/badge.svg?branch=master)
-
 This project is aimed to help javascript developers use the AFP Core API.
 
 It provides authentication, searching for documents function, and online news product.
@@ -21,45 +19,45 @@ You'll need an API key and credentials to retrieve all content from the API.
 `npm install --save afpnews-api`
 
 ```js
-const AfpNews = require('afpnews-api')
+const ApiCore = require('afpnews-api')
 // OR using import
-import AfpNews from 'afpnews-api'
+import ApiCore from 'afpnews-api'
 ```
 
 #### Browser
 
 ```html
-<script src="./dist/afpnews-api.umd.js"></script>
+<script src="./dist/bundles/apicore.umd.min.js"></script>
 ```
 
 ### Let's start using it
 
 ```js
 // Initialize the API
-const afpNews = new AfpNews({ clientId, clientSecret })
+const apicore = new ApiCore({ clientId, clientSecret })
 
 // Authenticate
-await afpNews.authenticate({ username, password })
+await apicore.authenticate({ username, password })
 
 // Get token changed
-afpNews.on('tokenChanged', token => console.log(token))
+apicore.on('tokenChanged', token => console.log(token))
 
 // Search for latest documents
-const { documents } = await afpNews.search()
+const { documents } = await apicore.search()
 
 // Or using a generator to crawl multiple pages
-for await (const doc of afpNews.searchAll()) {
+for await (const doc of apicore.searchAll()) {
   console.log(doc)
 }
 
 // Get a specific document
-const document = await afpNews.get(uno)
+const document = await apicore.get(uno)
 
 // Look for similar documents
-const { documents } = await afpNews.mlt(uno)
+const { documents } = await apicore.mlt(uno)
 
 // Display the most used slugs
-const { keywords } = await afpNews.list('slug')
+const { keywords } = await apicore.list('slug')
 ```
 
 ### Query parser
@@ -93,7 +91,6 @@ AFPNEWS_PASSWORD=
 
 ## Built With
 
-* [Microbundle](https://www.npmjs.com/package/microbundle) - Building machine
 * [TypeScript](https://www.typescriptlang.org/) - Typescript
 
 ## Authors

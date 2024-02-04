@@ -1,2 +1,5 @@
+node_modules
+dist
 src/grammar/index.ts
-src/test.ts
+test.js
+rollup.config.ts

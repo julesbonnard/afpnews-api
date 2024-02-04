@@ -4,8 +4,8 @@
 	// Moo lexer documention is here:
 	// https://github.com/no-context/moo
 
-	import * as moo from 'moo'
-	const lexer = moo.compile({
+	import { compile } from 'moo'
+	const lexer = compile({
 	newline: { match: /\r?\n/, lineBreaks: true },
 		space: { match: /[\t\s]/, lineBreaks: true },
 	  lparen: '(',
@@ -77,7 +77,7 @@ pre_two_op_logical_expression ->
   | %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
 
 one_op_logical_expression ->
-    %lparen _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: {
+    %lparen _ %rparen {% _ => ({type: 'ParenthesizedExpression', expression: {
       type: 'EmptyExpression'
     }}) %}
   | %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
