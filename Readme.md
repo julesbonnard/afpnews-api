@@ -27,7 +27,7 @@ import ApiCore from 'afpnews-api'
 #### Browser
 
 ```html
-<script src="./dist/bundles/apicore.umd.min.js"></script>
+<script src="./dist/bundles/apicore.min.js"></script>
 ```
 
 ### Let's start using it
