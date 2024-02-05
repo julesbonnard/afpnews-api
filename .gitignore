@@ -10,5 +10,4 @@ stats.json
 coverage
 dist
 .rts2_cache_*
-test.js
 src/grammar/index.ts

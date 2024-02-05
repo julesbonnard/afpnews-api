@@ -1,7 +1,7 @@
 import fetch, { Headers } from 'cross-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
-import { AuthorizationHeaders, Form } from '../types'
+import { AuthorizationHeaders, AuthForm } from '../types'
 import { z } from 'zod'
 
 const errorSchema = z.object({
@@ -123,7 +123,7 @@ export async function post (
 
 export async function postForm (
   url: string,
-  formData: Form,
+  formData: AuthForm,
   {
     headers
   }: {

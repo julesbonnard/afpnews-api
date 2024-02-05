@@ -4,15 +4,18 @@
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "browser": "dist/bundles/apicore.umd.min.js",
+  "type": "commonjs",
   "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
-    }
+    "types": "./dist/types/index.d.ts",
+    "browser": {
+      "script": "./dist/bundles/apicore.min.js",
+      "import": "./dist/bundles/apicore.min.mjs",
+      "require": "./dist/bundles/apicore.min.js"
+    },
+    "import": "./dist/esm/index.js",
+    "require": "./dist/cjs/index.js"
   },
   "source": "src/index.ts",
-  "types": "dist/types/index.d.ts",
   "files": [
     "dist",
     "Readme.md",
@@ -26,7 +29,7 @@
     "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.ts",
     "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.ts",
     "build:declarations": "tsc -p tsconfig.json --declaration --emitDeclarationOnly",
-    "build": "npm-run-all -l clean build:parser -p build:esm build:cjs build:esmBundled build:umdBundled build:declarations",
+    "build": "npm-run-all -l clean build:parser -p build:esm build:cjs build:esmBundled build:umdBundled build:declarations && ./fixup",
     "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
     "lint": "eslint . --ext .ts",
     "prepare": "npm run lint && npm run build"
@@ -63,6 +66,8 @@
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/eslint-plugin-tslint": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
+    "babel-plugin-add-import-extension": "^1.6.0",
+    "babel-plugin-add-module-exports": "^1.0.4",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.1",
     "eslint": "^8.56.0",
@@ -83,6 +88,7 @@
     "@types/node": "^20.11.16",
     "@types/statuses": "^2.0.4",
     "btoa-lite": "^1.0.0",
+    "core-js": "^3.35.1",
     "cross-fetch": "4.0.0",
     "events": "^3.3.0",
     "form-data": "^4.0.0",

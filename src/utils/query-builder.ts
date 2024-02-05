@@ -1,6 +1,6 @@
-import { Request } from '../types'
-import * as nearley from 'nearley'
-import grammar from '../grammar'
+import { SearchQuery } from '../types'
+import nearley from 'nearley'
+import { default as grammar } from '../grammar'
 import { normalize } from './normalizer'
 import { z } from 'zod'
 
@@ -8,75 +8,6 @@ const querySchema = z.string().default('')
 
 const quote = (value: string) => {
   return `"${value}"`
-}
-
-export type ComparisonOperator = ':'
-export type ComparisonOperatorToken = {
-  operator: ComparisonOperator
-  type: 'ComparisonOperator'
-}
-export type ImplicitFieldToken = {
-  type: 'ImplicitField'
-}
-export type FieldToken = {
-  name: string
-  path?: readonly string[]
-  type: 'Field'
-} & ({
-  quoted: false
-} | {
-  quoted: true
-  quotes: 'double'
-})
-export type LiteralExpressionToken = {
-  type: 'LiteralExpression'
-} & ({
-  quoted: false
-  value: boolean | string | null
-} | {
-  quoted: true
-  quotes: 'double'
-  value: string
-})
-export type EmptyExpression = {
-  type: 'EmptyExpression'
-}
-export type ExpressionToken = EmptyExpression | LiteralExpressionToken
-export type BooleanOperatorToken = {
-  operator: 'AND' | 'OR'
-  type: 'BooleanOperator'
-}
-export type ImplicitBooleanOperatorToken = {
-  operator: 'AND'
-  type: 'ImplicitBooleanOperator'
-}
-export type TagToken = {
-  expression: ExpressionToken
-  field: FieldToken | ImplicitFieldToken
-  operator: ComparisonOperatorToken
-  type: 'Tag'
-}
-export type LogicalExpressionToken = {
-  left: ParserAst
-  operator: BooleanOperatorToken | ImplicitBooleanOperatorToken
-  right: ParserAst
-  type: 'LogicalExpression'
-}
-export type UnaryOperatorToken = {
-  operand: ParserAst
-  operator: '-' | 'NOT'
-  type: 'UnaryOperator'
-}
-export type ParenthesizedExpressionToken = {
-  expression: ParserAst
-  type: 'ParenthesizedExpression'
-}
-export type ParserAst = EmptyExpression | LogicalExpressionToken | ParenthesizedExpressionToken | TagToken | UnaryOperatorToken
-export type Ast = ParserAst & {
-  getValue?: (subject: unknown) => unknown
-  left?: Ast
-  operand?: Ast
-  right?: Ast
 }
 
 const serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
@@ -114,7 +45,7 @@ const serializeTag = (ast: TagToken, exclude = false) => {
   return serializeExpression(expression, exclude, field)
 }
 
-export const serialize = (ast: Ast, exclude = false): Request | undefined => {
+export const serialize = (ast: Ast, exclude = false): SearchQuery | undefined => {
   if (ast.type === 'ParenthesizedExpression') {
     return serialize(ast.expression, exclude)
   }
@@ -142,7 +73,7 @@ export const serialize = (ast: Ast, exclude = false): Request | undefined => {
   throw new Error('Unexpected AST type.')
 }
 
-export default function buildQuery (query: unknown) {
+export function buildQuery (query: unknown) {
   const typedQuery = querySchema.parse(query)
   const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
   parser.feed(typedQuery)

@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import btoa from 'btoa-lite'
-import { AuthorizationHeaders, AuthType, ClientCredentials, Token, UserCredentials } from '../types'
+import { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types'
 import { get, postForm } from '../utils/request'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
@@ -11,8 +10,8 @@ const tokenSchema = z.object({
   expires_in: z.number()
 })
 
-export default class Auth extends EventEmitter {
-  public token?: Token
+export class Auth extends EventEmitter {
+  public token?: AuthToken
   protected baseUrl
   private apiKey
 
@@ -22,7 +21,7 @@ export default class Auth extends EventEmitter {
       apiKey,
       clientId,
       clientSecret
-    }: ClientCredentials
+    }: AuthClientCredentials = {}
   ) {
     super()
     if (apiKey) {
@@ -48,7 +47,7 @@ export default class Auth extends EventEmitter {
     }
   }
 
-  public async authenticate (credentials?: UserCredentials) {
+  public async authenticate (credentials?: AuthUserCredentials) {
     if (credentials) {
       if (!this.apiKey) throw new Error('Missing API Key to make authenticated requests')
       return this.requestAuthenticatedToken(credentials)
@@ -85,7 +84,7 @@ export default class Auth extends EventEmitter {
 
   private async requestAuthenticatedToken (
     { username, password }:
-    UserCredentials
+    AuthUserCredentials
   ) {
     const token = tokenSchema.parse(await postForm(
       this.authUrl,
@@ -102,7 +101,7 @@ export default class Auth extends EventEmitter {
   }
 
   private async requestRefreshToken () {
-    const { refreshToken, authType } = this.token as Token
+    const { refreshToken, authType } = this.token as AuthToken
     const newToken = tokenSchema.parse(await postForm(
       this.authUrl,
       {

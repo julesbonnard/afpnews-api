@@ -1,11 +1,11 @@
-import defaultSearchParams from '../default-search-params'
-import { ClientCredentials, Params, Query, Request } from '../types'
-import buildQuery from '../utils/query-builder'
+import { defaultSearchParams } from '../default-search-params'
+import { AuthClientCredentials, SearchQueryParams, SearchRequest, SearchQuery } from '../types'
+import { buildQuery } from '../utils/query-builder'
 import { get, post } from '../utils/request'
 import { z } from 'zod'
-import Auth from './auth'
-import getStoryHtml from './story'
-import NotificationCenter from './notification'
+import { Auth } from './auth'
+import { Story } from './story'
+import { NotificationCenter } from './notification'
 
 const docParser = z.object({
   published: z.string()
@@ -34,8 +34,8 @@ const getResponse = z.object({
   })
 })
 
-export default class Docs extends Auth {
-  constructor (credentials: ClientCredentials) {
+export class Docs extends Auth {
+  constructor (credentials: AuthClientCredentials) {
     super(credentials)
   }
 
@@ -43,7 +43,7 @@ export default class Docs extends Auth {
     return defaultSearchParams
   }
 
-  protected prepareRequest (params: Params, fields: string[] = []) {
+  protected prepareRequest (params: SearchQueryParams, fields: string[] = []) {
     const {
       size: maxRows,
       dateFrom,
@@ -63,20 +63,20 @@ export default class Docs extends Auth {
       maxRows,
       sortField,
       sortOrder
-    } as Query
+    } as SearchRequest
 
     if (langs && langs.length > 0 && (!query || !query.includes('lang:'))) {
       body.lang = langs.join(',')
     }
 
-    const additionalParams: Required<Pick<Request, 'and'>> = {
+    const additionalParams: Required<Pick<SearchQuery, 'and'>> = {
       and: []
     }
     if (Object.keys(rest).length > 0) {
       for (const name in rest) {
         const value = rest[name]
         if (!value) continue
-        const param: Request = {
+        const param: SearchQuery = {
           name
         }
         if (typeof value === 'number' || typeof value === 'string') {
@@ -114,7 +114,7 @@ export default class Docs extends Auth {
     return body
   }
 
-  public async search (params: Params = {}, fields: string[] = []) {
+  public async search (params: SearchQueryParams = {}, fields: string[] = []) {
     const body = this.prepareRequest(params, fields)
 
     await this.authenticate()
@@ -130,7 +130,7 @@ export default class Docs extends Auth {
     }
   }
 
-  public async * searchAll (params: Params = {}, fields: string[] = []) {
+  public async * searchAll (params: SearchQueryParams = {}, fields: string[] = []) {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
     const maxRequestSize = 1000
     const maxSize = params.size || defaultSearchParams.size
@@ -178,7 +178,7 @@ export default class Docs extends Auth {
     }
   }
 
-  public async list (facet: string, params: Params = {}, minDocCount = 1) {
+  public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1) {
     const body = this.prepareRequest(Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
 
     await this.authenticate()
@@ -199,7 +199,7 @@ export default class Docs extends Auth {
   }
 
   public getStoryHtml (doc: unknown) {
-    return getStoryHtml.call(this, doc)
+    return Story.call(this, doc)
   }
 
   get notificationCenter () {

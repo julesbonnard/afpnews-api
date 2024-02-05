@@ -3,7 +3,7 @@
  * format environments
  */
 const sharedPresets = ['@babel/preset-typescript']
-const sharedIgnoredFiles = ['src/**/*.test.ts', 'src/test.ts']
+const sharedIgnoredFiles = ['src/**/*.test.ts']
 const sharedConfig = {
   ignore: sharedIgnoredFiles,
   presets: sharedPresets,
@@ -15,7 +15,8 @@ const bundlePresets = [
   [
     '@babel/preset-env',
     {
-      targets: '> 0.5%, last 2 versions, Firefox ESR, not dead',
+      useBuiltIns: "entry",
+      corejs: "3.35.1"
     },
   ],
   ...sharedPresets,
@@ -29,7 +30,10 @@ const bundleConfig = {
  */
 module.exports = {
   env: {
-    esmUnbundled: sharedConfig,
+    esmUnbundled: {
+      ...sharedConfig,
+      plugins: ["babel-plugin-add-import-extension"]
+    },
     esmBundled: bundleConfig,
     umdBundled: bundleConfig,
     cjs: {
@@ -43,6 +47,7 @@ module.exports = {
         ],
         ...sharedPresets,
       ],
+      plugins: ["add-module-exports"]
     },
     test: {
       presets: ['@babel/preset-env', ...sharedPresets],

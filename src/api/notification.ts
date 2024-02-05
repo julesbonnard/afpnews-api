@@ -1,5 +1,5 @@
-import type Api from '../'
-import { Params } from '../types'
+import type ApiCore from '../'
+import { SearchQueryParams } from '../types'
 import { del, get, post } from '../utils/request'
 import { z } from 'zod'
 
@@ -78,7 +78,7 @@ const subscriptionDeleteSchema = z.object({
   })
 })
 
-export default function (this: Api) {
+export function NotificationCenter (this: ApiCore) {
   const baseNotificationUrl = `${this.baseUrl}/notification/api`
 
   return {
@@ -109,7 +109,7 @@ export default function (this: Api) {
 
       return serviceRegisterSchema.parse(data).response.uno
     },
-    addSubscription: async (name: string, service: string, params: Params) => {
+    addSubscription: async (name: string, service: string, params: SearchQueryParams) => {
       await this.authenticate()
       const query = this.prepareRequest(params).query
       const data = await post(`${baseNotificationUrl}/subscription/add`, { query }, {

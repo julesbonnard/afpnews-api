@@ -1,0 +1,14 @@
+<html>
+<head>
+    <title>Browser module</title>
+</head>
+<body>
+    <h1>Browser module</h1>
+    <p>Check the console</p>
+    <script type="module">
+      import ApiCore from '../dist/bundles/apicore.min.mjs'
+      const api = new ApiCore();
+      api.authenticate().then(console.log)
+    </script>
+</body>
+</html>

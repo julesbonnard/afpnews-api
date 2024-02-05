@@ -16,25 +16,30 @@ export default {
     ...(process.env.BABEL_ENV === 'esmBundled'
       ? [
           {
-            file: 'dist/bundles/apicore.esm.min.js',
+            file: 'dist/bundles/apicore.min.mjs',
             format: 'esm',
             sourcemap: true,
+            exports: 'auto'
           },
         ]
       : []),
     ...(process.env.BABEL_ENV === 'umdBundled'
       ? [
           {
-            file: 'dist/bundles/apicore.umd.min.js',
+            file: 'dist/bundles/apicore.min.js',
             format: 'umd',
             name: 'ApiCore',
             sourcemap: true,
+            exports: 'default'
           },
         ]
       : []),
   ],
   plugins: [
-    nodeResolve({ extensions }),
+    nodeResolve({
+      browser: true,
+      extensions
+    }),
     commonjs(),
     json(),
     babel({
@@ -43,7 +48,10 @@ export default {
       extensions,
       exclude: ['./node_modules/**', 'src/**/*.test.ts', 'src/test.ts'],
     }),
-    nodePolyfills(),
-    terser(),
+    nodePolyfills({
+      include: null,
+      sourceMap: true
+    }),
+    terser()
   ],
 }
