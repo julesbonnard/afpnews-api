@@ -1,6 +1,6 @@
 import { defaultSearchParams } from '../default-search-params'
-import { AuthClientCredentials, SearchQueryParams, SearchRequest, SearchQuery } from '../types'
-import { buildQuery } from '../utils/query-builder'
+import { AuthClientCredentials, SearchQueryParams } from '../types'
+import { QueryBuilder } from '../utils/QueryBuilder'
 import { get, post } from '../utils/request'
 import { z } from 'zod'
 import { Auth } from './auth'
@@ -45,7 +45,7 @@ export class Docs extends Auth {
 
   protected prepareRequest (params: SearchQueryParams, fields: string[] = []) {
     const {
-      size: maxRows,
+      size,
       dateFrom,
       dateTo,
       sortField,
@@ -55,63 +55,14 @@ export class Docs extends Auth {
       ...rest
     } = Object.assign({}, this.defaultSearchParams, params)
 
-    const body = {
-      dateRange: {
-        from: dateFrom,
-        to: dateTo
-      },
-      maxRows,
-      sortField,
-      sortOrder
-    } as SearchRequest
-
-    if (langs && langs.length > 0 && (!query || !query.includes('lang:'))) {
-      body.lang = langs.join(',')
-    }
-
-    const additionalParams: Required<Pick<SearchQuery, 'and'>> = {
-      and: []
-    }
-    if (Object.keys(rest).length > 0) {
-      for (const name in rest) {
-        const value = rest[name]
-        if (!value) continue
-        const param: SearchQuery = {
-          name
-        }
-        if (typeof value === 'number' || typeof value === 'string') {
-          param['in'] = [value]
-        } else if (Array.isArray(value)) {
-          if (value.length === 0) continue
-          param['in'] = value
-        } else {
-          if (value.in) {
-            additionalParams.and.push({
-              ...param,
-              in: value.in
-            })
-          }
-          if (value.exclude) {
-            additionalParams.and.push({
-              ...param,
-              exclude: value.exclude
-            })
-          }
-          continue
-        }
-        additionalParams.and.push(param)
-      }
-    }
-
-    const builtQuery = buildQuery(query)
-
-    body.query = additionalParams.and.length > 0 ? {
-      and: additionalParams.and.concat(builtQuery || [])
-    } : builtQuery
-
-    body.fields = fields
-
-    return body
+    return new QueryBuilder(fields)
+      .setMaxRows(size)
+      .setDateRange(dateFrom, dateTo)
+      .setSort(sortField, sortOrder)
+      .setLangs(langs)
+      .setQuery(query)
+      .addAdditionalParams(rest)
+      .build()
   }
 
   public async search (params: SearchQueryParams = {}, fields: string[] = []) {

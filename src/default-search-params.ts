@@ -3,7 +3,5 @@ export const defaultSearchParams = {
   dateTo: 'now',
   size: 10,
   sortField: 'published',
-  sortOrder: 'desc',
-  langs: [],
-  query: ''
+  sortOrder: 'desc'
 }

@@ -3,6 +3,7 @@ export type SearchQuery = {
   or?: SearchQuery[]
   name?: string
   in?: Array<string | number>
+  contains?: string[]
   fullText?: boolean
   exclude?: Array<string | number>
 }
