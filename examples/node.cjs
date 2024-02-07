@@ -1,3 +1,3 @@
-const API = require('../')
-const api = new API()
+const { ApiCore } = require('../')
+const api = new ApiCore()
 api.authenticate().then(console.log)

@@ -1,3 +1,3 @@
-import API from '../dist/esm/index.js'
-const api = new API()
+import { ApiCore } from '../dist/esm/index.js'
+const api = new ApiCore()
 api.authenticate().then(console.log)

@@ -19,9 +19,9 @@ You'll need an API key and credentials to retrieve all content from the API.
 `npm install --save afpnews-api`
 
 ```js
-const ApiCore = require('afpnews-api')
+const { ApiCore } = require('afpnews-api')
 // OR using import
-import ApiCore from 'afpnews-api'
+import { ApiCore } from 'afpnews-api'
 ```
 
 #### Browser

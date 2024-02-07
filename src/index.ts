@@ -1,1 +1,1 @@
-export { Docs as default } from './api/docs'
+export { Docs as ApiCore } from './api/docs'

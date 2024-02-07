@@ -1,4 +1,4 @@
-import type ApiCore from '../'
+import { type ApiCore } from '..'
 import { SearchQueryParams } from '../types'
 import { del, get, post } from '../utils/request'
 import { z } from 'zod'
@@ -82,6 +82,12 @@ export function NotificationCenter (this: ApiCore) {
   const baseNotificationUrl = `${this.baseUrl}/notification/api`
 
   return {
+
+    /**
+     * Register a new mail, rest, sqs or jms service to get notifications
+     * @param service - An object containing the service type and parameters
+     * @returns A unique identifier for the service
+     */
     registerService: async (service: z.infer<typeof registerService>) => {
       await this.authenticate()
       const data = await post(`${baseNotificationUrl}/service/register`, service, {
@@ -90,6 +96,11 @@ export function NotificationCenter (this: ApiCore) {
 
       return serviceRegisterSchema.parse(data).response.uno
     },
+
+    /**
+     * List existing services link to the current user
+     * @returns List of objects containing the service name, type and parameters
+     */
     listServices: async () => {
       await this.authenticate()
       const data = await get(`${baseNotificationUrl}/service/list`, {
@@ -98,6 +109,12 @@ export function NotificationCenter (this: ApiCore) {
 
       return serviceListSchema.parse(data).response.services
     },
+
+    /**
+     * Delete a service
+     * @param service - The name of the service to delete
+     * @returns A unique identifier for the deleted service
+     */
     deleteService: async (service: string) => {
       await this.authenticate()
       const data = await del(`${baseNotificationUrl}/service/delete`, {
@@ -109,6 +126,14 @@ export function NotificationCenter (this: ApiCore) {
 
       return serviceRegisterSchema.parse(data).response.uno
     },
+
+    /**
+     * Add a subscription to an existing service
+     * @param name - The name of the subcription
+     * @param service - The name of the subscription service
+     * @param params - An object containing the search parameters to subscribe to
+     * @returns A unique identifier for the subscription
+     */
     addSubscription: async (name: string, service: string, params: SearchQueryParams) => {
       await this.authenticate()
       const query = this.prepareRequest(params).query
@@ -122,6 +147,11 @@ export function NotificationCenter (this: ApiCore) {
 
       return serviceRegisterSchema.parse(data).response.uno
     },
+
+    /**
+     * List all existing subscriptions
+     * @returns An array with the name and identifier of the subscriptions
+     */
     listSubscriptions: async () => {
       await this.authenticate()
       const data = await get(`${baseNotificationUrl}/subscription/list`, {
@@ -130,6 +160,31 @@ export function NotificationCenter (this: ApiCore) {
 
       return subscriptionListSchema.parse(data).response.subscriptions
     },
+
+    /**
+     * List existing subscriptions in a service
+     * @param service - The name of the subscription service
+     * @returns The list of active subscriptions
+     */
+    subscriptionsInService: async (service: string) => {
+      await this.authenticate()
+
+      const data = await get(`${baseNotificationUrl}/service/subscriptions`, {
+        headers: this.authorizationBearerHeaders,
+        params: {
+          service: service
+        }
+      })
+
+      return subscriptionListSchema.parse(data).response.subscriptions.filter(subscription => ! subscription.name.endsWith('_withoutcreditRate'))
+    },
+
+    /**
+     * Delete existing subscription
+     * @param service - The name of the subscription service
+     * @param name - The name of the subscription to delete
+     * @returns The name of the deleted subscription
+     */
     deleteSubscription: async (service: string, name: string) => {
       await this.authenticate()
       const data = await del(`${baseNotificationUrl}/subscription/delete`, {
@@ -142,6 +197,13 @@ export function NotificationCenter (this: ApiCore) {
 
       return data
     },
+
+    /**
+     * Delete some subscriptions from a service
+     * @param service - The name of the subscription service
+     * @param subscriptions - The names of the subscriptions to delete
+     * @returns The list of deleted subscriptions
+     */
     removeSubscriptionsFromService: async (service: string, subscriptions: string[]) => {
       await this.authenticate()
       const data = await del(`${baseNotificationUrl}/service/remove`, {
@@ -152,18 +214,6 @@ export function NotificationCenter (this: ApiCore) {
       }, subscriptions)
 
       return subscriptionDeleteSchema.parse(data).response.names
-    },
-    subscriptionsInService: async (service: string) => {
-      await this.authenticate()
-
-      const data = await get(`${baseNotificationUrl}/service/subscriptions`, {
-        headers: this.authorizationBearerHeaders,
-        params: {
-          service: service
-        }
-      })
-
-      return subscriptionListSchema.parse(data).response.subscriptions.filter(subscription => ! subscription.name.endsWith('_withoutcreditRate'))
     }
   }
 }

@@ -3,7 +3,7 @@
  * format environments
  */
 const sharedPresets = ['@babel/preset-typescript']
-const sharedIgnoredFiles = ['src/**/*.test.ts']
+const sharedIgnoredFiles = ['src/**/*.test.ts', 'src/types.ts', 'src/index-cjs.ts']
 const sharedConfig = {
   ignore: sharedIgnoredFiles,
   presets: sharedPresets,
@@ -46,8 +46,7 @@ module.exports = {
           },
         ],
         ...sharedPresets,
-      ],
-      plugins: ["add-module-exports"]
+      ]
     },
     test: {
       presets: ['@babel/preset-env', ...sharedPresets],

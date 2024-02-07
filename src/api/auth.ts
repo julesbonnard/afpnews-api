@@ -47,6 +47,11 @@ export class Auth extends EventEmitter {
     }
   }
 
+  /**
+   * Authenticate with the API
+   * @param credentials - An optionnal object containing the username and password
+   * @returns The bearer token to authenticate following requests
+   */
   public async authenticate (credentials?: AuthUserCredentials) {
     if (credentials) {
       if (!this.apiKey) throw new Error('Missing API Key to make authenticated requests')
@@ -61,6 +66,11 @@ export class Auth extends EventEmitter {
     return this.requestAnonymousToken()
   }
 
+  /**
+   * Reset bearer token
+   * @emits tokenChanged
+   * @returns void
+   */
   public resetToken () {
     delete this.token
     this.emit('tokenChanged')

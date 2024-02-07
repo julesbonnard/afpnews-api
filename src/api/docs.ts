@@ -35,12 +35,8 @@ const getResponse = z.object({
 })
 
 export class Docs extends Auth {
-  constructor (credentials: AuthClientCredentials) {
+  constructor (credentials?: AuthClientCredentials) {
     super(credentials)
-  }
-
-  get defaultSearchParams () {
-    return defaultSearchParams
   }
 
   protected prepareRequest (params: SearchQueryParams, fields: string[] = []) {
@@ -53,7 +49,7 @@ export class Docs extends Auth {
       langs,
       query,
       ...rest
-    } = Object.assign({}, this.defaultSearchParams, params)
+    } = Object.assign({}, defaultSearchParams, params)
 
     return new QueryBuilder(fields)
       .setMaxRows(size)
@@ -65,6 +61,12 @@ export class Docs extends Auth {
       .build()
   }
 
+  /**
+   * Search documents using the API (without pagination, up to 1.000 documents)
+   * @param params - An object containing the search parameters
+   * @param fields - An array of fields to include in the response
+   * @returns An object containing the documents and their count
+   */
   public async search (params: SearchQueryParams = {}, fields: string[] = []) {
     const body = this.prepareRequest(params, fields)
 
@@ -81,6 +83,12 @@ export class Docs extends Auth {
     }
   }
 
+  /**
+   * Search documents using the API (with pagination)
+   * @param params - An object containing the search parameters
+   * @param fields - An array of fields to include in the response
+   * @returns An object containing the documents and their count
+   */
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = []) {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
     const maxRequestSize = 1000
@@ -99,6 +107,11 @@ export class Docs extends Auth {
     }
   }
 
+  /**
+   * Get a specific document using its Uno
+   * @param uno - A unique identifier for the document
+   * @returns The document
+   */
   public async get (uno: string) {
     await this.authenticate()
 
@@ -109,6 +122,13 @@ export class Docs extends Auth {
     return docs[0]
   }
 
+  /**
+   * Get more like this documents
+   * @param uno - A unique identifier for one document
+   * @param lang - The language of the documents
+   * @param size - The number of documents to return
+   * @returns An object containing the documents and their count
+   */
   public async mlt (uno: string, lang: string, size: number = 10) {
     await this.authenticate()
 
@@ -129,8 +149,15 @@ export class Docs extends Auth {
     }
   }
 
+  /**
+   * List values for a specific facet
+   * @param facet - A facet name
+   * @param params - An object containing the search parameters
+   * @param minDocCount - The minimum number of documents a value must have to be included in the response
+   * @returns An object containing the keywords and their count
+   */
   public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1) {
-    const body = this.prepareRequest(Object.assign({}, this.defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
+    const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
 
     await this.authenticate()
 
@@ -149,10 +176,19 @@ export class Docs extends Auth {
     }
   }
 
+  /**
+   * Get the HTML content to display a social story
+   * @param doc - The doc object for a social story
+   * @returns The URL of the social story
+   */
   public getStoryHtml (doc: unknown) {
     return Story.call(this, doc)
   }
 
+  /**
+   * Access the notification center to subscribe to new documents
+   * @returns The notification center
+   */
   get notificationCenter () {
     return NotificationCenter.call(this)
   }

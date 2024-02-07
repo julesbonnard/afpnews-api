@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { get } from '../utils/request'
-import type ApiCore from '../'
+import { type ApiCore } from '..'
 
 const docStorySchema = z.object({
   class: z.literal('webstory'),

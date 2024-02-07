@@ -1,21 +1,36 @@
 {
   "name": "afpnews-api",
-  "version": "2.0.21",
+  "version": "2.0.22",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/cjs/index.js",
+  "type": "commonjs",
+  "types": "./dist/cjs/index.d.cts",
   "module": "dist/esm/index.js",
   "unpkg": "./dist/bundles/apicore.min.js",
   "jsdelivr": "./dist/bundles/apicore.min.js",
-  "type": "commonjs",
   "exports": {
-    "types": "./dist/types/index.d.ts",
-    "browser": {
-      "script": "./dist/bundles/apicore.min.js",
-      "import": "./dist/bundles/apicore.min.mjs",
-      "require": "./dist/bundles/apicore.min.js"
-    },
-    "import": "./dist/esm/index.js",
-    "require": "./dist/cjs/index.js"
+    "./package.json": "./package.json",
+    ".": {
+      "browser": {
+        "script": "./dist/bundles/apicore.min.js",
+        "import": {
+          "types": "./dist/esm/index.d.mts",
+          "default": "./dist/bundles/apicore.min.mjs"
+        },
+        "require": {
+          "types": "./dist/cjs/index.d.cts",
+          "default": "./dist/bundles/apicore.min.js"
+        }
+      },
+      "import": {
+        "types": "./dist/esm/index.d.mts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
   },
   "source": "src/index.ts",
   "files": [
@@ -26,12 +41,12 @@
   "scripts": {
     "clean": "rimraf dist .rts2_cache_* src/grammar/index.ts",
     "build:parser": "nearleyc src/grammar/index.ne --out ./src/grammar/index.ts",
+    "build:types": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationDir 'dist/types' && rollup -c rollup.config.mjs",
     "build:esm": "cross-env BABEL_ENV=esmUnbundled babel src --extensions '.ts' --out-dir 'dist/esm'",
     "build:cjs": "cross-env BABEL_ENV=cjs babel src --extensions '.ts' --out-dir 'dist/cjs'",
-    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.ts",
-    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.ts",
-    "build:declarations": "tsc -p tsconfig.json --declaration --emitDeclarationOnly",
-    "build": "npm-run-all -l clean build:parser -p build:esm build:cjs build:esmBundled build:umdBundled build:declarations && ./fixup",
+    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.mjs",
+    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.mjs",
+    "build": "npm-run-all -l clean build:parser build:types -p build:esm build:cjs build:esmBundled build:umdBundled && ./fixup",
     "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
     "lint": "eslint . --ext .ts",
     "prepare": "npm run lint && npm run build"
@@ -65,21 +80,22 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/eslint-plugin-tslint": "^6.20.0",
-    "@typescript-eslint/parser": "^6.20.0",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/eslint-plugin-tslint": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "babel-plugin-add-import-extension": "^1.6.0",
-    "babel-plugin-add-module-exports": "^1.0.4",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jsdoc": "^48.0.4",
+    "eslint-plugin-jsdoc": "^48.0.6",
     "nodemon": "^3.0.3",
     "npm-run-all": "^4.1.5",
     "rimraf": "^5.0.5",
-    "rollup": "^2.79.1",
+    "rollup": "^4.9.6",
+    "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-polyfill-node": "^0.13.0",
     "typescript": "^5.3.3"
   },
