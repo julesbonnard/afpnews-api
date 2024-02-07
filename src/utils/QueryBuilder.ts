@@ -111,7 +111,7 @@ export class QueryBuilder {
       maxRows: this.maxRows,
       sortField: this.sortField,
       sortOrder: this.sortOrder,
-      langs: this.langs && this.langs.length > 0 && (!this.queryString || !this.queryString.includes('lang:')) ? this.langs.join(',') : undefined,
+      lang: this.langs && this.langs.length > 0 && (!this.queryString || !this.queryString.includes('lang:')) ? this.langs.join(',') : undefined,
       fields: this.fields,
       query: this.concatenateQueryAndParams()
     } as SearchRequest
