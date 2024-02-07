@@ -1,4 +1,4 @@
-import { defaultSearchParams } from '../default-search-params'
+import { defaultSearchParams } from '../config'
 import { AuthClientCredentials, SearchQueryParams } from '../types'
 import { QueryBuilder } from '../utils/QueryBuilder'
 import { get, post } from '../utils/request'

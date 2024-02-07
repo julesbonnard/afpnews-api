@@ -1,4 +1,4 @@
-import { defaultSearchParams } from '../default-search-params'
+import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config'
 import { AdditionalParamValue, SearchQuery, SearchRequest } from "../types"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar'
@@ -34,7 +34,7 @@ export class QueryBuilder {
 
   public setMaxRows (maxRows?: number) {
     if (!maxRows) throw new Error('maxRows is required')
-    if (maxRows > 1000) throw new Error('maxRows cannot be greater than 1000')
+    if (maxRows > maxRowsByRequest) throw new Error(`maxRows cannot be greater than ${maxRowsByRequest}`)
     this.maxRows = maxRows
     return this
   }
@@ -121,11 +121,11 @@ export class QueryBuilder {
     if (expression.type !== 'LiteralExpression') throw new Error('Unexpected expression token')
   
     const fieldName = field?.name || 'all'
-    const fieldOperator = exclude ? 'exclude' : ['all', 'title', 'news'].includes(fieldName) ? 'contains' : 'in'
+    const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
     const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
   
     if (fieldOperator === 'contains') {
-      const langs =  this.langs && this.langs.length > 0 ? this.langs : ['fr', 'en', 'es', 'de', 'pt', 'ar']
+      const langs =  this.langs && this.langs.length > 0 ? this.langs : langsWithTranslation
       return [{
         name: fieldName,
         [fieldOperator]: fieldValue

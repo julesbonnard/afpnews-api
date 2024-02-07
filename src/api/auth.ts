@@ -1,4 +1,5 @@
 import btoa from 'btoa-lite'
+import { defaultBaseUrl } from '../config'
 import { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types'
 import { get, postForm } from '../utils/request'
 import { EventEmitter } from 'events'
@@ -30,7 +31,7 @@ export class Auth extends EventEmitter {
       this.apiKey = btoa(`${clientId}:${clientSecret}`)
     }
 
-    this.baseUrl = baseUrl || 'https://afp-apicore-prod.afp.com'
+    this.baseUrl = baseUrl || defaultBaseUrl
   }
 
   get authUrl () {
