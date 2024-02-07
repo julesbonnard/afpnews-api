@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "2.0.22",
+  "version": "2.0.23",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/cjs/index.js",
   "type": "commonjs",
@@ -47,6 +47,7 @@
     "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.mjs",
     "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.mjs",
     "build": "npm-run-all -l clean build:parser build:types -p build:esm build:cjs build:esmBundled build:umdBundled && ./fixup",
+    "postbuild": "rimraf dist/types",
     "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
     "lint": "eslint . --ext .ts",
     "prepare": "npm run lint && npm run build"
