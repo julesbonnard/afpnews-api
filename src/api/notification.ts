@@ -5,8 +5,8 @@ import { z } from 'zod'
 
 const httpServiceData = z.object({
   href: z.string(),
-  user: z.string(),
-  password: z.string()
+  user: z.string().optional(),
+  password: z.string().optional()
 })
 
 const mailServiceData = z.object({
@@ -50,6 +50,7 @@ const serviceRegisterSchema = z.object({
 const serviceListSchema = z.object({
   response: z.object({
     services: z.object({
+      serviceIdentifier: z.string(),
       serviceName: z.string(),
       serviceType: serviceType,
       createdDate: z.coerce.date(),
