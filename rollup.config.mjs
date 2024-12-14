@@ -7,7 +7,7 @@ import terser from '@rollup/plugin-terser'
 import { dts } from 'rollup-plugin-dts'
 import process from 'node:process'
 
-import packageJson from './package.json' assert { type: 'json' }
+import packageJson from './package.json' with { type: 'json' }
 
 export default [
   ...process.env.BABEL_ENV === 'esmBundled' || process.env.BABEL_ENV === 'umdBundled' ? [{

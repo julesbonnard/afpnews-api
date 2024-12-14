@@ -35,6 +35,7 @@ const sQSServiceData = z.object({
 const serviceData = z.union([httpServiceData, mailServiceData, activeMQServiceData, sQSServiceData])
 const serviceType = z.enum(['mail', 'rest', 'sqs', 'jms'])
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const registerService = z.object({
   datas: serviceData,
   name: z.string(),
