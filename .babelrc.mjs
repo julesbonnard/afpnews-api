@@ -28,7 +28,7 @@ const bundleConfig = {
 /**
  * Babel Config
  */
-module.exports = {
+export default {
   env: {
     esmUnbundled: {
       ...sharedConfig,
