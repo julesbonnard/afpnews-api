@@ -1,4 +1,3 @@
-import fetch, { Headers } from 'cross-fetch'
 import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, AuthForm } from '../types'
@@ -51,7 +50,6 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
-    //@ts-expect-error Type FormData is not compatible with BodyInit
     body
   })
 
