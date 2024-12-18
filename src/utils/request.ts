@@ -1,4 +1,3 @@
-import FormData from 'form-data'
 import status from 'statuses'
 import { AuthorizationHeaders, AuthForm } from '../types'
 import { z } from 'zod'
