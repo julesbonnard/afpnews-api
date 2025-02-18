@@ -1,11 +1,13 @@
+type StringOrNumber = string | number
+
 export type SearchQuery = {
   and?: SearchQuery[]
   or?: SearchQuery[]
   name?: string
-  in?: Array<string | number>
+  in?: StringOrNumber[]
   contains?: string[]
   fullText?: boolean
-  exclude?: Array<string | number>
+  exclude?: StringOrNumber[]
 }
 
 export type SearchQuerySortOrder = 'asc' | 'desc'
@@ -16,8 +18,8 @@ export type AdditionalParamValue =
   string[] | 
   number[] | 
   {
-    in?: [string | number]
-    exclude?: [string | number]
+    in?: StringOrNumber[]
+    exclude?: StringOrNumber[]
   }
 
 export type SearchQueryParams = Partial<{
