@@ -11,6 +11,26 @@ const tokenSchema = z.object({
   expires_in: z.number()
 })
 
+const userSchema = z.object({
+  user: z.object({
+    username: z.string(),
+    email: z.string().optional(),
+    enable: z.boolean().optional(),
+    clientId: z.string().array(),
+    authorities: z.string().array(),
+    filters: z.object({
+      dateRange: z.object({
+        to: z.string(),
+        from: z.string()
+      }),
+      dateGap: z.string(),
+      tz: z.string(),
+      sortOrder: z.string(),
+      query: z.any()
+    }).optional()
+  })
+})
+
 export class Auth extends EventEmitter {
   public token?: AuthToken
   protected baseUrl
@@ -65,6 +85,16 @@ export class Auth extends EventEmitter {
       return this.requestRefreshToken()
     }
     return this.requestAnonymousToken()
+  }
+
+  /**
+   * Get information about the user
+   * @returns The user information
+   */
+  public async getUserInfo () {
+    return userSchema.parse(await get(`${this.baseUrl}/v1/user/me`, {
+      headers: this.authorizationBearerHeaders
+    }))
   }
 
   /**
