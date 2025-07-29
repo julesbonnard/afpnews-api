@@ -41,14 +41,9 @@
   "scripts": {
     "clean": "rimraf dist .rts2_cache_* src/grammar/index.ts",
     "build:parser": "nearleyc src/grammar/index.ne --out ./src/grammar/index.ts",
-    "build:types": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationDir 'dist/types' && rollup -c rollup.config.mjs",
-    "build:esm": "cross-env BABEL_ENV=esmUnbundled babel src --extensions '.ts' --out-dir 'dist/esm'",
-    "build:cjs": "cross-env BABEL_ENV=cjs babel src --extensions '.ts' --out-dir 'dist/cjs'",
-    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.mjs",
-    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.mjs",
-    "build": "npm-run-all -l clean build:parser build:types -p build:esm build:cjs build:esmBundled build:umdBundled && ./fixup",
+    "build": "npm-run-all -l clean build:parser && rollup -c && ./fixup",
     "postbuild": "rimraf dist/types",
-    "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
+    "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm run build\"",
     "lint": "eslint .",
     "prepare": "npm run lint && npm run build"
   },
@@ -72,19 +67,12 @@
   },
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
-    "@babel/cli": "^7.28.0",
-    "@babel/core": "^7.28.0",
-    "@babel/preset-env": "^7.28.0",
-    "@babel/preset-typescript": "^7.27.1",
     "@eslint/js": "^9.32.0",
-    "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.4",
-    "babel-plugin-add-import-extension": "^1.6.0",
-    "cross-env": "^10.0.0",
     "eslint": "^9.32.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsdoc": "^52.0.0",
@@ -108,6 +96,7 @@
     "moo": "^0.5.2",
     "nearley": "^2.20.1",
     "statuses": "^2.0.2",
-    "zod": "^4.0.13"
+    "zod": "^4.0.13",
+    "tslib": "^2.6.2"
   }
 }
