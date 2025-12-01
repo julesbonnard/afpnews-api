@@ -1,12 +1,26 @@
 {
   "compilerOptions": {
+    "outDir": "dist",
+    "target": "es6",
+    "module": "esnext",
     "moduleResolution": "node",
-    "module": "ESNext",
-    "target": "ESNext",
+    "lib": [
+      "es2015"
+    ],
+    "sourceMap": true,
     "strict": true,
-    "esModuleInterop": true
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

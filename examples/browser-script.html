@@ -1,0 +1,14 @@
+<html>
+<head>
+    <title>Browser script</title>
+</head>
+<body>
+    <h1>Browser Script</h1>
+    <p>Check the console</p>
+    <script src="../dist/bundles/apicore.min.js"></script>
+    <script>
+        var api = new ApiCore()
+        api.authenticate().then(console.log)
+    </script>
+</body>
+</html>

@@ -10,3 +10,5 @@ stats.json
 coverage
 dist
 .rts2_cache_*
+src/grammar/index.ts
+*.tgz

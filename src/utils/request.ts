@@ -1,99 +1,89 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import fetch, { Headers } from 'cross-fetch'
-import FormData from 'form-data'
 import status from 'statuses'
-import { AuthorizationHeaders, Form, Query } from '../types'
+import { AuthorizationHeaders, AuthForm } from '../types'
+import { z } from 'zod'
 
-function buildUrl (url: string, params: Object): string {
+const errorSchema = z.object({
+  error: z.object({
+    code: z.number(),
+    message: z.string().transform(val => val.split(';')[0])
+  })
+})
+
+function buildUrl (url: string, params: object) {
   const builtUrl = new URL(url)
   Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, value))
   return builtUrl.toString()
 }
 
-function buildHeaders (headers: Object) {
+function buildHeaders (headers: object) {
   const builtHeaders = new Headers()
   Object.entries(headers).forEach(([key, value]) => builtHeaders.append(key, value))
   return builtHeaders
 }
 
-function buildForm (form: Object) {
+function buildForm (form: object) {
   const builtForm = new FormData()
   Object.entries(form).forEach(([key, value]) => builtForm.append(key, value))
   return builtForm
 }
 
-function apiError (code: number, message?: string) {
-  const error: any = new Error(message || status(code) || `Request rejected with status ${code}`)
-  error.code = code
-  return error
+class ApiError extends Error {
+  public code
+  constructor (message = 'Unknown Error', code = 520) {
+    super(message)
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError)
+    }
+
+    this.name = 'ApiError'
+    this.code = code
+  }
 }
 
-async function fetchJson (url: string, method: string, headers: object = {}, body?: any) {
+function apiError (code: number, message?: string) {
+  return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
+}
+
+async function fetchJson (url: string, method: string, headers: object = {}, body?: string | FormData) {
   const response = await fetch(url, {
     method,
     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/json' })),
     body
   })
 
-  let json
-  let httpStatus: { code: number; message?: string } = {
-    code: response.status,
-    message: response.statusText
+  if (response.status < 300) {
+    return response.json()
   }
 
-  try {
-    json = await response.json()
+  const errorData = errorSchema.safeParse(await response.json())
 
-    if (json.error) {
-      httpStatus = {
-        code: json.error.code,
-        message: json.error.message
-      }
-    }
-  } catch (e) {
-    if (response.ok) {
-      httpStatus = {
-        code: 520
-      }
-    }
+  if (errorData.success) {
+    throw apiError(errorData.data.error.code, errorData.data.error.message)
   }
 
-  if (httpStatus.code < 300) {
-    return json
-  } else {
-    throw apiError(httpStatus.code, httpStatus.message)
-  }
+  throw apiError(response.status, response.statusText)
 }
 
-// async function fetchXml (url: string, method: string, headers: object = {}, body?: any) {
-//   const response = await fetch(url, {
-//     method,
-//     headers: buildHeaders(Object.assign({}, headers, { Accept: 'application/rss+xml' })),
-//     body
-//   })
+async function fetchText (url: string, method: string, headers: object = {}, body?: string) {
+  const response = await fetch(url, {
+    method,
+    headers: buildHeaders(Object.assign({}, headers, { Accept: 'text/*' })),
+    body
+  })
 
-//   let xml
-//   let httpStatus: { code: number, message?: string } = {
-//     code: response.status,
-//     message: response.statusText
-//   }
+  if (response.status < 300) {
+    return response.text()
+  }
 
-//   try {
-//     xml = await response.text()
-//   } catch (e) {
-//     if (response.ok) {
-//       httpStatus = {
-//         code: 520
-//       }
-//     }
-//   }
+  const errorData = errorSchema.safeParse(await response.json())
 
-//   if (httpStatus.code < 300) {
-//     return xml
-//   } else {
-//     throw apiError(httpStatus.code, httpStatus.message)
-//   }
-// }
+  if (errorData.success) {
+    throw apiError(errorData.data.error.code, errorData.data.error.message)
+  }
+
+  throw apiError(response.status, response.statusText)
+}
 
 export async function get (
   url: string,
@@ -105,27 +95,15 @@ export async function get (
       [key: string]: string | number
     }
     headers?: AuthorizationHeaders
-  }) {
+  },
+  type: 'json' | 'text' = 'json') {
+  if (type === 'text') return fetchText(params ? buildUrl(url, params) : url, 'GET', headers)
   return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
 }
 
-// export async function getXml (
-//   url: string,
-//   {
-//     headers,
-//     params
-//   }: {
-//     params?: {
-//       [key: string]: string | number
-//     },
-//     headers?: AuthorizationHeaders
-//   }) {
-//   return fetchXml(params ? buildUrl(url, params) : url, 'GET', headers)
-// }
-
 export async function post (
   url: string,
-  data: Query,
+  data: object,
   {
     headers,
     params
@@ -133,7 +111,7 @@ export async function post (
     params?: {
       [key: string]: string | number
     }
-    headers?: AuthorizationHeaders
+    headers: AuthorizationHeaders
   }) {
   headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
 
@@ -142,7 +120,7 @@ export async function post (
 
 export async function postForm (
   url: string,
-  formData: Form,
+  formData: AuthForm,
   {
     headers
   }: {
@@ -151,4 +129,20 @@ export async function postForm (
   const form = buildForm(formData)
 
   return fetchJson(url, 'POST', headers, form)
+}
+
+export async function del (
+  url: string,
+  {
+    headers,
+    params
+  }: {
+    params?: {
+      [key: string]: string | number
+    }
+    headers?: AuthorizationHeaders
+  }, body?: object) {
+  headers = Object.assign({}, headers, { 'Content-Type' : 'application/json' })
+
+  return fetchJson(params ? buildUrl(url, params) : url, 'DELETE', headers, body && JSON.stringify(body))
 }

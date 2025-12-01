@@ -1,24 +1,56 @@
 {
   "name": "afpnews-api",
-  "version": "1.13.1",
-  "description": "Node helper functions to authenticate and fetch AFP News API",
-  "main": "dist/afpnews-api.js",
-  "browser": "dist/afpnews-api.umd.js",
-  "module": "dist/afpnews-api.es.js",
-  "source": "src/afpnews-api.ts",
-  "types": "dist/afpnews-api.d.ts",
+  "version": "2.2.0",
+  "description": "Node helper functions to authenticate and fetch AFP Core API",
+  "main": "dist/cjs/index.js",
+  "type": "commonjs",
+  "types": "./dist/cjs/index.d.cts",
+  "module": "dist/esm/index.js",
+  "unpkg": "./dist/bundles/apicore.min.js",
+  "jsdelivr": "./dist/bundles/apicore.min.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "browser": {
+        "script": "./dist/bundles/apicore.min.js",
+        "import": {
+          "types": "./dist/esm/index.d.mts",
+          "default": "./dist/bundles/apicore.min.mjs"
+        },
+        "require": {
+          "types": "./dist/cjs/index.d.cts",
+          "default": "./dist/bundles/apicore.min.js"
+        }
+      },
+      "import": {
+        "types": "./dist/esm/index.d.mts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "source": "src/index.ts",
   "files": [
-    "dist"
+    "dist",
+    "Readme.md",
+    "LICENSE.md"
   ],
   "scripts": {
-    "clean": "rm -rf dist .rts2_cache_*",
-    "build:web": "microbundle -o dist -f umd --target web --name AfpNews --sourcemap --external none",
-    "build:node": "microbundle -o dist -f es,cjs --target node --strict --sourcemap",
-    "build": "npm run build:web && npm run build:node",
-    "lint": "eslint 'src/**/*.ts'",
-    "prepare": "npm run clean && npm run lint && npm run build",
-    "test:apicore": "DOTENV_CONFIG_PATH=`pwd`/apicore.env jest --coverage  --testTimeout=10000",
-    "test": "jest --coverage --testTimeout=10000"
+    "clean": "rimraf dist .rts2_cache_* src/grammar/index.ts",
+    "build:parser": "nearleyc src/grammar/index.ne --out ./src/grammar/index.ts",
+    "build:types": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationDir 'dist/types' && rollup -c rollup.config.mjs",
+    "build:esm": "cross-env BABEL_ENV=esmUnbundled babel src --extensions '.ts' --out-dir 'dist/esm'",
+    "build:cjs": "cross-env BABEL_ENV=cjs babel src --extensions '.ts' --out-dir 'dist/cjs'",
+    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.mjs",
+    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.mjs",
+    "build": "npm-run-all -l clean build:parser build:types -p build:esm build:cjs build:esmBundled build:umdBundled && ./fixup",
+    "postbuild": "rimraf dist/types",
+    "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
+    "lint": "eslint .",
+    "prepare": "npm run lint && npm run build"
   },
   "engines": {
     "node": ">= 12.20.0"
@@ -40,36 +72,42 @@
   },
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
-    "@types/node": "^16.11.4",
-    "@types/jest": "^27.0.2",
-    "@typescript-eslint/eslint-plugin": "^5.1.0",
-    "@typescript-eslint/eslint-plugin-tslint": "^5.1.0",
-    "@typescript-eslint/parser": "^5.1.0",
-    "dotenv": "^10.0.0",
-    "eslint": "^8.1.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-import": "^2.25.2",
-    "eslint-plugin-jsdoc": "^37.0.0",
-    "jest": "^27.3.1",
-    "microbundle": "^0.14.1",
-    "ts-jest": "^27.0.7",
-    "tslint": "^6.1.3"
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@eslint/js": "^9.39.1",
+    "@rollup/plugin-babel": "^6.1.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "babel-plugin-add-import-extension": "^1.6.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsdoc": "^61.4.1",
+    "nodemon": "^3.1.11",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^6.1.2",
+    "rollup": "^4.53.3",
+    "rollup-plugin-dts": "^6.3.0",
+    "rollup-plugin-polyfill-node": "^0.13.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.0"
   },
   "dependencies": {
+    "@types/btoa-lite": "^1.0.2",
+    "@types/moo": "^0.5.10",
+    "@types/nearley": "^2.11.5",
+    "@types/node": "^24.10.1",
+    "@types/statuses": "^2.0.6",
     "btoa-lite": "^1.0.0",
-    "cross-fetch": "^3.1.4",
-    "form-data": "^4.0.0",
-    "lucene": "^2.1.1",
-    "statuses": "^2.0.1"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.tsx?$": "ts-jest"
-    },
-    "moduleFileExtensions": [
-      "ts",
-      "js"
-    ],
-    "testRegex": "^.+\\.spec\\.ts$"
+    "events": "^3.3.0",
+    "moo": "^0.5.2",
+    "nearley": "^2.20.1",
+    "statuses": "^2.0.2",
+    "zod": "^4.1.13"
   }
 }
