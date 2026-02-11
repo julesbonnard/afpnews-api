@@ -10,6 +10,12 @@
 # Install dependencies (uses pnpm)
 pnpm install
 
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
 # Lint
 npm run lint
 
@@ -131,8 +137,26 @@ AFPNEWS_USERNAME        # User credentials
 AFPNEWS_PASSWORD        # User credentials
 ```
 
-### No Test Suite
-There is currently no test framework configured. The `tsconfig.json` excludes `**/*.test.ts` files, and `.babelrc.mjs` has a `test` environment, suggesting tests are intended but not yet implemented.
+### Testing
+- **Framework**: Vitest (config in `vitest.config.mts`)
+- **Test location**: `tests/` directory, mirroring `src/` structure
+- **Run**: `npm test` (single run) or `npm run test:watch` (watch mode)
+- **Mocking**: Tests mock `globalThis.fetch` directly or use `vi.spyOn` for method-level mocking
+- **Pattern**: Each source module has a corresponding `.test.ts` file in `tests/`
+
+```
+tests/
+├── index.test.ts              # Export verification
+├── api/
+│   ├── auth.test.ts           # Auth class: token management, auth flows
+│   ├── docs.test.ts           # Docs class: search, get, mlt, list, searchAll
+│   ├── story.test.ts          # Story HTML retrieval
+│   └── notification.test.ts   # NotificationCenter: services, subscriptions
+└── utils/
+    ├── normalizer.test.ts     # Unicode normalization
+    ├── QueryBuilder.test.ts   # Query DSL parsing, builder methods
+    └── request.test.ts        # HTTP helpers, error handling
+```
 
 ### Error Handling
 - Custom `ApiError` class in `src/utils/request.ts` with `code` and `message` fields
