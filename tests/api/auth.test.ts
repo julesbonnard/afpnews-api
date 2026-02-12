@@ -1,20 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Auth } from '../../src/api/auth'
-
-const TOKEN_RESPONSE = {
-  access_token: 'test-access-token',
-  refresh_token: 'test-refresh-token',
-  expires_in: 3600
-}
-
-function mockFetch(body: unknown, status = 200) {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    status,
-    statusText: 'OK',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body))
-  })
-}
+import { mockFetch, mockFetchRejection, TOKEN_RESPONSE } from '../helpers'
 
 describe('Auth', () => {
   beforeEach(() => {
@@ -94,6 +80,23 @@ describe('Auth', () => {
     })
   })
 
+  describe('authorizationBasicHeaders', () => {
+    it('should return Basic header with apiKey', () => {
+      const auth = new Auth({ apiKey: 'my-api-key' })
+      expect(auth.authorizationBasicHeaders).toEqual({
+        Authorization: 'Basic my-api-key'
+      })
+    })
+
+    it('should encode clientId:clientSecret as base64', () => {
+      const auth = new Auth({ clientId: 'myClient', clientSecret: 'mySecret' })
+      const expected = btoa('myClient:mySecret')
+      expect(auth.authorizationBasicHeaders).toEqual({
+        Authorization: `Basic ${expected}`
+      })
+    })
+  })
+
   describe('authenticate', () => {
     it('should request anonymous token when no credentials and no token', async () => {
       mockFetch(TOKEN_RESPONSE)
@@ -111,11 +114,11 @@ describe('Auth', () => {
       const auth = new Auth()
 
       const token1 = await auth.authenticate()
-      const fetchCallCount = (fetch as ReturnType<typeof vi.fn>).mock.calls.length
+      const fetchCallCount = vi.mocked(fetch).mock.calls.length
 
       const token2 = await auth.authenticate()
       expect(token2).toBe(token1)
-      expect((fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(fetchCallCount)
+      expect(vi.mocked(fetch).mock.calls.length).toBe(fetchCallCount)
     })
 
     it('should refresh anonymous token when expired', async () => {
@@ -158,8 +161,8 @@ describe('Auth', () => {
       expect(token.accessToken).toBe('test-access-token')
       expect(token.authType).toBe('credentials')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      expect(calledOptions.method).toBe('POST')
+      const calledOptions = vi.mocked(fetch).mock.calls[0][1]
+      expect(calledOptions!.method).toBe('POST')
     })
 
     it('should throw when credentials provided but no apiKey', async () => {
@@ -180,6 +183,18 @@ describe('Auth', () => {
 
       await expect(auth.authenticate()).rejects.toThrow('Invalid token')
     })
+
+    it('should throw on network failure', async () => {
+      mockFetchRejection(new Error('Network error'))
+      const auth = new Auth()
+      await expect(auth.authenticate()).rejects.toThrow('Network error')
+    })
+
+    it('should throw on invalid token response schema', async () => {
+      mockFetch({ unexpected: 'format' })
+      const auth = new Auth()
+      await expect(auth.authenticate()).rejects.toThrow()
+    })
   })
 
   describe('resetToken', () => {
@@ -196,7 +211,7 @@ describe('Auth', () => {
       expect(auth.token).toBeUndefined()
     })
 
-    it('should emit tokenChanged event', () => {
+    it('should emit tokenChanged event without token', () => {
       const auth = new Auth()
       auth.token = {
         accessToken: 'test',
@@ -209,6 +224,7 @@ describe('Auth', () => {
       auth.on('tokenChanged', listener)
       auth.resetToken()
       expect(listener).toHaveBeenCalledOnce()
+      expect(listener).toHaveBeenCalledWith()
     })
   })
 
@@ -254,8 +270,36 @@ describe('Auth', () => {
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
+    })
+
+    it('should throw on invalid user info response', async () => {
+      mockFetch({ invalid: 'data' })
+
+      const auth = new Auth()
+      auth.token = {
+        accessToken: 'my-token',
+        refreshToken: 'refresh',
+        tokenExpires: Date.now() + 60000,
+        authType: 'credentials'
+      }
+
+      await expect(auth.getUserInfo()).rejects.toThrow()
+    })
+
+    it('should throw on network failure', async () => {
+      mockFetchRejection(new Error('Network error'))
+
+      const auth = new Auth()
+      auth.token = {
+        accessToken: 'my-token',
+        refreshToken: 'refresh',
+        tokenExpires: Date.now() + 60000,
+        authType: 'credentials'
+      }
+
+      await expect(auth.getUserInfo()).rejects.toThrow('Network error')
     })
   })
 })

@@ -1,25 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Docs } from '../../src/api/docs'
-
-function mockFetch(body: unknown, status = 200) {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    status,
-    statusText: 'OK',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body))
-  })
-}
-
-function createAuthenticatedDocs() {
-  const docs = new Docs()
-  docs.token = {
-    accessToken: 'test-token',
-    refreshToken: 'test-refresh',
-    tokenExpires: Date.now() + 60000,
-    authType: 'anonymous'
-  }
-  return docs
-}
+import { mockFetch, mockFetchRejection, createAuthenticatedDocs } from '../helpers'
 
 describe('NotificationCenter (via Docs.notificationCenter)', () => {
   beforeEach(() => {
@@ -39,7 +19,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       })
 
       expect(uno).toBe('service-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/register')
     })
 
@@ -55,6 +35,80 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       })
 
       expect(uno).toBe('mail-service-123')
+    })
+
+    it('should register an SQS service', async () => {
+      mockFetch({ response: { uno: 'sqs-service-123' } })
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      const uno = await nc.registerService({
+        name: 'sqsService',
+        type: 'sqs',
+        datas: {
+          accessKey: 'key',
+          secretKey: 'secret',
+          region: 'eu-west-1',
+          queue: 'my-queue',
+          ownerId: 'owner-123'
+        }
+      })
+
+      expect(uno).toBe('sqs-service-123')
+    })
+
+    it('should register a JMS service', async () => {
+      mockFetch({ response: { uno: 'jms-service-123' } })
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      const uno = await nc.registerService({
+        name: 'jmsService',
+        type: 'jms',
+        datas: {
+          url: 'tcp://localhost:61616',
+          type: 'queue',
+          queueName: 'my-queue',
+          username: 'admin',
+          password: 'pass',
+          ttlInSeconds: '3600',
+          qosEnabled: 'true',
+          deliveryMode: 'PERSISTENT'
+        }
+      })
+
+      expect(uno).toBe('jms-service-123')
+    })
+
+    it('should throw on HTTP error', async () => {
+      mockFetch(
+        { error: { code: 400, message: 'Bad Request' } },
+        400
+      )
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      await expect(
+        nc.registerService({
+          name: 'myService',
+          type: 'rest',
+          datas: { href: 'https://webhook.example.com' }
+        })
+      ).rejects.toThrow('Bad Request')
+    })
+
+    it('should throw on network failure', async () => {
+      mockFetchRejection(new Error('Network error'))
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      await expect(
+        nc.registerService({
+          name: 'myService',
+          type: 'rest',
+          datas: { href: 'https://webhook.example.com' }
+        })
+      ).rejects.toThrow('Network error')
     })
   })
 
@@ -94,6 +148,14 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
 
       expect(services).toHaveLength(0)
     })
+
+    it('should throw on invalid response schema', async () => {
+      mockFetch({ invalid: 'response' })
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      await expect(nc.listServices()).rejects.toThrow()
+    })
   })
 
   describe('deleteService', () => {
@@ -105,7 +167,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const uno = await nc.deleteService('myService')
 
       expect(uno).toBe('deleted-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/delete')
       expect(calledUrl).toContain('service=myService')
     })
@@ -122,7 +184,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       })
 
       expect(uno).toBe('sub-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/subscription/add')
       expect(calledUrl).toContain('name=mySub')
       expect(calledUrl).toContain('service=myService')
@@ -166,7 +228,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const subs = await nc.subscriptionsInService('myService')
 
       expect(subs).toHaveLength(2)
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/subscriptions')
       expect(calledUrl).toContain('service=myService')
     })
@@ -198,7 +260,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const nc = docs.notificationCenter
       await nc.deleteSubscription('myService', 'mySub')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/subscription/delete')
       expect(calledUrl).toContain('service=myService')
       expect(calledUrl).toContain('name=mySub')
@@ -223,9 +285,19 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       expect(result).toHaveLength(2)
       expect(result[0]).toEqual({ name: 'sub1', status: 'deleted' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      expect(calledOptions.method).toBe('DELETE')
-      expect(calledOptions.body).toBe(JSON.stringify(['sub1', 'sub2']))
+      const calledOptions = vi.mocked(fetch).mock.calls[0][1]
+      expect(calledOptions!.method).toBe('DELETE')
+      expect(calledOptions!.body).toBe(JSON.stringify(['sub1', 'sub2']))
+    })
+
+    it('should throw on invalid response schema', async () => {
+      mockFetch({ invalid: 'response' })
+
+      const docs = createAuthenticatedDocs()
+      const nc = docs.notificationCenter
+      await expect(
+        nc.removeSubscriptionsFromService('myService', ['sub1'])
+      ).rejects.toThrow()
     })
   })
 })

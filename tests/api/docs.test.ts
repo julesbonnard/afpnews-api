@@ -1,40 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Docs } from '../../src/api/docs'
-
-const TOKEN_RESPONSE = {
-  access_token: 'test-access-token',
-  refresh_token: 'test-refresh-token',
-  expires_in: 3600
-}
-
-function mockFetchSequence(responses: Array<{ body: unknown; status?: number }>) {
-  let callIndex = 0
-  globalThis.fetch = vi.fn().mockImplementation(() => {
-    const resp = responses[callIndex] || responses[responses.length - 1]
-    callIndex++
-    return Promise.resolve({
-      status: resp.status || 200,
-      statusText: 'OK',
-      json: () => Promise.resolve(resp.body),
-      text: () => Promise.resolve(JSON.stringify(resp.body))
-    })
-  })
-}
-
-function mockFetch(body: unknown, status = 200) {
-  mockFetchSequence([{ body, status }])
-}
-
-function createAuthenticatedDocs() {
-  const docs = new Docs()
-  docs.token = {
-    accessToken: 'test-token',
-    refreshToken: 'test-refresh',
-    tokenExpires: Date.now() + 60000,
-    authType: 'anonymous'
-  }
-  return docs
-}
+import { mockFetch, mockFetchSequence, mockFetchRejection, createAuthenticatedDocs, TOKEN_RESPONSE } from '../helpers'
 
 describe('Docs', () => {
   beforeEach(() => {
@@ -57,7 +23,6 @@ describe('Docs', () => {
           numFound: 1
         }
       }
-      // First call: anonymous token, second call: search
       mockFetchSequence([
         { body: TOKEN_RESPONSE },
         { body: searchResponse }
@@ -82,7 +47,6 @@ describe('Docs', () => {
 
       expect(result.count).toBe(0)
       expect(result.documents).toHaveLength(0)
-      // Only one fetch call (search), no auth call
       expect(fetch).toHaveBeenCalledTimes(1)
     })
 
@@ -102,11 +66,11 @@ describe('Docs', () => {
         sortOrder: 'desc'
       })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/search')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = vi.mocked(fetch).mock.calls[0][1]
+      const body = JSON.parse(calledOptions!.body as string)
       expect(body.maxRows).toBe(20)
       expect(body.dateRange.from).toBe('2023-01-01')
       expect(body.dateRange.to).toBe('2023-12-31')
@@ -121,11 +85,35 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search()
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = vi.mocked(fetch).mock.calls[0][1]
+      const body = JSON.parse(calledOptions!.body as string)
       expect(body.maxRows).toBe(10)
       expect(body.sortField).toBe('published')
       expect(body.sortOrder).toBe('desc')
+    })
+
+    it('should throw on HTTP error', async () => {
+      mockFetch(
+        { error: { code: 401, message: 'Unauthorized' } },
+        401
+      )
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search()).rejects.toThrow('Unauthorized')
+    })
+
+    it('should throw on network failure', async () => {
+      mockFetchRejection(new Error('Network error'))
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search()).rejects.toThrow('Network error')
+    })
+
+    it('should throw on invalid response schema', async () => {
+      mockFetch({ invalid: 'response' })
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search()).rejects.toThrow()
     })
   })
 
@@ -143,8 +131,25 @@ describe('Docs', () => {
 
       expect(result).toEqual({ uno: 'AFP-123', title: 'Test Document' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
+    })
+
+    it('should throw on HTTP error', async () => {
+      mockFetch(
+        { error: { code: 404, message: 'Not Found' } },
+        404
+      )
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.get('INVALID')).rejects.toThrow('Not Found')
+    })
+
+    it('should throw when response has wrong number of docs', async () => {
+      mockFetch({ response: { docs: [] } })
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.get('AFP-123')).rejects.toThrow()
     })
   })
 
@@ -164,7 +169,7 @@ describe('Docs', () => {
       expect(result.count).toBe(2)
       expect(result.documents).toHaveLength(2)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mlt')
       expect(calledUrl).toContain('uno=AFP-123')
       expect(calledUrl).toContain('lang=en')
@@ -180,8 +185,18 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mlt('AFP-123', 'fr')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('size=10')
+    })
+
+    it('should throw on HTTP error', async () => {
+      mockFetch(
+        { error: { code: 500, message: 'Internal Server Error' } },
+        500
+      )
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.mlt('AFP-123', 'en')).rejects.toThrow('Internal Server Error')
     })
   })
 
@@ -205,7 +220,7 @@ describe('Docs', () => {
       expect(result.keywords).toHaveLength(2)
       expect(result.keywords[0]).toEqual({ name: 'politics', count: 150 })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/list/slug')
       expect(calledUrl).toContain('minDocCount=1')
     })
@@ -219,8 +234,18 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.list('keyword', {}, 5)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = vi.mocked(fetch).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=5')
+    })
+
+    it('should throw on HTTP error', async () => {
+      mockFetch(
+        { error: { code: 403, message: 'Forbidden' } },
+        403
+      )
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.list('slug')).rejects.toThrow('Forbidden')
     })
   })
 
@@ -228,7 +253,6 @@ describe('Docs', () => {
     it('should yield documents across multiple pages using spied search', async () => {
       const docs = createAuthenticatedDocs()
 
-      // Mock search to simulate pagination: 2 pages of 3 docs each
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
       searchSpy.mockImplementation(async () => {
@@ -254,13 +278,11 @@ describe('Docs', () => {
       })
 
       const collected: unknown[] = []
-      // size: 6, each page returns 3 docs. Since 3 < 6 (params.size),
-      // searchAll stops after page 1 — this tests the "fewer than requested" exit.
-      // To actually paginate, size must exceed maxRequestSize (1000).
       for await (const doc of docs.searchAll({ size: 6 })) {
         collected.push(doc)
       }
 
+      // 3 < 6 (params.size), so searchAll stops after page 1
       expect(collected).toHaveLength(3)
       expect(searchSpy).toHaveBeenCalledTimes(1)
     })
@@ -273,17 +295,15 @@ describe('Docs', () => {
       searchSpy.mockImplementation(async () => {
         callNum++
         if (callNum === 1) {
-          // Return exactly 1000 docs (matching maxRequestSize) so pagination continues
           const pageDocs = Array.from({ length: 1000 }, (_, i) => ({
             uno: `doc-${i}`,
-            published: `2023-06-${String(15).padStart(2, '0')}T${String(i).padStart(2, '0')}:00:00Z`
+            published: `2023-06-15T${String(i % 24).padStart(2, '0')}:${String(Math.floor(i / 24) % 60).padStart(2, '0')}:00Z`
           }))
           return { count: 1500, documents: pageDocs }
         }
-        // Second page: fewer than requested → stops
         const pageDocs = Array.from({ length: 100 }, (_, i) => ({
           uno: `doc-${1000 + i}`,
-          published: `2023-06-14T${String(i).padStart(2, '0')}:00:00Z`
+          published: `2023-06-14T${String(i % 24).padStart(2, '0')}:${String(Math.floor(i / 24) % 60).padStart(2, '0')}:00Z`
         }))
         return { count: 1500, documents: pageDocs }
       })
@@ -293,7 +313,6 @@ describe('Docs', () => {
         collected.push(doc)
       }
 
-      // 1000 from page 1 + 100 from page 2
       expect(collected).toHaveLength(1100)
       expect(searchSpy).toHaveBeenCalledTimes(2)
     })
@@ -343,6 +362,24 @@ describe('Docs', () => {
 
       expect(collected).toHaveLength(1)
       expect(searchSpy).toHaveBeenCalled()
+    })
+
+    it('should not mutate the original params object', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockResolvedValue({
+        count: 1,
+        documents: [{ uno: 'doc1', published: '2023-01-01T00:00:00Z' }]
+      })
+
+      const params = { size: 10, sortOrder: 'desc' as const }
+      const paramsCopy = { ...params }
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll(params)) {
+        collected.push(doc)
+      }
+
+      expect(params).toEqual(paramsCopy)
     })
   })
 

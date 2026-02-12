@@ -11,6 +11,16 @@ describe('QueryBuilder', () => {
       expect(qb.sortField).toBe('published')
       expect(qb.sortOrder).toBe('desc')
     })
+
+    it('should store fields when provided', () => {
+      const qb = new QueryBuilder(['title', 'uno'])
+      expect(qb.fields).toEqual(['title', 'uno'])
+    })
+
+    it('should not set fields when not provided', () => {
+      const qb = new QueryBuilder()
+      expect(qb.fields).toBeUndefined()
+    })
   })
 
   describe('setMaxRows', () => {
@@ -20,7 +30,7 @@ describe('QueryBuilder', () => {
       expect(qb.maxRows).toBe(50)
     })
 
-    it('should throw when maxRows is not provided', () => {
+    it('should throw when maxRows is 0', () => {
       const qb = new QueryBuilder()
       expect(() => qb.setMaxRows(0)).toThrow('maxRows is required')
     })
@@ -156,6 +166,14 @@ describe('QueryBuilder', () => {
         fields: undefined,
         query: undefined
       })
+    })
+
+    it('should include fields when set via constructor', () => {
+      const result = new QueryBuilder(['title', 'uno'])
+        .setMaxRows(10)
+        .build()
+
+      expect(result.fields).toEqual(['title', 'uno'])
     })
 
     it('should include lang when langs are set and no lang: in query', () => {
@@ -312,7 +330,6 @@ describe('QueryBuilder', () => {
 
       expect(result).toBeDefined()
       expect(result!.or).toBeDefined()
-      // NOT should produce exclude instead of in
       const flat = JSON.stringify(result)
       expect(flat).toContain('exclude')
     })
@@ -346,7 +363,6 @@ describe('QueryBuilder', () => {
       const result = qb.parseQueryString('title:Macron')
 
       expect(result).toBeDefined()
-      // Full-text fields (title) should generate translated fields
       const flat = JSON.stringify(result)
       expect(flat).toContain('translated.fr.title')
       expect(flat).toContain('translated.en.title')
@@ -359,6 +375,14 @@ describe('QueryBuilder', () => {
 
       const flat = JSON.stringify(result)
       expect(flat).not.toContain('translated')
+    })
+
+    it('should parse deeply nested boolean expressions', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('(country:fra OR country:deu) AND (urgency:3 OR urgency:4)')
+
+      expect(result).toBeDefined()
+      expect(result!.and).toBeDefined()
     })
   })
 
