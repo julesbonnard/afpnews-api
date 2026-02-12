@@ -90,20 +90,21 @@ export class Docs extends Auth {
    * @returns An object containing the documents and their count
    */
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = []) {
-    const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    const paginatedParams = { ...params }
+    const direction = paginatedParams.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
     const maxRequestSize = 1000
-    const maxSize = params.size || defaultSearchParams.size
+    const maxSize = paginatedParams.size || defaultSearchParams.size
     let i = 0
     while (i < maxSize) {
-      params.size = Math.min(maxSize - i, maxRequestSize)
-      const { count, documents } = await this.search(params, fields)
+      paginatedParams.size = Math.min(maxSize - i, maxRequestSize)
+      const { count, documents } = await this.search(paginatedParams, fields)
       if (!documents.length) return
       for (const doc of documents) {
         i++
         yield doc
       }
-      if (documents.length < params.size || count <= documents.length) return
-      params[direction] = docParser.parse(documents.pop()).published
+      if (documents.length < paginatedParams.size || count <= documents.length) return
+      paginatedParams[direction] = docParser.parse(documents.pop()).published
     }
   }
 
