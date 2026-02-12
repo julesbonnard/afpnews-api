@@ -23,7 +23,7 @@ export class QueryBuilder {
   private additionalParams: SearchQuery[] = []
 
   constructor (fields?: string[]) {
-    if (this.fields) this.fields = fields
+    if (fields) this.fields = fields
     this.maxRows = defaultSearchParams.size
     this.dateFrom = defaultSearchParams.dateFrom
     this.dateTo = defaultSearchParams.dateTo
