@@ -18,11 +18,10 @@ describe('Story (via Docs.getStoryHtml)', () => {
   })
 
   it('should fetch webstory and inject base tag', async () => {
-    const storyUrl = 'https://afp-apicore-prod.afp.com/v1/webstory/abc'
     const storyHtml = '<html><head><title>Story</title></head><body>Content</body></html>'
 
     let callIndex = 0
-    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+    globalThis.fetch = vi.fn().mockImplementation(() => {
       callIndex++
       if (callIndex === 1) {
         // First call: fetch webstory XML URL
