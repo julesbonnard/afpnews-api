@@ -22,7 +22,7 @@ const searchResponse = z.object({
 const listResponse = z.object({
   response: z.object({
     topics: z.object({
-      name: z.string(),
+      name: z.string().nullable().optional(),
       count: z.number()
     }).array().default([]),
     numFound: z.number().default(0)
@@ -219,39 +219,24 @@ export class Docs extends Auth {
 
   /**
    * Get the API field mapping
-   * @param lang - Optional language for the mapping
+   * @param lang - The language for the mapping
    * @returns The mapping object
    */
-  public async mapping (lang?: string) {
+  public async mapping (lang: string) {
     await this.authenticate()
-
-    const params: { wt: string; lang?: string } = { wt: 'json' }
-    if (lang) params.lang = lang
 
     const data = await get(`${this.baseUrl}/v1/api/mapping`, {
       headers: this.authorizationBearerHeaders,
-      params
+      params: { wt: 'json', lang }
     })
 
-    return data
-  }
+    const { response: { mapping } } = z.object({
+      response: z.object({
+        mapping: z.unknown()
+      })
+    }).parse(data)
 
-  /**
-   * Cluster search results
-   * @param params - An object containing the search parameters
-   * @param fields - An array of fields to include in the response
-   * @returns The cluster results
-   */
-  public async cluster (params: SearchQueryParams = {}, fields: string[] = []) {
-    const body = this.prepareRequest(params, fields)
-
-    await this.authenticate()
-    const data = await post(`${this.baseUrl}/v1/api/cluster`, body, {
-      headers: this.authorizationBearerHeaders,
-      params: { wt: 'json' }
-    })
-
-    return data
+    return mapping
   }
 
   /**
@@ -293,9 +278,10 @@ export class Docs extends Auth {
       headers: this.authorizationBearerHeaders,
       params: {
         filter,
+        wt: 'xml',
         ...options
       }
-    }, 'text')
+    }, 'text', 'application/rss+xml')
 
     return data
   }

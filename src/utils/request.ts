@@ -65,10 +65,10 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
   throw apiError(response.status, response.statusText)
 }
 
-async function fetchText (url: string, method: string, headers: object = {}, body?: string) {
+async function fetchText (url: string, method: string, headers: object = {}, body?: string, accept = 'text/*') {
   const response = await fetch(url, {
     method,
-    headers: buildHeaders(Object.assign({}, headers, { Accept: 'text/*' })),
+    headers: buildHeaders(Object.assign({}, headers, { Accept: accept })),
     body
   })
 
@@ -96,8 +96,9 @@ export async function get (
     }
     headers?: AuthorizationHeaders
   },
-  type: 'json' | 'text' = 'json') {
-  if (type === 'text') return fetchText(params ? buildUrl(url, params) : url, 'GET', headers)
+  type: 'json' | 'text' = 'json',
+  accept?: string) {
+  if (type === 'text') return fetchText(params ? buildUrl(url, params) : url, 'GET', headers, undefined, accept)
   return fetchJson(params ? buildUrl(url, params) : url, 'GET', headers)
 }
 

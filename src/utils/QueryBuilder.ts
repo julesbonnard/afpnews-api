@@ -1,5 +1,5 @@
 import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config'
-import { AdditionalParamValue, FacetConfig, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry } from "../types"
+import { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar'
 import { normalize } from './normalizer'
@@ -24,12 +24,12 @@ export class QueryBuilder {
   public tz?: string
   public dateGap?: string
   public wantCluster?: boolean
-  public wantedFacets?: FacetConfig[]
+  public wantedFacets?: WantedFacets
   public multiSort?: SortEntry[]
   private additionalParams: SearchQuery[] = []
 
   constructor (fields?: string[]) {
-    if (this.fields) this.fields = fields
+    if (fields) this.fields = fields
     this.maxRows = defaultSearchParams.size
     this.dateFrom = defaultSearchParams.dateFrom
     this.dateTo = defaultSearchParams.dateTo
@@ -87,7 +87,7 @@ export class QueryBuilder {
     return this
   }
 
-  public setWantedFacets (wantedFacets?: FacetConfig[]) {
+  public setWantedFacets (wantedFacets?: WantedFacets) {
     if (wantedFacets) this.wantedFacets = wantedFacets
     return this
   }
@@ -97,7 +97,7 @@ export class QueryBuilder {
     return this
   }
 
-  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | boolean | FacetConfig[] | SortEntry[] | undefined }) {
+  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | undefined }) {
     if (!additionalParams) return this
     for (const [key, value] of Object.entries(additionalParams)) {
       if (!value || typeof value === 'boolean') continue

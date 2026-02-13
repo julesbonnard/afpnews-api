@@ -210,6 +210,46 @@ describe('Docs', () => {
       expect(calledUrl).toContain('minDocCount=1')
     })
 
+    it('should handle null topic name', async () => {
+      const listResponse = {
+        response: {
+          topics: [
+            { name: null, count: 50 },
+            { name: 'economy', count: 75 }
+          ],
+          numFound: 2
+        }
+      }
+      mockFetch(listResponse)
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+
+      expect(result.count).toBe(2)
+      expect(result.keywords).toHaveLength(2)
+      expect(result.keywords[0]).toEqual({ name: null, count: 50 })
+    })
+
+    it('should handle missing topic name', async () => {
+      const listResponse = {
+        response: {
+          topics: [
+            { count: 100 },
+            { name: 'politics', count: 75 }
+          ],
+          numFound: 2
+        }
+      }
+      mockFetch(listResponse)
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+
+      expect(result.count).toBe(2)
+      expect(result.keywords).toHaveLength(2)
+      expect(result.keywords[0]).toEqual({ count: 100 })
+    })
+
     it('should pass custom minDocCount', async () => {
       const listResponse = {
         response: { topics: [], numFound: 0 }
@@ -428,11 +468,11 @@ describe('Docs', () => {
     it('should pass wantedFacets to the API', async () => {
       mockFetch({ response: { docs: [], numFound: 0 } })
       const docs = createAuthenticatedDocs()
-      await docs.search({ wantedFacets: [{ size: 10, minDocCount: 1 }] })
+      await docs.search({ wantedFacets: { slug: { size: 10, minDocCount: 1 } } })
 
       const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
       const body = JSON.parse(calledOptions.body)
-      expect(body.wantedFacets).toEqual([{ size: 10, minDocCount: 1 }])
+      expect(body.wantedFacets).toEqual({ slug: { size: 10, minDocCount: 1 } })
     })
 
     it('should pass sort to the API', async () => {
@@ -473,41 +513,27 @@ describe('Docs', () => {
   })
 
   describe('mapping', () => {
-    it('should fetch mapping', async () => {
-      const mappingData = { fields: ['uno', 'title'] }
+    it('should fetch mapping and return response.mapping', async () => {
+      const mappingData = { response: { mapping: { fields: ['uno', 'title'] } } }
       mockFetch(mappingData)
       const docs = createAuthenticatedDocs()
-      const result = await docs.mapping()
+      const result = await docs.mapping('en')
 
-      expect(result).toEqual(mappingData)
+      expect(result).toEqual({ fields: ['uno', 'title'] })
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mapping')
       expect(calledUrl).toContain('wt=json')
+      expect(calledUrl).toContain('lang=en')
     })
 
     it('should pass lang param', async () => {
-      mockFetch({})
+      mockFetch({ response: { mapping: {} } })
       const docs = createAuthenticatedDocs()
       await docs.mapping('fr')
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('lang=fr')
-    })
-  })
-
-  describe('cluster', () => {
-    it('should post to cluster endpoint', async () => {
-      const clusterData = { clusters: [] }
-      mockFetch(clusterData)
-      const docs = createAuthenticatedDocs()
-      const result = await docs.cluster({ query: 'test' })
-
-      expect(result).toEqual(clusterData)
-
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
-      expect(calledUrl).toContain('/v1/api/cluster')
-      expect(calledUrl).toContain('wt=json')
     })
   })
 
@@ -538,7 +564,7 @@ describe('Docs', () => {
   })
 
   describe('feed', () => {
-    it('should fetch feed as text', async () => {
+    it('should fetch feed as text with correct Accept header', async () => {
       const feedXml = '<rss><channel></channel></rss>'
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 200,
@@ -553,6 +579,11 @@ describe('Docs', () => {
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/feed')
       expect(calledUrl).toContain('filter=my-filter')
+      expect(calledUrl).toContain('wt=xml')
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const headers = calledOptions.headers as Headers
+      expect(headers.get('Accept')).toBe('application/rss+xml')
     })
 
     it('should pass optional params', async () => {
@@ -562,13 +593,13 @@ describe('Docs', () => {
       })
 
       const docs = createAuthenticatedDocs()
-      await docs.feed('my-filter', { startat: 5, size: 10, role: 'admin', wt: 'xml' })
+      await docs.feed('my-filter', { startat: 5, size: 10, role: 'admin', wt: 'atom' })
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=5')
       expect(calledUrl).toContain('size=10')
       expect(calledUrl).toContain('role=admin')
-      expect(calledUrl).toContain('wt=xml')
+      expect(calledUrl).toContain('wt=atom')
     })
   })
 

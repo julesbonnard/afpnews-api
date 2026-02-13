@@ -11,6 +11,18 @@ describe('QueryBuilder', () => {
       expect(qb.sortField).toBe('published')
       expect(qb.sortOrder).toBe('desc')
     })
+
+    it('should set fields when provided', () => {
+      const qb = new QueryBuilder(['title', 'uno'])
+      expect(qb.fields).toEqual(['title', 'uno'])
+    })
+
+    it('should include fields in build output', () => {
+      const result = new QueryBuilder(['title', 'uno'])
+        .setMaxRows(10)
+        .build()
+      expect(result.fields).toEqual(['title', 'uno'])
+    })
   })
 
   describe('setMaxRows', () => {
@@ -453,7 +465,7 @@ describe('QueryBuilder', () => {
   describe('setWantedFacets', () => {
     it('should set wantedFacets', () => {
       const qb = new QueryBuilder()
-      const facets = [{ size: 10, minDocCount: 1 }]
+      const facets = { slug: { size: 10, minDocCount: 1 } }
       qb.setWantedFacets(facets)
       expect(qb.wantedFacets).toEqual(facets)
     })
@@ -466,7 +478,7 @@ describe('QueryBuilder', () => {
 
     it('should return this for chaining', () => {
       const qb = new QueryBuilder()
-      expect(qb.setWantedFacets([])).toBe(qb)
+      expect(qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })).toBe(qb)
     })
   })
 
@@ -528,7 +540,7 @@ describe('QueryBuilder', () => {
     })
 
     it('should include wantedFacets when set', () => {
-      const facets = [{ size: 10, minDocCount: 1 }]
+      const facets = { slug: { size: 10, minDocCount: 1 }, empty: true }
       const result = new QueryBuilder()
         .setMaxRows(10)
         .setWantedFacets(facets)

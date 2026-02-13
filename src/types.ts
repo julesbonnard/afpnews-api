@@ -13,6 +13,7 @@ export type SearchQuery = {
 export type SearchQuerySortOrder = 'asc' | 'desc'
 
 export type FacetConfig = { size: number; minDocCount: number }
+export type WantedFacets = { empty?: boolean; [facetName: string]: FacetConfig | boolean | undefined }
 export type SortEntry = { sortField: string; sortOrder: SearchQuerySortOrder }
 
 export type AdditionalParamValue =
@@ -37,9 +38,9 @@ export type SearchQueryParams = Partial<{
   tz: string
   dateGap: string
   wantCluster: boolean
-  wantedFacets: FacetConfig[]
+  wantedFacets: WantedFacets
   sort: SortEntry[]
-  [key: string]: AdditionalParamValue | boolean | FacetConfig[] | SortEntry[]
+  [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[]
 }>
 
 export type AuthType = 'anonymous' | 'credentials'
@@ -75,7 +76,7 @@ export type SearchRequest = {
   tz?: string
   dateGap?: string
   wantCluster?: boolean
-  wantedFacets?: FacetConfig[]
+  wantedFacets?: WantedFacets
   sort?: SortEntry[]
 }
 
