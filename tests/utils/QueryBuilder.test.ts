@@ -11,6 +11,18 @@ describe('QueryBuilder', () => {
       expect(qb.sortField).toBe('published')
       expect(qb.sortOrder).toBe('desc')
     })
+
+    it('should set fields when provided', () => {
+      const qb = new QueryBuilder(['title', 'uno'])
+      expect(qb.fields).toEqual(['title', 'uno'])
+    })
+
+    it('should include fields in build output', () => {
+      const result = new QueryBuilder(['title', 'uno'])
+        .setMaxRows(10)
+        .build()
+      expect(result.fields).toEqual(['title', 'uno'])
+    })
   })
 
   describe('setMaxRows', () => {
@@ -337,7 +349,135 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('()')
 
+      // Empty expression serializes to undefined
       expect(result).toBeUndefined()
+    })
+
+    it('should parse lowercase "and" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron and france')
+
+      expect(result).toBeDefined()
+      expect(result!.and).toBeDefined()
+    })
+
+    it('should parse lowercase "or" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron or merkel')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+    })
+
+    it('should parse lowercase "not" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('not country:fra')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('exclude')
+    })
+
+    it('should parse mixed-case keywords', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron And france')
+
+      expect(result).toBeDefined()
+      expect(result!.and).toBeDefined()
+    })
+
+    it('should parse "android" as a word, not AND + roid', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('android')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('android')
+    })
+
+    it('should parse "notice" as a word, not NOT + ice', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('notice')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('notice')
+    })
+
+    it('should parse "forest" as a word, not FOR + est', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('forest')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('forest')
+    })
+
+    it('should throw on unmatched parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('(Macron')).toThrow('Failed to parse query')
+    })
+
+    it('should throw on unmatched quote', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('"unclosed')).toThrow('Failed to parse query')
+    })
+
+    it('should parse escaped quotes in strings', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('title:"say \\"hello\\""')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('say \\"hello\\"')
+    })
+
+    it('should parse escaped backslash in strings', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('title:"path\\\\file"')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('path\\\\file')
+    })
+
+    it('should parse field with empty value (country:)', () => {
+      const qb = new QueryBuilder()
+      // Empty value after colon produces EmptyExpression which serializer cannot handle
+      expect(() => qb.parseQueryString('country:')).toThrow()
+    })
+
+    it('should parse double parentheses', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('((Macron))')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+    })
+
+    it("should parse French apostrophe (l'AFP)", () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString("l'AFP")
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      // normalizer lowercases the text
+      expect(flat).toContain("l'afp")
+    })
+
+    it('should parse hyphenated words (Jean-Luc)', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('Jean-Luc')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      // normalizer lowercases the text
+      expect(flat).toContain('jean-luc')
     })
 
     it('should handle full-text search fields with translation', () => {
@@ -359,6 +499,205 @@ describe('QueryBuilder', () => {
 
       const flat = JSON.stringify(result)
       expect(flat).not.toContain('translated')
+    })
+  })
+
+  describe('setStartAt', () => {
+    it('should set startAt', () => {
+      const qb = new QueryBuilder()
+      qb.setStartAt(5)
+      expect(qb.startAt).toBe(5)
+    })
+
+    it('should set startAt to 0', () => {
+      const qb = new QueryBuilder()
+      qb.setStartAt(0)
+      expect(qb.startAt).toBe(0)
+    })
+
+    it('should not set startAt when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setStartAt(undefined)
+      expect(qb.startAt).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setStartAt(0)).toBe(qb)
+    })
+  })
+
+  describe('setTz', () => {
+    it('should set timezone', () => {
+      const qb = new QueryBuilder()
+      qb.setTz('Europe/Paris')
+      expect(qb.tz).toBe('Europe/Paris')
+    })
+
+    it('should not set tz when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setTz(undefined)
+      expect(qb.tz).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setTz('UTC')).toBe(qb)
+    })
+  })
+
+  describe('setDateGap', () => {
+    it('should set dateGap', () => {
+      const qb = new QueryBuilder()
+      qb.setDateGap('+1HOUR')
+      expect(qb.dateGap).toBe('+1HOUR')
+    })
+
+    it('should not set dateGap when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setDateGap(undefined)
+      expect(qb.dateGap).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setDateGap('+1DAY')).toBe(qb)
+    })
+  })
+
+  describe('setWantCluster', () => {
+    it('should set wantCluster to true', () => {
+      const qb = new QueryBuilder()
+      qb.setWantCluster(true)
+      expect(qb.wantCluster).toBe(true)
+    })
+
+    it('should set wantCluster to false', () => {
+      const qb = new QueryBuilder()
+      qb.setWantCluster(false)
+      expect(qb.wantCluster).toBe(false)
+    })
+
+    it('should not set wantCluster when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setWantCluster(undefined)
+      expect(qb.wantCluster).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setWantCluster(true)).toBe(qb)
+    })
+  })
+
+  describe('setWantedFacets', () => {
+    it('should set wantedFacets', () => {
+      const qb = new QueryBuilder()
+      const facets = { slug: { size: 10, minDocCount: 1 } }
+      qb.setWantedFacets(facets)
+      expect(qb.wantedFacets).toEqual(facets)
+    })
+
+    it('should not set wantedFacets when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setWantedFacets(undefined)
+      expect(qb.wantedFacets).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })).toBe(qb)
+    })
+  })
+
+  describe('setMultiSort', () => {
+    it('should set multiSort', () => {
+      const qb = new QueryBuilder()
+      const sort = [{ sortField: 'published', sortOrder: 'desc' as const }]
+      qb.setMultiSort(sort)
+      expect(qb.multiSort).toEqual(sort)
+    })
+
+    it('should not set multiSort when undefined', () => {
+      const qb = new QueryBuilder()
+      qb.setMultiSort(undefined)
+      expect(qb.multiSort).toBeUndefined()
+    })
+
+    it('should return this for chaining', () => {
+      const qb = new QueryBuilder()
+      expect(qb.setMultiSort([])).toBe(qb)
+    })
+  })
+
+  describe('build with new fields', () => {
+    it('should include startAt when set', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setStartAt(5)
+        .build()
+
+      expect(result.startAt).toBe(5)
+    })
+
+    it('should include tz when set', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setTz('Europe/Paris')
+        .build()
+
+      expect(result.tz).toBe('Europe/Paris')
+    })
+
+    it('should include dateGap when set', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setDateGap('+1HOUR')
+        .build()
+
+      expect(result.dateGap).toBe('+1HOUR')
+    })
+
+    it('should include wantCluster when set', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setWantCluster(true)
+        .build()
+
+      expect(result.wantCluster).toBe(true)
+    })
+
+    it('should include wantedFacets when set', () => {
+      const facets = { slug: { size: 10, minDocCount: 1 }, empty: true }
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setWantedFacets(facets)
+        .build()
+
+      expect(result.wantedFacets).toEqual(facets)
+    })
+
+    it('should include sort when multiSort is set', () => {
+      const sort = [{ sortField: 'published', sortOrder: 'desc' as const }]
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .setMultiSort(sort)
+        .build()
+
+      expect(result.sort).toEqual(sort)
+    })
+
+    it('should not include new fields when not set', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .build()
+
+      expect(result.startAt).toBeUndefined()
+      expect(result.tz).toBeUndefined()
+      expect(result.dateGap).toBeUndefined()
+      expect(result.wantCluster).toBeUndefined()
+      expect(result.wantedFacets).toBeUndefined()
+      expect(result.sort).toBeUndefined()
     })
   })
 

@@ -28,7 +28,7 @@ describe('index exports', () => {
   })
 
   it('should export defaultBaseUrl', () => {
-    expect(defaultBaseUrl).toBe('https://afp-apicore-prod.afp.com')
+    expect(defaultBaseUrl).toBe('https://afp-apicore-prod-v2-external.app.afp.com')
   })
 
   it('should export maxRowsByRequest', () => {

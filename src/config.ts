@@ -3,10 +3,10 @@ export const defaultSearchParams = {
   dateTo: 'now',
   size: 10,
   sortField: 'published',
-  sortOrder: 'desc'
+  sortOrder: 'desc' as const
 }
 
-export const defaultBaseUrl = 'https://afp-apicore-prod.afp.com'
+export const defaultBaseUrl = 'https://afp-apicore-prod-v2-external.app.afp.com'
 
 export const maxRowsByRequest = 1000
 

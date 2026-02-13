@@ -1,5 +1,5 @@
 import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config'
-import { AdditionalParamValue, SearchQuery, SearchRequest } from "../types"
+import { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar'
 import { normalize } from './normalizer'
@@ -17,13 +17,19 @@ export class QueryBuilder {
   public dateFrom: string
   public dateTo: string
   public sortField: string
-  public sortOrder: string
+  public sortOrder: SearchQuerySortOrder
   public langs?: string[]
   public queryString?: string
+  public startAt?: number
+  public tz?: string
+  public dateGap?: string
+  public wantCluster?: boolean
+  public wantedFacets?: WantedFacets
+  public multiSort?: SortEntry[]
   private additionalParams: SearchQuery[] = []
 
   constructor (fields?: string[]) {
-    if (this.fields) this.fields = fields
+    if (fields) this.fields = fields
     this.maxRows = defaultSearchParams.size
     this.dateFrom = defaultSearchParams.dateFrom
     this.dateTo = defaultSearchParams.dateTo
@@ -45,7 +51,7 @@ export class QueryBuilder {
     return this
   }
 
-  public setSort (field?: string, order?: string) {
+  public setSort (field?: string, order?: SearchQuerySortOrder) {
     if (field) this.sortField = field
     if (order) this.sortOrder = order
     return this
@@ -61,11 +67,41 @@ export class QueryBuilder {
     return this
   }
 
-  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | undefined }) {
+  public setStartAt (startAt?: number) {
+    if (startAt !== undefined) this.startAt = startAt
+    return this
+  }
+
+  public setTz (tz?: string) {
+    if (tz) this.tz = tz
+    return this
+  }
+
+  public setDateGap (dateGap?: string) {
+    if (dateGap) this.dateGap = dateGap
+    return this
+  }
+
+  public setWantCluster (wantCluster?: boolean) {
+    if (wantCluster !== undefined) this.wantCluster = wantCluster
+    return this
+  }
+
+  public setWantedFacets (wantedFacets?: WantedFacets) {
+    if (wantedFacets) this.wantedFacets = wantedFacets
+    return this
+  }
+
+  public setMultiSort (sort?: SortEntry[]) {
+    if (sort) this.multiSort = sort
+    return this
+  }
+
+  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | undefined }) {
     if (!additionalParams) return this
     for (const [key, value] of Object.entries(additionalParams)) {
-      if (!value) continue
-      this.addAdditionalParam(key, value)
+      if (!value || typeof value === 'boolean') continue
+      this.addAdditionalParam(key, value as AdditionalParamValue)
     }
     return this
   }
@@ -103,7 +139,7 @@ export class QueryBuilder {
   }
 
   public build () {
-    return {
+    const request: SearchRequest = {
       dateRange: {
         from: this.dateFrom,
         to: this.dateTo
@@ -114,7 +150,16 @@ export class QueryBuilder {
       lang: this.langs && this.langs.length > 0 && (!this.queryString || !this.queryString.includes('lang:')) ? this.langs.join(',') : undefined,
       fields: this.fields,
       query: this.concatenateQueryAndParams()
-    } as SearchRequest
+    }
+
+    if (this.startAt !== undefined) request.startAt = this.startAt
+    if (this.tz) request.tz = this.tz
+    if (this.dateGap) request.dateGap = this.dateGap
+    if (this.wantCluster !== undefined) request.wantCluster = this.wantCluster
+    if (this.wantedFacets) request.wantedFacets = this.wantedFacets
+    if (this.multiSort) request.sort = this.multiSort
+
+    return request
   }
 
   private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
@@ -187,8 +232,21 @@ export class QueryBuilder {
     if (!queryString) return
     const typedQuery = querySchema.parse(queryString)
     const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
-    parser.feed(typedQuery)
-    if (parser.results.length === 0) return
+    try {
+      parser.feed(typedQuery)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw Object.assign(
+        new Error(`Failed to parse query "${typedQuery}": ${message}`),
+        { cause: error }
+      )
+    }
+    if (parser.results.length === 0) {
+      throw new Error(`Failed to parse query "${typedQuery}": unexpected end of input`)
+    }
+    if (parser.results.length > 1) {
+      console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
+    }
     const parsedQuery = parser.results[0]
     return this.serialize(parsedQuery)
   }

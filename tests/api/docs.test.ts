@@ -210,6 +210,46 @@ describe('Docs', () => {
       expect(calledUrl).toContain('minDocCount=1')
     })
 
+    it('should handle null topic name', async () => {
+      const listResponse = {
+        response: {
+          topics: [
+            { name: null, count: 50 },
+            { name: 'economy', count: 75 }
+          ],
+          numFound: 2
+        }
+      }
+      mockFetch(listResponse)
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+
+      expect(result.count).toBe(2)
+      expect(result.keywords).toHaveLength(2)
+      expect(result.keywords[0]).toEqual({ name: null, count: 50 })
+    })
+
+    it('should handle missing topic name', async () => {
+      const listResponse = {
+        response: {
+          topics: [
+            { count: 100 },
+            { name: 'politics', count: 75 }
+          ],
+          numFound: 2
+        }
+      }
+      mockFetch(listResponse)
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+
+      expect(result.count).toBe(2)
+      expect(result.keywords).toHaveLength(2)
+      expect(result.keywords[0]).toEqual({ count: 100 })
+    })
+
     it('should pass custom minDocCount', async () => {
       const listResponse = {
         response: { topics: [], numFound: 0 }
@@ -346,6 +386,223 @@ describe('Docs', () => {
     })
   })
 
+  describe('wt=json query parameter', () => {
+    it('should include wt=json in search URL', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search()
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('wt=json')
+    })
+
+    it('should include wt=json in get URL', async () => {
+      mockFetch({ response: { docs: [{ uno: 'AFP-123' }] } })
+      const docs = createAuthenticatedDocs()
+      await docs.get('AFP-123')
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('wt=json')
+    })
+
+    it('should include wt=json in mlt URL', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'en')
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('wt=json')
+    })
+
+    it('should include wt=json in list URL', async () => {
+      mockFetch({ response: { topics: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.list('slug')
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('wt=json')
+    })
+  })
+
+  describe('new search parameters', () => {
+    it('should pass startAt to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ startAt: 5 })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.startAt).toBe(5)
+    })
+
+    it('should pass tz to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ tz: 'Europe/Paris' })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.tz).toBe('Europe/Paris')
+    })
+
+    it('should pass dateGap to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ dateGap: '+1HOUR' })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.dateGap).toBe('+1HOUR')
+    })
+
+    it('should pass wantCluster to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ wantCluster: true })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.wantCluster).toBe(true)
+    })
+
+    it('should pass wantedFacets to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ wantedFacets: { slug: { size: 10, minDocCount: 1 } } })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.wantedFacets).toEqual({ slug: { size: 10, minDocCount: 1 } })
+    })
+
+    it('should pass sort to the API', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.search({ sort: [{ sortField: 'published', sortOrder: 'desc' }] })
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const body = JSON.parse(calledOptions.body)
+      expect(body.sort).toEqual([{ sortField: 'published', sortOrder: 'desc' }])
+    })
+  })
+
+  describe('latest', () => {
+    it('should fetch latest documents', async () => {
+      mockFetch({ response: { docs: [{ uno: 'AFP-1' }], numFound: 1 } })
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest()
+
+      expect(result.count).toBe(1)
+      expect(result.documents).toHaveLength(1)
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('/v1/api/latest')
+      expect(calledUrl).toContain('wt=json')
+    })
+
+    it('should pass optional params', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.latest({ lang: 'fr', tz: 'Europe/Paris', tr: 'foo' })
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('lang=fr')
+      expect(calledUrl).toContain('tz=Europe%2FParis')
+      expect(calledUrl).toContain('tr=foo')
+    })
+  })
+
+  describe('mapping', () => {
+    it('should fetch mapping and return response.mapping', async () => {
+      const mappingData = { response: { mapping: { fields: ['uno', 'title'] } } }
+      mockFetch(mappingData)
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mapping('en')
+
+      expect(result).toEqual({ fields: ['uno', 'title'] })
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('/v1/api/mapping')
+      expect(calledUrl).toContain('wt=json')
+      expect(calledUrl).toContain('lang=en')
+    })
+
+    it('should pass lang param', async () => {
+      mockFetch({ response: { mapping: {} } })
+      const docs = createAuthenticatedDocs()
+      await docs.mapping('fr')
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('lang=fr')
+    })
+  })
+
+  describe('searchWithFilter', () => {
+    it('should search with a saved filter', async () => {
+      mockFetch({ response: { docs: [{ uno: 'AFP-1' }], numFound: 1 } })
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter')
+
+      expect(result.count).toBe(1)
+      expect(result.documents).toHaveLength(1)
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('/v1/api/search_with_filter')
+      expect(calledUrl).toContain('filter=my-filter')
+      expect(calledUrl).toContain('wt=json')
+    })
+
+    it('should pass optional startat and size', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+      const docs = createAuthenticatedDocs()
+      await docs.searchWithFilter('my-filter', { startat: 10, size: 20 })
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('startat=10')
+      expect(calledUrl).toContain('size=20')
+    })
+  })
+
+  describe('feed', () => {
+    it('should fetch feed as text with correct Accept header', async () => {
+      const feedXml = '<rss><channel></channel></rss>'
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve(feedXml)
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.feed('my-filter')
+
+      expect(result).toBe(feedXml)
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('/v1/user/feed')
+      expect(calledUrl).toContain('filter=my-filter')
+      expect(calledUrl).toContain('wt=xml')
+
+      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const headers = calledOptions.headers as Headers
+      expect(headers.get('Accept')).toBe('application/rss+xml')
+    })
+
+    it('should pass optional params', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        text: () => Promise.resolve('')
+      })
+
+      const docs = createAuthenticatedDocs()
+      await docs.feed('my-filter', { startat: 5, size: 10, role: 'admin', wt: 'atom' })
+
+      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(calledUrl).toContain('startat=5')
+      expect(calledUrl).toContain('size=10')
+      expect(calledUrl).toContain('role=admin')
+      expect(calledUrl).toContain('wt=atom')
+    })
+  })
+
   describe('notificationCenter', () => {
     it('should return a notification center object', () => {
       const docs = createAuthenticatedDocs()
@@ -360,6 +617,20 @@ describe('Docs', () => {
       expect(typeof nc.subscriptionsInService).toBe('function')
       expect(typeof nc.deleteSubscription).toBe('function')
       expect(typeof nc.removeSubscriptionsFromService).toBe('function')
+    })
+  })
+
+  describe('filterCenter', () => {
+    it('should return a filter center object', () => {
+      const docs = createAuthenticatedDocs()
+      const fc = docs.filterCenter
+
+      expect(fc).toBeDefined()
+      expect(typeof fc.add).toBe('function')
+      expect(typeof fc.update).toBe('function')
+      expect(typeof fc.get).toBe('function')
+      expect(typeof fc.delete).toBe('function')
+      expect(typeof fc.all).toBe('function')
     })
   })
 })
