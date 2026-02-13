@@ -24,7 +24,7 @@ describe('Auth', () => {
   describe('constructor', () => {
     it('should use default base URL when none provided', () => {
       const auth = new Auth()
-      expect(auth.authUrl).toBe('https://afp-apicore-prod.afp.com/oauth/token')
+      expect(auth.authUrl).toBe('https://afp-apicore-prod-v2-external.app.afp.com/oauth/token')
     })
 
     it('should use custom base URL', () => {
