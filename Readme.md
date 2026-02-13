@@ -68,6 +68,14 @@ afp.on('tokenChanged', (token) => {
 // Token is automatically refreshed when expired
 ```
 
+## Latest Documents
+
+Get the most recent documents:
+
+```js
+const { count, documents } = await afp.latest({ lang: 'fr', tz: 'Europe/Paris' })
+```
+
 ## Searching Documents
 
 ### Basic Search
@@ -90,8 +98,7 @@ const { count, documents } = await afp.search({
   tz: 'Europe/Paris',
   dateGap: '+1HOUR',
   startAt: 0,
-  wantCluster: true,
-  wantedFacets: [{ size: 10, minDocCount: 1 }],
+  wantedFacets: { slug: { size: 10, minDocCount: 1 }, country: { size: 5, minDocCount: 1 } },
   sort: [{ sortField: 'published', sortOrder: 'desc' }]
 })
 ```
@@ -136,21 +143,6 @@ for await (const doc of afp.searchAll({ size: 5000, query: 'climate' })) {
 }
 ```
 
-### Search with Saved Filter
-
-```js
-const { count, documents } = await afp.searchWithFilter('my-filter', {
-  startat: 0,
-  size: 50
-})
-```
-
-### Cluster Search
-
-```js
-const clusters = await afp.cluster({ query: 'elections' })
-```
-
 ## Query Syntax
 
 The `query` parameter supports a boolean query DSL:
@@ -169,7 +161,7 @@ The `query` parameter supports a boolean query DSL:
 ## Retrieving a Single Document
 
 ```js
-const document = await afp.get('AFP-UNIQUE-ID')
+const document = await afp.get('uno')
 ```
 
 ## More Like This
@@ -177,15 +169,7 @@ const document = await afp.get('AFP-UNIQUE-ID')
 Find documents similar to a given one:
 
 ```js
-const { count, documents } = await afp.mlt('AFP-UNIQUE-ID', 'en', 10)
-```
-
-## Latest Documents
-
-Get the most recent documents:
-
-```js
-const { count, documents } = await afp.latest({ lang: 'fr', tz: 'Europe/Paris' })
+const { count, documents } = await afp.mlt('uno', 'en', 10)
 ```
 
 ## Listing Facet Values
@@ -204,10 +188,39 @@ const { keywords } = await afp.list('country', { dateFrom: 'now-7d', langs: ['en
 Get the API field mapping:
 
 ```js
-const mapping = await afp.mapping()
+const mapping = await afp.mapping('en')
+```
 
-// With a specific language
-const mapping = await afp.mapping('fr')
+## Filter Center
+
+Manage saved search filters.
+
+```js
+const fc = afp.filterCenter
+
+// Create a filter
+await fc.add('breaking-politics', { query: 'urgency:1', country: 'fra' })
+
+// Update a filter
+await fc.update('breaking-politics', { query: 'urgency:1 OR urgency:2' })
+
+// Get a specific filter
+const filter = await fc.get('breaking-politics')
+
+// List all filters
+const allFilters = await fc.all()
+
+// Delete a filter
+await fc.delete('breaking-politics')
+```
+
+### Search with Saved Filter
+
+```js
+const { count, documents } = await afp.searchWithFilter('my-filter', {
+  startat: 0,
+  size: 50
+})
 ```
 
 ## RSS/ATOM Feed
@@ -249,29 +262,6 @@ await nc.removeSubscriptionsFromService('my-webhook', ['sub1', 'sub2'])
 await nc.deleteService('my-webhook')
 ```
 
-## Filter Center
-
-Manage saved search filters.
-
-```js
-const fc = afp.filterCenter
-
-// Create a filter
-await fc.add('breaking-politics', { query: 'urgency:1', country: 'fra' })
-
-// Update a filter
-await fc.update('breaking-politics', { query: 'urgency:1 OR urgency:2' })
-
-// Get a specific filter
-const filter = await fc.get('breaking-politics')
-
-// List all filters
-const allFilters = await fc.all()
-
-// Delete a filter
-await fc.delete('breaking-politics')
-```
-
 ## Social Stories
 
 Retrieve the embeddable HTML for a social story document:
@@ -294,8 +284,7 @@ const html = afp.getStoryHtml(doc)
 | `startAt` | `number` | — | Offset for pagination |
 | `tz` | `string` | — | Timezone (e.g. `'Europe/Paris'`) |
 | `dateGap` | `string` | — | Date gap for facet ranges (e.g. `'+1HOUR'`, `'+1DAY'`) |
-| `wantCluster` | `boolean` | — | Include cluster information |
-| `wantedFacets` | `FacetConfig[]` | — | Facets configuration `[{ size, minDocCount }]` |
+| `wantedFacets` | `WantedFacets` | — | Facets configuration `{ facetName: { size, minDocCount }, empty?: boolean }` |
 | `sort` | `SortEntry[]` | — | Multi-field sort `[{ sortField, sortOrder }]` |
 
 Any additional key-value pairs are treated as field filters.
