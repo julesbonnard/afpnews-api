@@ -3,7 +3,7 @@ export const defaultSearchParams = {
   dateTo: 'now',
   size: 10,
   sortField: 'published',
-  sortOrder: 'desc'
+  sortOrder: 'desc' as const
 }
 
 export const defaultBaseUrl = 'https://afp-apicore-prod.afp.com'

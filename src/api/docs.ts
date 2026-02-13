@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Auth } from './auth'
 import { Story } from './story'
 import { NotificationCenter } from './notification'
+import { FilterCenter } from './filter'
 
 const docParser = z.object({
   published: z.string()
@@ -48,6 +49,12 @@ export class Docs extends Auth {
       sortOrder,
       langs,
       query,
+      startAt,
+      tz,
+      dateGap,
+      wantCluster,
+      wantedFacets,
+      sort,
       ...rest
     } = Object.assign({}, defaultSearchParams, params)
 
@@ -57,6 +64,12 @@ export class Docs extends Auth {
       .setSort(sortField, sortOrder)
       .setLangs(langs)
       .setQuery(query)
+      .setStartAt(startAt)
+      .setTz(tz)
+      .setDateGap(dateGap)
+      .setWantCluster(wantCluster)
+      .setWantedFacets(wantedFacets)
+      .setMultiSort(sort)
       .addAdditionalParams(rest)
       .build()
   }
@@ -72,7 +85,8 @@ export class Docs extends Auth {
 
     await this.authenticate()
     const data = await post(`${this.baseUrl}/v1/api/search`, body, {
-      headers: this.authorizationBearerHeaders
+      headers: this.authorizationBearerHeaders,
+      params: { wt: 'json' }
     })
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
@@ -116,7 +130,8 @@ export class Docs extends Auth {
     await this.authenticate()
 
     const data = await get(`${this.baseUrl}/v1/api/get/${uno}`, {
-      headers: this.authorizationBearerHeaders
+      headers: this.authorizationBearerHeaders,
+      params: { wt: 'json' }
     })
     const { response: { docs }} = getResponse.parse(data)
     return docs[0]
@@ -137,7 +152,8 @@ export class Docs extends Auth {
       params: {
         uno,
         lang,
-        size
+        size,
+        wt: 'json'
       }
     })
 
@@ -164,7 +180,8 @@ export class Docs extends Auth {
     const data = await post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
       headers: this.authorizationBearerHeaders,
       params: {
-        minDocCount
+        minDocCount,
+        wt: 'json'
       }
     })
 
@@ -174,6 +191,113 @@ export class Docs extends Auth {
       count,
       keywords
     }
+  }
+
+  /**
+   * Get the latest documents
+   * @param params - Optional query params: lang, tz, tr
+   * @returns An object containing the documents and their count
+   */
+  public async latest (params: { lang?: string; tz?: string; tr?: string } = {}) {
+    await this.authenticate()
+
+    const data = await get(`${this.baseUrl}/v1/api/latest`, {
+      headers: this.authorizationBearerHeaders,
+      params: {
+        ...params,
+        wt: 'json'
+      }
+    })
+
+    const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
+
+    return {
+      count,
+      documents
+    }
+  }
+
+  /**
+   * Get the API field mapping
+   * @param lang - Optional language for the mapping
+   * @returns The mapping object
+   */
+  public async mapping (lang?: string) {
+    await this.authenticate()
+
+    const params: { wt: string; lang?: string } = { wt: 'json' }
+    if (lang) params.lang = lang
+
+    const data = await get(`${this.baseUrl}/v1/api/mapping`, {
+      headers: this.authorizationBearerHeaders,
+      params
+    })
+
+    return data
+  }
+
+  /**
+   * Cluster search results
+   * @param params - An object containing the search parameters
+   * @param fields - An array of fields to include in the response
+   * @returns The cluster results
+   */
+  public async cluster (params: SearchQueryParams = {}, fields: string[] = []) {
+    const body = this.prepareRequest(params, fields)
+
+    await this.authenticate()
+    const data = await post(`${this.baseUrl}/v1/api/cluster`, body, {
+      headers: this.authorizationBearerHeaders,
+      params: { wt: 'json' }
+    })
+
+    return data
+  }
+
+  /**
+   * Search documents using a saved filter
+   * @param filter - The filter name
+   * @param options - Optional startat and size parameters
+   * @returns An object containing the documents and their count
+   */
+  public async searchWithFilter (filter: string, options: { startat?: number; size?: number } = {}) {
+    await this.authenticate()
+
+    const data = await get(`${this.baseUrl}/v1/api/search_with_filter`, {
+      headers: this.authorizationBearerHeaders,
+      params: {
+        filter,
+        ...options,
+        wt: 'json'
+      }
+    })
+
+    const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
+
+    return {
+      count,
+      documents
+    }
+  }
+
+  /**
+   * Get an RSS/ATOM feed based on a saved filter
+   * @param filter - The filter name
+   * @param options - Optional startat, size, role and wt parameters
+   * @returns The feed content as text
+   */
+  public async feed (filter: string, options: { startat?: number; size?: number; role?: string; wt?: string } = {}) {
+    await this.authenticate()
+
+    const data = await get(`${this.baseUrl}/v1/user/feed`, {
+      headers: this.authorizationBearerHeaders,
+      params: {
+        filter,
+        ...options
+      }
+    }, 'text')
+
+    return data
   }
 
   /**
@@ -191,5 +315,13 @@ export class Docs extends Auth {
    */
   get notificationCenter () {
     return NotificationCenter.call(this)
+  }
+
+  /**
+   * Access the filter center to manage saved filters
+   * @returns The filter center
+   */
+  get filterCenter () {
+    return FilterCenter.call(this)
   }
 }
