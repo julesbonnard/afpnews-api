@@ -232,8 +232,21 @@ export class QueryBuilder {
     if (!queryString) return
     const typedQuery = querySchema.parse(queryString)
     const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
-    parser.feed(typedQuery)
-    if (parser.results.length === 0) return
+    try {
+      parser.feed(typedQuery)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw Object.assign(
+        new Error(`Failed to parse query "${typedQuery}": ${message}`),
+        { cause: error }
+      )
+    }
+    if (parser.results.length === 0) {
+      throw new Error(`Failed to parse query "${typedQuery}": unexpected end of input`)
+    }
+    if (parser.results.length > 1) {
+      console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
+    }
     const parsedQuery = parser.results[0]
     return this.serialize(parsedQuery)
   }

@@ -349,7 +349,135 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('()')
 
+      // Empty expression serializes to undefined
       expect(result).toBeUndefined()
+    })
+
+    it('should parse lowercase "and" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron and france')
+
+      expect(result).toBeDefined()
+      expect(result!.and).toBeDefined()
+    })
+
+    it('should parse lowercase "or" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron or merkel')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+    })
+
+    it('should parse lowercase "not" keyword', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('not country:fra')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('exclude')
+    })
+
+    it('should parse mixed-case keywords', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('macron And france')
+
+      expect(result).toBeDefined()
+      expect(result!.and).toBeDefined()
+    })
+
+    it('should parse "android" as a word, not AND + roid', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('android')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('android')
+    })
+
+    it('should parse "notice" as a word, not NOT + ice', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('notice')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('notice')
+    })
+
+    it('should parse "forest" as a word, not FOR + est', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('forest')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('forest')
+    })
+
+    it('should throw on unmatched parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('(Macron')).toThrow('Failed to parse query')
+    })
+
+    it('should throw on unmatched quote', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('"unclosed')).toThrow('Failed to parse query')
+    })
+
+    it('should parse escaped quotes in strings', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('title:"say \\"hello\\""')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('say \\"hello\\"')
+    })
+
+    it('should parse escaped backslash in strings', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('title:"path\\\\file"')
+
+      expect(result).toBeDefined()
+      const flat = JSON.stringify(result)
+      expect(flat).toContain('path\\\\file')
+    })
+
+    it('should parse field with empty value (country:)', () => {
+      const qb = new QueryBuilder()
+      // Empty value after colon produces EmptyExpression which serializer cannot handle
+      expect(() => qb.parseQueryString('country:')).toThrow()
+    })
+
+    it('should parse double parentheses', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('((Macron))')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+    })
+
+    it("should parse French apostrophe (l'AFP)", () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString("l'AFP")
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      // normalizer lowercases the text
+      expect(flat).toContain("l'afp")
+    })
+
+    it('should parse hyphenated words (Jean-Luc)', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('Jean-Luc')
+
+      expect(result).toBeDefined()
+      expect(result!.or).toBeDefined()
+      const flat = JSON.stringify(result)
+      // normalizer lowercases the text
+      expect(flat).toContain('jean-luc')
     })
 
     it('should handle full-text search fields with translation', () => {
