@@ -311,19 +311,6 @@ npm run test:watch
 npm run lint
 ```
 
-## Environment Variables
-
-Used for running tests and examples:
-
-| Variable | Description |
-|---|---|
-| `AFPNEWS_BASE_URL` | API base URL (default: `https://afp-apicore-prod.afp.com`) |
-| `AFPNEWS_API_KEY` | API key for anonymous auth |
-| `AFPNEWS_CLIENT_ID` | OAuth client ID |
-| `AFPNEWS_CLIENT_SECRET` | OAuth client secret |
-| `AFPNEWS_USERNAME` | User credentials |
-| `AFPNEWS_PASSWORD` | User credentials |
-
 ## Author
 
 [Jules Bonnard](https://github.com/julesbonnard)
