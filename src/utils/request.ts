@@ -52,17 +52,17 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  if (response.status < 300) {
-    return response.json()
+  const data = await response.json();  
+
+  // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier dans les deux cas
+  const errorData = errorSchema.safeParse(data);                                                                              
+  if (errorData.success) {                                                                                                    
+    throw apiError(errorData.data.error.code, errorData.data.error.message);                                                  
+  }                                                                                                                           
+  if (response.status >= 300) {                           
+    throw apiError(response.status, response.statusText);                                                                     
   }
-
-  const errorData = errorSchema.safeParse(await response.json())
-
-  if (errorData.success) {
-    throw apiError(errorData.data.error.code, errorData.data.error.message)
-  }
-
-  throw apiError(response.status, response.statusText)
+  return data;                                                                                
 }
 
 async function fetchText (url: string, method: string, headers: object = {}, body?: string, accept = 'text/*') {
@@ -72,17 +72,17 @@ async function fetchText (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  if (response.status < 300) {
-    return response.text()
+  const data = await response.text();  
+
+  // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier dans les deux cas
+  const errorData = errorSchema.safeParse(data);                                                                              
+  if (errorData.success) {                                                                                                    
+    throw apiError(errorData.data.error.code, errorData.data.error.message);                                                  
+  }                                                                                                                           
+  if (response.status >= 300) {                           
+    throw apiError(response.status, response.statusText);                                                                     
   }
-
-  const errorData = errorSchema.safeParse(await response.json())
-
-  if (errorData.success) {
-    throw apiError(errorData.data.error.code, errorData.data.error.message)
-  }
-
-  throw apiError(response.status, response.statusText)
+  return data;                 
 }
 
 export async function get (
