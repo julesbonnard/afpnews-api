@@ -1,11 +1,16 @@
 {
   "compilerOptions": {
     "outDir": "dist",
+    "rootDir": "src",
     "target": "es6",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
     "lib": [
-      "es2015"
+      "es2018",
+      "dom"
+    ],
+    "types": [
+      "node"
     ],
     "sourceMap": true,
     "strict": true,
