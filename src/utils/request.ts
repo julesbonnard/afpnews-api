@@ -27,7 +27,7 @@ function buildForm (form: object) {
   return builtForm
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   public code
   constructor (message = 'Unknown Error', code = 520) {
     super(message)

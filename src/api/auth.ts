@@ -1,7 +1,7 @@
 import btoa from 'btoa-lite'
 import { defaultBaseUrl } from '../config'
 import { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types'
-import { get, postForm } from '../utils/request'
+import { ApiError, get, postForm } from '../utils/request'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 
@@ -92,9 +92,9 @@ export class Auth extends EventEmitter {
    * @returns The user information
    */
   public async getUserInfo () {
-    return userSchema.parse(await get(`${this.baseUrl}/v1/user/me`, {
+    return userSchema.parse(await this.withAuth(() => get(`${this.baseUrl}/v1/user/me`, {
       headers: this.authorizationBearerHeaders
-    }))
+    })))
   }
 
   /**
@@ -105,6 +105,24 @@ export class Auth extends EventEmitter {
   public resetToken () {
     delete this.token
     this.emit('tokenChanged')
+  }
+
+  /**
+   * Execute a callback with authentication, retrying once on 401
+   * by refreshing the token before the second attempt.
+   */
+  protected async withAuth<T> (fn: () => Promise<T>): Promise<T> {
+    await this.authenticate()
+    try {
+      return await fn()
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 401 && this.token) {
+        this.token.tokenExpires = 0
+        await this.authenticate()
+        return await fn()
+      }
+      throw error
+    }
   }
 
   private async requestAnonymousToken () {

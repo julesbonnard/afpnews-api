@@ -14,15 +14,14 @@ export function FilterCenter (this: ApiCore) {
      * @returns The API response
      */
     add: async (name: string, params: SearchQueryParams) => {
-      await this.authenticate()
       const body = this.prepareRequest(params)
-      const data = await post(`${baseFilterUrl}/add`, body, {
+      const data = await this.withAuth(() => post(`${baseFilterUrl}/add`, body, {
         headers: this.authorizationBearerHeaders,
         params: {
           name,
           wt: 'json'
         }
-      })
+      }))
 
       return data
     },
@@ -34,15 +33,14 @@ export function FilterCenter (this: ApiCore) {
      * @returns The API response
      */
     update: async (name: string, params: SearchQueryParams) => {
-      await this.authenticate()
       const body = this.prepareRequest(params)
-      const data = await post(`${baseFilterUrl}/update`, body, {
+      const data = await this.withAuth(() => post(`${baseFilterUrl}/update`, body, {
         headers: this.authorizationBearerHeaders,
         params: {
           name,
           wt: 'json'
         }
-      })
+      }))
 
       return data
     },
@@ -53,14 +51,13 @@ export function FilterCenter (this: ApiCore) {
      * @returns The filter data
      */
     get: async (name: string) => {
-      await this.authenticate()
-      const data = await get(`${baseFilterUrl}/get`, {
+      const data = await this.withAuth(() => get(`${baseFilterUrl}/get`, {
         headers: this.authorizationBearerHeaders,
         params: {
           name,
           wt: 'json'
         }
-      })
+      }))
 
       return data
     },
@@ -71,14 +68,13 @@ export function FilterCenter (this: ApiCore) {
      * @returns The API response
      */
     delete: async (name: string) => {
-      await this.authenticate()
-      const data = await get(`${baseFilterUrl}/delete`, {
+      const data = await this.withAuth(() => get(`${baseFilterUrl}/delete`, {
         headers: this.authorizationBearerHeaders,
         params: {
           name,
           wt: 'json'
         }
-      })
+      }))
 
       return data
     },
@@ -88,13 +84,12 @@ export function FilterCenter (this: ApiCore) {
      * @returns All filters
      */
     all: async () => {
-      await this.authenticate()
-      const data = await get(`${baseFilterUrl}/all`, {
+      const data = await this.withAuth(() => get(`${baseFilterUrl}/all`, {
         headers: this.authorizationBearerHeaders,
         params: {
           wt: 'json'
         }
-      })
+      }))
 
       return data
     }
