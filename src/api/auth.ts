@@ -1,7 +1,7 @@
 import btoa from 'btoa-lite'
 import { defaultBaseUrl } from '../config'
 import { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types'
-import { get, postForm } from '../utils/request'
+import { ApiError, get, postForm } from '../utils/request'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 
@@ -13,21 +13,23 @@ const tokenSchema = z.object({
 
 const userSchema = z.object({
   user: z.object({
+    additionalProperties: z.object({
+      infosLdap: z.object({
+        uid: z.string().describe('Unique id uppercase'),
+        mail: z.string().describe('Email'),
+        cn: z.string().describe('Full name'),
+        givenName: z.string().describe('Given name'),
+        sn: z.string().describe('Last name'),
+        title: z.string().describe('Job title'),
+        afpRegroupCateg: z.string().describe('Job category'),
+        preferredLanguage: z.string().describe('Preferred language in two letters'),
+        ctr: z.string().describe('Service abbreviation'),
+        description: z.string().describe('Service name'),
+      })
+    }),
     username: z.string(),
-    email: z.string().optional(),
-    enable: z.boolean().optional(),
+    enabled: z.boolean().optional(),
     clientId: z.string().array(),
-    authorities: z.string().array(),
-    filters: z.object({
-      dateRange: z.object({
-        to: z.string(),
-        from: z.string()
-      }),
-      dateGap: z.string(),
-      tz: z.string(),
-      sortOrder: z.string(),
-      query: z.any()
-    }).optional()
   })
 })
 
@@ -92,9 +94,9 @@ export class Auth extends EventEmitter {
    * @returns The user information
    */
   public async getUserInfo () {
-    return userSchema.parse(await get(`${this.baseUrl}/v1/user/me`, {
+    return userSchema.parse(await this.withAuth(() => get(`${this.baseUrl}/v1/user/me`, {
       headers: this.authorizationBearerHeaders
-    }))
+    })))
   }
 
   /**
@@ -105,6 +107,24 @@ export class Auth extends EventEmitter {
   public resetToken () {
     delete this.token
     this.emit('tokenChanged')
+  }
+
+  /**
+   * Execute a callback with authentication, retrying once on 401
+   * by refreshing the token before the second attempt.
+   */
+  protected async withAuth<T> (fn: () => Promise<T>): Promise<T> {
+    await this.authenticate()
+    try {
+      return await fn()
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 401 && this.token) {
+        this.token.tokenExpires = 0
+        await this.authenticate()
+        return await fn()
+      }
+      throw error
+    }
   }
 
   private async requestAnonymousToken () {

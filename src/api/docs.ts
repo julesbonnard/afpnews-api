@@ -83,11 +83,10 @@ export class Docs extends Auth {
   public async search (params: SearchQueryParams = {}, fields: string[] = []) {
     const body = this.prepareRequest(params, fields)
 
-    await this.authenticate()
-    const data = await post(`${this.baseUrl}/v1/api/search`, body, {
+    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json' }
-    })
+    }))
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
@@ -127,12 +126,10 @@ export class Docs extends Auth {
    * @returns The document
    */
   public async get (uno: string) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/api/get/${uno}`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${uno}`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json' }
-    })
+    }))
     const { response: { docs }} = getResponse.parse(data)
     return docs[0]
   }
@@ -145,9 +142,7 @@ export class Docs extends Auth {
    * @returns An object containing the documents and their count
    */
   public async mlt (uno: string, lang: string, size: number = 10) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/api/mlt`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mlt`, {
       headers: this.authorizationBearerHeaders,
       params: {
         uno,
@@ -155,7 +150,7 @@ export class Docs extends Auth {
         size,
         wt: 'json'
       }
-    })
+    }))
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
@@ -175,15 +170,13 @@ export class Docs extends Auth {
   public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1) {
     const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
 
-    await this.authenticate()
-
-    const data = await post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
+    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
       headers: this.authorizationBearerHeaders,
       params: {
         minDocCount,
         wt: 'json'
       }
-    })
+    }))
 
     const { response: { topics: keywords, numFound: count } } = listResponse.parse(data)
 
@@ -199,15 +192,13 @@ export class Docs extends Auth {
    * @returns An object containing the documents and their count
    */
   public async latest (params: { lang?: string; tz?: string; tr?: string } = {}) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/api/latest`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/latest`, {
       headers: this.authorizationBearerHeaders,
       params: {
         ...params,
         wt: 'json'
       }
-    })
+    }))
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
@@ -223,12 +214,10 @@ export class Docs extends Auth {
    * @returns The mapping object
    */
   public async mapping (lang: string) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/api/mapping`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mapping`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json', lang }
-    })
+    }))
 
     const { response: { mapping } } = z.object({
       response: z.object({
@@ -246,16 +235,14 @@ export class Docs extends Auth {
    * @returns An object containing the documents and their count
    */
   public async searchWithFilter (filter: string, options: { startat?: number; size?: number } = {}) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/api/search_with_filter`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/search_with_filter`, {
       headers: this.authorizationBearerHeaders,
       params: {
         filter,
         ...options,
         wt: 'json'
       }
-    })
+    }))
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
@@ -272,16 +259,14 @@ export class Docs extends Auth {
    * @returns The feed content as text
    */
   public async feed (filter: string, options: { startat?: number; size?: number; role?: string; wt?: string } = {}) {
-    await this.authenticate()
-
-    const data = await get(`${this.baseUrl}/v1/user/feed`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/user/feed`, {
       headers: this.authorizationBearerHeaders,
       params: {
         filter,
         wt: 'xml',
         ...options
       }
-    }, 'text', 'application/rss+xml')
+    }, 'text', 'application/rss+xml'))
 
     return data
   }

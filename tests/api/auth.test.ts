@@ -231,17 +231,30 @@ describe('Auth', () => {
   })
 
   describe('getUserInfo', () => {
-    it('should fetch user info with bearer headers', async () => {
-      const userResponse = {
-        user: {
-          username: 'testuser',
-          email: 'test@example.com',
-          enable: true,
-          clientId: ['client1'],
-          authorities: ['ROLE_USER']
-        }
+    const USER_RESPONSE = {
+      user: {
+        username: 'testuser',
+        additionalProperties: {
+          infosLdap: {
+            uid: 'TESTUSER',
+            mail: 'test@example.com',
+            cn: 'Test User',
+            givenName: 'Test',
+            sn: 'User',
+            title: 'Journalist',
+            afpRegroupCateg: 'Editorial',
+            preferredLanguage: 'en',
+            ctr: 'TST',
+            description: 'Test Service'
+          }
+        },
+        enabled: true,
+        clientId: ['client1']
       }
-      mockFetch(userResponse)
+    }
+
+    it('should fetch user info with bearer headers', async () => {
+      mockFetch(USER_RESPONSE)
 
       const auth = new Auth()
       auth.token = {
@@ -253,9 +266,72 @@ describe('Auth', () => {
 
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
+      expect(result.user.additionalProperties.infosLdap.mail).toBe('test@example.com')
+      expect(result.user.additionalProperties.infosLdap.uid).toBe('TESTUSER')
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
+    })
+
+    it('should retry once on 401 by refreshing the token', async () => {
+
+      const auth = new Auth({ apiKey: 'my-key' })
+      auth.token = {
+        accessToken: 'expired-token',
+        refreshToken: 'valid-refresh',
+        tokenExpires: Date.now() + 60000,
+        authType: 'credentials'
+      }
+
+      let callCount = 0
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++
+        if (callCount === 1) {
+          // First call: getUserInfo returns 401
+          return Promise.resolve({
+            status: 200,
+            json: () => Promise.resolve({ error: { code: 401, message: 'Unauthorized' } }),
+            text: () => Promise.resolve(JSON.stringify({ error: { code: 401, message: 'Unauthorized' } }))
+          })
+        }
+        if (callCount === 2) {
+          // Second call: refresh token
+          return Promise.resolve({
+            status: 200,
+            json: () => Promise.resolve(TOKEN_RESPONSE),
+            text: () => Promise.resolve(JSON.stringify(TOKEN_RESPONSE))
+          })
+        }
+        // Third call: getUserInfo succeeds
+        return Promise.resolve({
+          status: 200,
+          json: () => Promise.resolve(USER_RESPONSE),
+          text: () => Promise.resolve(JSON.stringify(USER_RESPONSE))
+        })
+      })
+
+      const result = await auth.getUserInfo()
+      expect(result.user.username).toBe('testuser')
+      expect(callCount).toBe(3)
+    })
+
+    it('should not retry on non-401 errors', async () => {
+      const auth = new Auth()
+      auth.token = {
+        accessToken: 'my-token',
+        refreshToken: 'refresh',
+        tokenExpires: Date.now() + 60000,
+        authType: 'anonymous'
+      }
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: () => Promise.resolve({ error: { code: 403, message: 'Forbidden' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { code: 403, message: 'Forbidden' } }))
+      })
+
+      await expect(auth.getUserInfo()).rejects.toThrow('Forbidden')
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1)
     })
   })
 })

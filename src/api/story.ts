@@ -4,7 +4,7 @@ import { type ApiCore } from '..'
 
 const docStorySchema = z.object({
   class: z.literal('webstory'),
-  href: z.string().transform(d => d.replace('xml', 'webstory'))
+  href: z.string().transform(d => d.replace('xml', 'webstory').replace('json', 'webstory'))
 })
 
 const storySchema = z.object({

@@ -91,10 +91,9 @@ export function NotificationCenter (this: ApiCore) {
      * @returns A unique identifier for the service
      */
     registerService: async (service: z.infer<typeof registerService>) => {
-      await this.authenticate()
-      const data = await post(`${baseNotificationUrl}/service/register`, service, {
+      const data = await this.withAuth(() => post(`${baseNotificationUrl}/service/register`, service, {
         headers: this.authorizationBearerHeaders
-      })
+      }))
 
       return serviceRegisterSchema.parse(data).response.uno
     },
@@ -104,10 +103,9 @@ export function NotificationCenter (this: ApiCore) {
      * @returns List of objects containing the service name, type and parameters
      */
     listServices: async () => {
-      await this.authenticate()
-      const data = await get(`${baseNotificationUrl}/service/list`, {
+      const data = await this.withAuth(() => get(`${baseNotificationUrl}/service/list`, {
         headers: this.authorizationBearerHeaders
-      })
+      }))
 
       return serviceListSchema.parse(data).response.services
     },
@@ -118,13 +116,12 @@ export function NotificationCenter (this: ApiCore) {
      * @returns A unique identifier for the deleted service
      */
     deleteService: async (service: string) => {
-      await this.authenticate()
-      const data = await del(`${baseNotificationUrl}/service/delete`, {
+      const data = await this.withAuth(() => del(`${baseNotificationUrl}/service/delete`, {
         headers: this.authorizationBearerHeaders,
         params: {
           service
         }
-      })
+      }))
 
       return serviceRegisterSchema.parse(data).response.uno
     },
@@ -137,15 +134,14 @@ export function NotificationCenter (this: ApiCore) {
      * @returns A unique identifier for the subscription
      */
     addSubscription: async (name: string, service: string, params: SearchQueryParams) => {
-      await this.authenticate()
       const query = this.prepareRequest(params).query
-      const data = await post(`${baseNotificationUrl}/subscription/add`, { query }, {
+      const data = await this.withAuth(() => post(`${baseNotificationUrl}/subscription/add`, { query }, {
         headers: this.authorizationBearerHeaders,
         params: {
           name,
           service
         }
-      })
+      }))
 
       return serviceRegisterSchema.parse(data).response.uno
     },
@@ -155,10 +151,9 @@ export function NotificationCenter (this: ApiCore) {
      * @returns An array with the name and identifier of the subscriptions
      */
     listSubscriptions: async () => {
-      await this.authenticate()
-      const data = await get(`${baseNotificationUrl}/subscription/list`, {
+      const data = await this.withAuth(() => get(`${baseNotificationUrl}/subscription/list`, {
         headers: this.authorizationBearerHeaders
-      })
+      }))
 
       return subscriptionListSchema.parse(data).response.subscriptions
     },
@@ -169,14 +164,12 @@ export function NotificationCenter (this: ApiCore) {
      * @returns The list of active subscriptions
      */
     subscriptionsInService: async (service: string) => {
-      await this.authenticate()
-
-      const data = await get(`${baseNotificationUrl}/service/subscriptions`, {
+      const data = await this.withAuth(() => get(`${baseNotificationUrl}/service/subscriptions`, {
         headers: this.authorizationBearerHeaders,
         params: {
           service: service
         }
-      })
+      }))
 
       return subscriptionListSchema.parse(data).response.subscriptions.filter(subscription => ! subscription.name.endsWith('_withoutcreditRate'))
     },
@@ -188,14 +181,13 @@ export function NotificationCenter (this: ApiCore) {
      * @returns The name of the deleted subscription
      */
     deleteSubscription: async (service: string, name: string) => {
-      await this.authenticate()
-      const data = await del(`${baseNotificationUrl}/subscription/delete`, {
+      const data = await this.withAuth(() => del(`${baseNotificationUrl}/subscription/delete`, {
         headers: this.authorizationBearerHeaders,
         params: {
           service,
           name
         }
-      })
+      }))
 
       return data
     },
@@ -207,13 +199,12 @@ export function NotificationCenter (this: ApiCore) {
      * @returns The list of deleted subscriptions
      */
     removeSubscriptionsFromService: async (service: string, subscriptions: string[]) => {
-      await this.authenticate()
-      const data = await del(`${baseNotificationUrl}/service/remove`, {
+      const data = await this.withAuth(() => del(`${baseNotificationUrl}/service/remove`, {
         headers: this.authorizationBearerHeaders,
         params: {
           service
         }
-      }, subscriptions)
+      }, subscriptions))
 
       return subscriptionDeleteSchema.parse(data).response.names
     }
