@@ -231,17 +231,28 @@ describe('Auth', () => {
   })
 
   describe('getUserInfo', () => {
-    it('should fetch user info with bearer headers', async () => {
-      const userResponse = {
-        user: {
-          username: 'testuser',
-          email: 'test@example.com',
-          enable: true,
-          clientId: ['client1'],
-          authorities: ['ROLE_USER']
-        }
+    const USER_RESPONSE = {
+      user: {
+        username: 'testuser',
+        infosLdap: {
+          uid: 'TESTUSER',
+          mail: 'test@example.com',
+          cn: 'Test User',
+          givenName: 'Test',
+          sn: 'User',
+          title: 'Journalist',
+          afpRegroupCateg: 'Editorial',
+          preferredLanguage: 'en',
+          ctr: 'TST',
+          description: 'Test Service'
+        },
+        enabled: true,
+        clientId: ['client1']
       }
-      mockFetch(userResponse)
+    }
+
+    it('should fetch user info with bearer headers', async () => {
+      mockFetch(USER_RESPONSE)
 
       const auth = new Auth()
       auth.token = {
@@ -253,21 +264,14 @@ describe('Auth', () => {
 
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
+      expect(result.user.infosLdap.mail).toBe('test@example.com')
+      expect(result.user.infosLdap.uid).toBe('TESTUSER')
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
     })
 
     it('should retry once on 401 by refreshing the token', async () => {
-      const userResponse = {
-        user: {
-          username: 'testuser',
-          email: 'test@example.com',
-          enable: true,
-          clientId: ['client1'],
-          authorities: ['ROLE_USER']
-        }
-      }
 
       const auth = new Auth({ apiKey: 'my-key' })
       auth.token = {
@@ -299,8 +303,8 @@ describe('Auth', () => {
         // Third call: getUserInfo succeeds
         return Promise.resolve({
           status: 200,
-          json: () => Promise.resolve(userResponse),
-          text: () => Promise.resolve(JSON.stringify(userResponse))
+          json: () => Promise.resolve(USER_RESPONSE),
+          text: () => Promise.resolve(JSON.stringify(USER_RESPONSE))
         })
       })
 

@@ -13,21 +13,23 @@ const tokenSchema = z.object({
 
 const userSchema = z.object({
   user: z.object({
+    additionalProperties: z.object({
+      infosLdap: z.object({
+        uid: z.string().describe('Unique id uppercase'),
+        mail: z.string().describe('Email'),
+        cn: z.string().describe('Full name'),
+        givenName: z.string().describe('Given name'),
+        sn: z.string().describe('Last name'),
+        title: z.string().describe('Job title'),
+        afpRegroupCateg: z.string().describe('Job category'),
+        preferredLanguage: z.string().describe('Preferred language in two letters'),
+        ctr: z.string().describe('Service abbreviation'),
+        description: z.string().describe('Service name'),
+      })
+    }),
     username: z.string(),
-    email: z.string().optional(),
-    enable: z.boolean().optional(),
+    enabled: z.boolean().optional(),
     clientId: z.string().array(),
-    authorities: z.string().array(),
-    filters: z.object({
-      dateRange: z.object({
-        to: z.string(),
-        from: z.string()
-      }),
-      dateGap: z.string(),
-      tz: z.string(),
-      sortOrder: z.string(),
-      query: z.any()
-    }).optional()
   })
 })
 
