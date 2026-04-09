@@ -234,17 +234,19 @@ describe('Auth', () => {
     const USER_RESPONSE = {
       user: {
         username: 'testuser',
-        infosLdap: {
-          uid: 'TESTUSER',
-          mail: 'test@example.com',
-          cn: 'Test User',
-          givenName: 'Test',
-          sn: 'User',
-          title: 'Journalist',
-          afpRegroupCateg: 'Editorial',
-          preferredLanguage: 'en',
-          ctr: 'TST',
-          description: 'Test Service'
+        additionalProperties: {
+          infosLdap: {
+            uid: 'TESTUSER',
+            mail: 'test@example.com',
+            cn: 'Test User',
+            givenName: 'Test',
+            sn: 'User',
+            title: 'Journalist',
+            afpRegroupCateg: 'Editorial',
+            preferredLanguage: 'en',
+            ctr: 'TST',
+            description: 'Test Service'
+          }
         },
         enabled: true,
         clientId: ['client1']
@@ -264,8 +266,8 @@ describe('Auth', () => {
 
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
-      expect(result.user.infosLdap.mail).toBe('test@example.com')
-      expect(result.user.infosLdap.uid).toBe('TESTUSER')
+      expect(result.user.additionalProperties.infosLdap.mail).toBe('test@example.com')
+      expect(result.user.additionalProperties.infosLdap.uid).toBe('TESTUSER')
 
       const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
@@ -282,7 +284,7 @@ describe('Auth', () => {
       }
 
       let callCount = 0
-      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      globalThis.fetch = vi.fn().mockImplementation(() => {
         callCount++
         if (callCount === 1) {
           // First call: getUserInfo returns 401

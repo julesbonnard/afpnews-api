@@ -5,6 +5,7 @@
     "target": "es6",
     "module": "esnext",
     "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
     "lib": [
       "es2018",
       "dom"
