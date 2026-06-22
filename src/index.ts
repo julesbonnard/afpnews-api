@@ -1,3 +1,5 @@
 export { Docs as ApiCore } from './api/docs'
 export type * from './types'
 export * from './config'
+export { parseShotList, timeToSeconds } from './utils/shotlist'
+export type { Shot, Citation } from './utils/shotlist'
