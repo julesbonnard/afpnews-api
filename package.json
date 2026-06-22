@@ -1,6 +1,6 @@
 {
   "name": "afpnews-api",
-  "version": "2.4.2",
+  "version": "2.5.0",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
   "main": "dist/cjs/index.js",
   "type": "commonjs",
