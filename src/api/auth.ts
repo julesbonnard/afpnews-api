@@ -1,6 +1,6 @@
 import btoa from 'btoa-lite'
 import { defaultBaseUrl } from '../config.js'
-import { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types.js'
+import type { AuthorizationHeaders, AuthType, AuthClientCredentials, AuthToken, AuthUserCredentials } from '../types.js'
 import { ApiError, get, postForm } from '../utils/request.js'
 import { EventEmitter } from 'events'
 import { z } from 'zod'

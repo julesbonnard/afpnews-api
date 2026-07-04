@@ -12,18 +12,21 @@ const sharedConfig = {
  * Shared configs for bundles (ESM and UMD)
  */
 const bundlePresets = [
-  [
-    '@babel/preset-env',
-    {
-      useBuiltIns: "entry",
-      corejs: "3.35.1"
-    },
-  ],
+  '@babel/preset-env',
   ...sharedPresets,
 ]
 const bundleConfig = {
   ...sharedConfig,
   presets: bundlePresets,
+  plugins: [
+    [
+      'babel-plugin-polyfill-corejs3',
+      {
+        method: 'entry-global',
+        version: '3.35.1',
+      },
+    ],
+  ],
 }
 /**
  * Babel Config

@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import { AuthClientCredentials, SearchQueryParams } from '../types.js'
+import type { AuthClientCredentials, SearchQueryParams } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { z } from 'zod'

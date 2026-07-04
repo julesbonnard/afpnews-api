@@ -10,7 +10,8 @@ export default tseslint.config(
       "dist",
       "src/grammar/index.ts",
       "rollup.config.ts",
-      "examples"
+      "examples",
+      "tools"
     ]
   }
 );

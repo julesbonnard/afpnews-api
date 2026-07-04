@@ -1,5 +1,5 @@
-import { type ApiCore } from '../index.js'
-import { SearchQueryParams } from '../types.js'
+import type { ApiCore } from '../index.js'
+import type { SearchQueryParams } from '../types.js'
 import { del, get, post } from '../utils/request.js'
 import { z } from 'zod'
 

@@ -1,5 +1,5 @@
 import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
-import { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
+import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar/index.js'
 import { normalize } from './normalizer.js'
