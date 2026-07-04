@@ -3,8 +3,8 @@
     "outDir": "dist",
     "rootDir": "src",
     "target": "es6",
-    "module": "esnext",
-    "moduleResolution": "node10",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "ignoreDeprecations": "6.0",
     "lib": [
       "es2018",
