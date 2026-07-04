@@ -1,8 +1,8 @@
-import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config'
-import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types"
+import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
+import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
-import { default as grammar } from '../grammar'
-import { normalize } from './normalizer'
+import { default as grammar } from '../grammar/index.js'
+import { normalize } from './normalizer.js'
 import { z } from 'zod'
 
 const querySchema = z.string().default('')

@@ -1,12 +1,12 @@
-import { defaultSearchParams } from '../config'
-import type { AuthClientCredentials, SearchQueryParams } from '../types'
-import { QueryBuilder } from '../utils/QueryBuilder'
-import { get, post } from '../utils/request'
+import { defaultSearchParams } from '../config.js'
+import type { AuthClientCredentials, SearchQueryParams } from '../types.js'
+import { QueryBuilder } from '../utils/QueryBuilder.js'
+import { get, post } from '../utils/request.js'
 import { z } from 'zod'
-import { Auth } from './auth'
-import { Story } from './story'
-import { NotificationCenter } from './notification'
-import { FilterCenter } from './filter'
+import { Auth } from './auth.js'
+import { Story } from './story.js'
+import { NotificationCenter } from './notification.js'
+import { FilterCenter } from './filter.js'
 
 const docParser = z.object({
   published: z.string()

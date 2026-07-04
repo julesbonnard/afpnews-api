@@ -1,5 +1,3 @@
-import addImportExtensionLocal from './tools/babel-plugin-add-import-extension-local.mjs'
-
 /**
  * Config fragments to be used by all module
  * format environments
@@ -35,10 +33,7 @@ const bundleConfig = {
  */
 export default {
   env: {
-    esmUnbundled: {
-      ...sharedConfig,
-      plugins: [addImportExtensionLocal]
-    },
+    esmUnbundled: sharedConfig,
     esmBundled: bundleConfig,
     umdBundled: bundleConfig,
     cjs: {

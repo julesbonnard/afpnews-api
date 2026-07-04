@@ -1,6 +1,6 @@
-import type { ApiCore } from '..'
-import type { SearchQueryParams } from '../types'
-import { del, get, post } from '../utils/request'
+import type { ApiCore } from '../index.js'
+import type { SearchQueryParams } from '../types.js'
+import { del, get, post } from '../utils/request.js'
 import { z } from 'zod'
 
 const httpServiceData = z.object({
