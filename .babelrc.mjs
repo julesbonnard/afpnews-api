@@ -1,3 +1,5 @@
+import addImportExtensionLocal from './tools/babel-plugin-add-import-extension-local.mjs'
+
 /**
  * Config fragments to be used by all module
  * format environments
@@ -12,18 +14,21 @@ const sharedConfig = {
  * Shared configs for bundles (ESM and UMD)
  */
 const bundlePresets = [
-  [
-    '@babel/preset-env',
-    {
-      useBuiltIns: "entry",
-      corejs: "3.35.1"
-    },
-  ],
+  '@babel/preset-env',
   ...sharedPresets,
 ]
 const bundleConfig = {
   ...sharedConfig,
   presets: bundlePresets,
+  plugins: [
+    [
+      'babel-plugin-polyfill-corejs3',
+      {
+        method: 'entry-global',
+        version: '3.35.1',
+      },
+    ],
+  ],
 }
 /**
  * Babel Config
@@ -32,7 +37,7 @@ export default {
   env: {
     esmUnbundled: {
       ...sharedConfig,
-      plugins: ["babel-plugin-add-import-extension"]
+      plugins: [addImportExtensionLocal]
     },
     esmBundled: bundleConfig,
     umdBundled: bundleConfig,

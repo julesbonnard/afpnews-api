@@ -1,5 +1,5 @@
-import { type ApiCore } from '..'
-import { SearchQueryParams } from '../types'
+import type { ApiCore } from '..'
+import type { SearchQueryParams } from '../types'
 import { del, get, post } from '../utils/request'
 import { z } from 'zod'
 

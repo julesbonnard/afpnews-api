@@ -1,5 +1,5 @@
 import status from 'statuses'
-import { AuthorizationHeaders, AuthForm } from '../types'
+import type { AuthorizationHeaders, AuthForm } from '../types'
 import { z } from 'zod'
 
 const errorSchema = z.object({

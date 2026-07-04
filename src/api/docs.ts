@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config'
-import { AuthClientCredentials, SearchQueryParams } from '../types'
+import type { AuthClientCredentials, SearchQueryParams } from '../types'
 import { QueryBuilder } from '../utils/QueryBuilder'
 import { get, post } from '../utils/request'
 import { z } from 'zod'
