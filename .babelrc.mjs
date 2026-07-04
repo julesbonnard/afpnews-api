@@ -30,10 +30,7 @@ const bundleConfig = {
  */
 export default {
   env: {
-    esmUnbundled: {
-      ...sharedConfig,
-      plugins: ["babel-plugin-add-import-extension"]
-    },
+    esmUnbundled: sharedConfig,
     esmBundled: bundleConfig,
     umdBundled: bundleConfig,
     cjs: {
