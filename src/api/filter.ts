@@ -1,6 +1,6 @@
-import { type ApiCore } from '..'
-import { SearchQueryParams } from '../types'
-import { get, post } from '../utils/request'
+import { type ApiCore } from '../index.js'
+import { SearchQueryParams } from '../types.js'
+import { get, post } from '../utils/request.js'
 
 export function FilterCenter (this: ApiCore) {
   const baseFilterUrl = `${this.baseUrl}/v1/user/filter`
