@@ -101,7 +101,7 @@
     "@types/btoa-lite": "^1.0.2",
     "@types/moo": "^0.5.10",
     "@types/nearley": "^2.11.5",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.0",
     "@types/statuses": "^2.0.6",
     "btoa-lite": "^1.0.0",
     "events": "^3.3.0",
