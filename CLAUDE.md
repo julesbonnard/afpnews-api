@@ -19,19 +19,14 @@ npm run test:watch
 # Lint
 npm run lint
 
-# Full build (clean -> parser -> types -> esm/cjs/bundles -> fixup)
+# Full build (clean -> parser -> tsdown -> fixup)
 npm run build
 
-# Development with auto-rebuild
+# Development with auto-rebuild (tsdown's native watch mode)
 npm run build:watch
 
-# Individual build steps
-npm run build:parser    # Generate Nearley parser -> src/grammar/index.ts
-npm run build:types     # Generate .d.ts/.d.cts/.d.mts declarations
-npm run build:esm       # Build ES modules to dist/esm/
-npm run build:cjs       # Build CommonJS to dist/cjs/
-npm run build:esmBundled # Bundle ESM for browsers
-npm run build:umdBundled # Bundle UMD for browsers
+# Generate the Nearley parser only -> src/grammar/index.ts
+npm run build:parser
 ```
 
 ## Architecture
@@ -80,10 +75,9 @@ src/
 
 ```
 dist/
-├── cjs/        # CommonJS (package.json with "type": "commonjs")
-├── esm/        # ES Modules (package.json with "type": "module")
-├── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
-└── types/      # Intermediate (cleaned after build)
+├── cjs/        # Unbundled CommonJS, one .js + .d.cts + sourcemap per source module (package.json with "type": "commonjs")
+├── esm/        # Unbundled ES Modules, one .js + .d.mts + sourcemap per source module (package.json with "type": "module")
+└── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
 ```
 
 ## Code Conventions
@@ -122,10 +116,8 @@ dist/
 The full build (`npm run build`) runs in a specific sequence:
 1. `clean` - Remove dist/ and caches
 2. `build:parser` - Generate parser from grammar
-3. `build:types` - Generate TypeScript declarations
-4. Parallel: `build:esm`, `build:cjs`, `build:esmBundled`, `build:umdBundled`
-5. `fixup` script - Creates `package.json` files in dist subdirectories
-6. `postbuild` - Removes intermediate `dist/types/`
+3. `tsdown` - Single [tsdown](https://tsdown.dev) run producing unbundled esm/cjs (with per-module `.d.mts`/`.d.cts` declarations and sourcemaps) and the two minified browser bundles, all defined in `tsdown.config.mts`
+4. `fixup` script - Creates `package.json` files (`{"type": "commonjs"}` / `{"type": "module"}`) in `dist/cjs` and `dist/esm`, since tsdown doesn't do this itself
 
 ### Environment Variables (for testing/examples)
 ```
