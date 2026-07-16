@@ -9,7 +9,6 @@ export default tseslint.config(
       "node_modules",
       "dist",
       "src/grammar/index.ts",
-      "rollup.config.ts",
       "examples",
       "tools",
       ".pnpmfile.cjs"

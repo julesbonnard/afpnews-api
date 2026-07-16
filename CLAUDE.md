@@ -19,19 +19,17 @@ npm run test:watch
 # Lint
 npm run lint
 
-# Full build (clean -> parser -> types -> esm/cjs/bundles -> fixup)
+# Full build (parser -> tsdown)
 npm run build
 
-# Development with auto-rebuild
+# Development with auto-rebuild (tsdown's native watch mode)
 npm run build:watch
 
-# Individual build steps
-npm run build:parser    # Generate Nearley parser -> src/grammar/index.ts
-npm run build:types     # Generate .d.ts/.d.cts/.d.mts declarations
-npm run build:esm       # Build ES modules to dist/esm/
-npm run build:cjs       # Build CommonJS to dist/cjs/
-npm run build:esmBundled # Bundle ESM for browsers
-npm run build:umdBundled # Bundle UMD for browsers
+# Generate the Nearley parser only -> src/grammar/index.ts
+npm run build:parser
+
+# Validate the built package.json exports/types (publint + Are the Types Wrong)
+npm run verify:package
 ```
 
 ## Architecture
@@ -80,10 +78,9 @@ src/
 
 ```
 dist/
-├── cjs/        # CommonJS (package.json with "type": "commonjs")
-├── esm/        # ES Modules (package.json with "type": "module")
-├── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
-└── types/      # Intermediate (cleaned after build)
+├── cjs/        # Unbundled CommonJS, one .cjs + .d.cts + sourcemap per source module
+├── esm/        # Unbundled ES Modules, one .mjs + .d.mts + sourcemap per source module
+└── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
 ```
 
 ## Code Conventions
@@ -120,12 +117,9 @@ dist/
 
 ### Build Order Matters
 The full build (`npm run build`) runs in a specific sequence:
-1. `clean` - Remove dist/ and caches
-2. `build:parser` - Generate parser from grammar
-3. `build:types` - Generate TypeScript declarations
-4. Parallel: `build:esm`, `build:cjs`, `build:esmBundled`, `build:umdBundled`
-5. `fixup` script - Creates `package.json` files in dist subdirectories
-6. `postbuild` - Removes intermediate `dist/types/`
+1. `build:parser` - Generate parser from grammar
+2. `tsdown` - Single [tsdown](https://tsdown.dev) run producing unbundled esm/cjs (with per-module `.d.mts`/`.d.cts` declarations and sourcemaps) and the two minified browser bundles, all defined in `tsdown.config.mts`. tsdown cleans `dist/` itself before writing (use `--no-clean` to skip); `npm run clean` is only needed as a manual utility.
+- CJS output uses `.cjs` and ESM output uses `.mjs` (not a shared `.js` + a `dist/*/package.json` `"type"` marker) so module type is unambiguous by extension alone — this is also what `tsdown --publint --attw` flagged when the old `.js`-based setup was tried.
 
 ### Environment Variables (for testing/examples)
 ```
