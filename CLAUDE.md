@@ -93,9 +93,8 @@ dist/
 - **TypeScript strict mode**: All strict checks enabled (`noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters`, etc.)
 
 ### Linting
-- ESLint v9 flat config (`eslint.config.mjs`)
-- Extends: `@eslint/js` recommended + `typescript-eslint` recommended
-- Ignored paths: `node_modules`, `dist`, `src/grammar/index.ts` (generated), `examples`
+- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) (`.oxlintrc.json`), not type-aware (matches the previous ESLint config's non-type-checked `recommended` preset)
+- Ignored paths: `node_modules`, `dist`, `src/grammar/index.ts` (generated), `examples`, `tools`
 - Run with: `npm run lint`
 
 ### TypeScript
