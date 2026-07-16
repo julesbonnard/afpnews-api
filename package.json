@@ -47,7 +47,7 @@
     "verify:package": "npm run build:parser && tsdown --publint --attw",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint .",
+    "lint": "npm run build:parser && oxlint .",
     "prepare": "npm run lint && npm run build"
   },
   "engines": {
