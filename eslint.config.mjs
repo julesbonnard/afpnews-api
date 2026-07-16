@@ -11,7 +11,8 @@ export default tseslint.config(
       "src/grammar/index.ts",
       "rollup.config.ts",
       "examples",
-      "tools"
+      "tools",
+      ".pnpmfile.cjs"
     ]
   }
 );
