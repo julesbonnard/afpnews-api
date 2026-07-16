@@ -1,28 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
+import type { SearchRequest } from '../../src/types'
+import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
   access_token: 'test-access-token',
   refresh_token: 'test-refresh-token',
   expires_in: 3600
-}
-
-function mockFetchSequence(responses: Array<{ body: unknown; status?: number }>) {
-  let callIndex = 0
-  globalThis.fetch = vi.fn().mockImplementation(() => {
-    const resp = responses[callIndex] || responses[responses.length - 1]
-    callIndex++
-    return Promise.resolve({
-      status: resp.status || 200,
-      statusText: 'OK',
-      json: () => Promise.resolve(resp.body),
-      text: () => Promise.resolve(JSON.stringify(resp.body))
-    })
-  })
-}
-
-function mockFetch(body: unknown, status = 200) {
-  mockFetchSequence([{ body, status }])
 }
 
 function createAuthenticatedDocs() {
@@ -102,11 +86,11 @@ describe('Docs', () => {
         sortOrder: 'desc'
       })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/search')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.maxRows).toBe(20)
       expect(body.dateRange.from).toBe('2023-01-01')
       expect(body.dateRange.to).toBe('2023-12-31')
@@ -121,8 +105,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search()
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.maxRows).toBe(10)
       expect(body.sortField).toBe('published')
       expect(body.sortOrder).toBe('desc')
@@ -143,7 +127,7 @@ describe('Docs', () => {
 
       expect(result).toEqual({ uno: 'AFP-123', title: 'Test Document' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
     })
   })
@@ -164,7 +148,7 @@ describe('Docs', () => {
       expect(result.count).toBe(2)
       expect(result.documents).toHaveLength(2)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mlt')
       expect(calledUrl).toContain('uno=AFP-123')
       expect(calledUrl).toContain('lang=en')
@@ -180,7 +164,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mlt('AFP-123', 'fr')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('size=10')
     })
   })
@@ -205,7 +189,7 @@ describe('Docs', () => {
       expect(result.keywords).toHaveLength(2)
       expect(result.keywords[0]).toEqual({ name: 'politics', count: 150 })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/list/slug')
       expect(calledUrl).toContain('minDocCount=1')
     })
@@ -259,7 +243,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.list('keyword', {}, 5)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=5')
     })
   })
@@ -271,26 +255,26 @@ describe('Docs', () => {
       // Mock search to simulate pagination: 2 pages of 3 docs each
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
-      searchSpy.mockImplementation(async () => {
+      searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
-          return {
+          return Promise.resolve({
             count: 6,
             documents: [
               { uno: 'doc1', published: '2023-06-15T12:00:00Z' },
               { uno: 'doc2', published: '2023-06-14T12:00:00Z' },
               { uno: 'doc3', published: '2023-06-13T12:00:00Z' }
             ]
-          }
+          })
         }
-        return {
+        return Promise.resolve({
           count: 6,
           documents: [
             { uno: 'doc4', published: '2023-06-12T12:00:00Z' },
             { uno: 'doc5', published: '2023-06-11T12:00:00Z' },
             { uno: 'doc6', published: '2023-06-10T12:00:00Z' }
           ]
-        }
+        })
       })
 
       const collected: unknown[] = []
@@ -310,7 +294,7 @@ describe('Docs', () => {
 
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
-      searchSpy.mockImplementation(async () => {
+      searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
           // Return exactly 1000 docs (matching maxRequestSize) so pagination continues
@@ -318,14 +302,14 @@ describe('Docs', () => {
             uno: `doc-${i}`,
             published: `2023-06-${String(15).padStart(2, '0')}T${String(i).padStart(2, '0')}:00:00Z`
           }))
-          return { count: 1500, documents: pageDocs }
+          return Promise.resolve({ count: 1500, documents: pageDocs })
         }
         // Second page: fewer than requested → stops
         const pageDocs = Array.from({ length: 100 }, (_, i) => ({
           uno: `doc-${1000 + i}`,
           published: `2023-06-14T${String(i).padStart(2, '0')}:00:00Z`
         }))
-        return { count: 1500, documents: pageDocs }
+        return Promise.resolve({ count: 1500, documents: pageDocs })
       })
 
       const collected: unknown[] = []
@@ -392,7 +376,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search()
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -401,7 +385,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.get('AFP-123')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -410,7 +394,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mlt('AFP-123', 'en')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -419,7 +403,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.list('slug')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
   })
@@ -430,8 +414,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ startAt: 5 })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.startAt).toBe(5)
     })
 
@@ -440,8 +424,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ tz: 'Europe/Paris' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.tz).toBe('Europe/Paris')
     })
 
@@ -450,8 +434,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ dateGap: '+1HOUR' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.dateGap).toBe('+1HOUR')
     })
 
@@ -460,8 +444,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ wantCluster: true })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.wantCluster).toBe(true)
     })
 
@@ -470,8 +454,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ wantedFacets: { slug: { size: 10, minDocCount: 1 } } })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.wantedFacets).toEqual({ slug: { size: 10, minDocCount: 1 } })
     })
 
@@ -480,8 +464,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ sort: [{ sortField: 'published', sortOrder: 'desc' }] })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.sort).toEqual([{ sortField: 'published', sortOrder: 'desc' }])
     })
   })
@@ -495,7 +479,7 @@ describe('Docs', () => {
       expect(result.count).toBe(1)
       expect(result.documents).toHaveLength(1)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/latest')
       expect(calledUrl).toContain('wt=json')
     })
@@ -505,7 +489,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.latest({ lang: 'fr', tz: 'Europe/Paris', tr: 'foo' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('lang=fr')
       expect(calledUrl).toContain('tz=Europe%2FParis')
       expect(calledUrl).toContain('tr=foo')
@@ -521,7 +505,7 @@ describe('Docs', () => {
 
       expect(result).toEqual({ fields: ['uno', 'title'] })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mapping')
       expect(calledUrl).toContain('wt=json')
       expect(calledUrl).toContain('lang=en')
@@ -532,7 +516,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mapping('fr')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('lang=fr')
     })
   })
@@ -546,7 +530,7 @@ describe('Docs', () => {
       expect(result.count).toBe(1)
       expect(result.documents).toHaveLength(1)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/search_with_filter')
       expect(calledUrl).toContain('filter=my-filter')
       expect(calledUrl).toContain('wt=json')
@@ -557,7 +541,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.searchWithFilter('my-filter', { startat: 10, size: 20 })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=10')
       expect(calledUrl).toContain('size=20')
     })
@@ -576,12 +560,12 @@ describe('Docs', () => {
 
       expect(result).toBe(feedXml)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/feed')
       expect(calledUrl).toContain('filter=my-filter')
       expect(calledUrl).toContain('wt=xml')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       const headers = calledOptions.headers as Headers
       expect(headers.get('Accept')).toBe('application/rss+xml')
     })
@@ -595,7 +579,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.feed('my-filter', { startat: 5, size: 10, role: 'admin', wt: 'atom' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=5')
       expect(calledUrl).toContain('size=10')
       expect(calledUrl).toContain('role=admin')

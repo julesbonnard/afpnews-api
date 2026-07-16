@@ -47,7 +47,7 @@
     "verify:package": "npm run build:parser && tsdown --publint --attw",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint .",
+    "lint": "npm run build:parser && oxlint .",
     "prepare": "npm run lint && npm run build"
   },
   "engines": {
@@ -72,6 +72,7 @@
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.5",
     "oxlint": "^1.74.0",
+    "oxlint-tsgolint": "^0.24.0",
     "publint": "^0.3.21",
     "rimraf": "^6.1.3",
     "tsdown": "^0.22.8",
