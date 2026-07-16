@@ -1,7 +1,8 @@
-// Temporary shim while typescript-eslint and rollup-plugin-dts wait on stable
-// TS7/Corsa support: give them TS6's API via @typescript/typescript6 instead of
-// the root project's typescript@7, since pnpm.overrides can't target peerDependencies.
-// See PR #101.
+// Temporary shim while typescript-eslint waits on stable TS7/Corsa support:
+// give it TS6's API via @typescript/typescript6 instead of the root project's
+// typescript@7, since pnpm.overrides can't target peerDependencies.
+// See PR #101. (rollup-plugin-dts no longer needs this since the tsdown migration:
+// tsdown emits declarations directly against typescript@7.)
 const TS6_SHIM = 'npm:@typescript/typescript6@^6.0.2'
 
 const PACKAGES_NEEDING_TS6 = new Set([
@@ -14,7 +15,6 @@ const PACKAGES_NEEDING_TS6 = new Set([
   '@typescript-eslint/project-service',
   '@typescript-eslint/tsconfig-utils',
   'ts-api-utils',
-  'rollup-plugin-dts',
 ])
 
 function readPackage(pkg) {
