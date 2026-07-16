@@ -247,7 +247,9 @@ export class QueryBuilder {
     if (parser.results.length > 1) {
       console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
     }
-    const parsedQuery = parser.results[0]
+    // nearley's parser.results is typed `any[]`; the grammar guarantees each
+    // result matches the Ast shape declared in grammar/grammar.d.ts.
+    const parsedQuery = parser.results[0] as Ast
     return this.serialize(parsedQuery)
   }
 }

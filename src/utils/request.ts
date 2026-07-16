@@ -9,19 +9,19 @@ const errorSchema = z.object({
   })
 })
 
-function buildUrl (url: string, params: object) {
+function buildUrl (url: string, params: Record<string, string | number>) {
   const builtUrl = new URL(url)
-  Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, value))
+  Object.entries(params).forEach(([key, value]) => builtUrl.searchParams.append(key, String(value)))
   return builtUrl.toString()
 }
 
-function buildHeaders (headers: object) {
+function buildHeaders (headers: Record<string, string>) {
   const builtHeaders = new Headers()
   Object.entries(headers).forEach(([key, value]) => builtHeaders.append(key, value))
   return builtHeaders
 }
 
-function buildForm (form: object) {
+function buildForm (form: AuthForm) {
   const builtForm = new FormData()
   Object.entries(form).forEach(([key, value]) => builtForm.append(key, value))
   return builtForm
@@ -52,7 +52,7 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  const data = await response.json();  
+  const data: unknown = await response.json();
 
   // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier dans les deux cas
   const errorData = errorSchema.safeParse(data);                                                                              

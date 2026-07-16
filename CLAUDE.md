@@ -93,9 +93,10 @@ dist/
 - **TypeScript strict mode**: All strict checks enabled (`noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters`, etc.)
 
 ### Linting
-- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) (`.oxlintrc.json`), not type-aware (matches the previous ESLint config's non-type-checked `recommended` preset)
+- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) (`.oxlintrc.json`), type-aware via `oxlint-tsgolint` (`options.typeAware: true`) — the enabled `typescript/*` rule set matches `typescript-eslint`'s `recommendedTypeChecked` preset (the non-type-checked `recommended` rules, plus its `recommended-type-checked-only` additions)
 - Ignored paths: `node_modules`, `dist`, `src/grammar/index.ts` (generated), `examples`, `tools`
 - Run with: `npm run lint`
+- Test-only `fetch` mocks are typed via `tests/helpers/mockFetch.ts` (`Mock<typeof fetch>`) rather than each test file rolling its own loosely-typed mock
 
 ### TypeScript
 - Target: ES6, Module: ESNext, Lib: ES2015
