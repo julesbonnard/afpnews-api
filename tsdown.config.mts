@@ -10,7 +10,11 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     outDir: 'dist/esm',
-    outExtensions: () => ({ js: '.js', dts: '.d.mts' }),
+    // .mjs is unambiguously ESM by extension alone, so consumers/bundlers
+    // don't need to fall back to the folder's package.json "type" field
+    // (flagged by `tsdown --publint --attw`, which otherwise reports a
+    // false-ESM/CJS mismatch on the plain .js output).
+    outExtensions: () => ({ js: '.mjs', dts: '.d.mts' }),
   },
   {
     entry: libEntry,
@@ -19,12 +23,13 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     outDir: 'dist/cjs',
-    outExtensions: () => ({ js: '.js', dts: '.d.cts' }),
+    outExtensions: () => ({ js: '.cjs', dts: '.d.cts' }),
   },
   {
     entry: { 'bundles/apicore.min': 'src/index.ts' },
     format: ['esm'],
     platform: 'browser',
+    target: 'es2020',
     deps: { alwaysBundle: [/.*/], onlyBundle: false },
     minify: true,
     sourcemap: true,
@@ -38,6 +43,7 @@ export default defineConfig([
     format: ['umd'],
     globalName: 'ApiCore',
     platform: 'browser',
+    target: 'es2020',
     deps: { alwaysBundle: [/.*/], onlyBundle: false },
     minify: true,
     sourcemap: true,
