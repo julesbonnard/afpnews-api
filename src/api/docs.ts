@@ -1,12 +1,15 @@
 import { defaultSearchParams } from '../config.js'
-import type { AuthClientCredentials, SearchQueryParams } from '../types.js'
+import type { AuthClientCredentials, SearchQueryParams, AfpDocument } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
+import { parseDocument } from '../utils/parseDocument.js'
 import { z } from 'zod'
 import { Auth } from './auth.js'
 import { Story } from './story.js'
 import { NotificationCenter } from './notification.js'
 import { FilterCenter } from './filter.js'
+
+type ParseOption = { parse: true }
 
 const docParser = z.object({
   published: z.string()
@@ -80,7 +83,16 @@ export class Docs extends Auth {
    * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async search (params: SearchQueryParams = {}, fields: string[] = []) {
+  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[] }>
+  /**
+   * Search documents and parse them into the canonical `AfpDocument` model
+   * @param params - An object containing the search parameters
+   * @param fields - An array of fields to include in the response
+   * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
+   * @returns An object containing the parsed documents and their count
+   */
+  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean }): Promise<{ count: number; documents: unknown[] }> {
     const body = this.prepareRequest(params, fields)
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
@@ -92,7 +104,7 @@ export class Docs extends Auth {
 
     return {
       count,
-      documents
+      documents: options?.parse ? documents.map(doc => parseDocument(doc)) : documents
     }
   }
 
@@ -102,7 +114,16 @@ export class Docs extends Auth {
    * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async * searchAll (params: SearchQueryParams = {}, fields: string[] = []) {
+  public searchAll (params?: SearchQueryParams, fields?: string[]): AsyncGenerator<unknown>
+  /**
+   * Search documents using the API (with pagination), parsed into the canonical `AfpDocument` model
+   * @param params - An object containing the search parameters
+   * @param fields - An array of fields to include in the response
+   * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
+   * @returns An async generator yielding parsed documents
+   */
+  public searchAll (params: SearchQueryParams, fields: string[], options: ParseOption): AsyncGenerator<AfpDocument>
+  public async * searchAll (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean }): AsyncGenerator<unknown> {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
     const maxRequestSize = 1000
     const maxSize = params.size || defaultSearchParams.size
@@ -113,7 +134,7 @@ export class Docs extends Auth {
       if (!documents.length) return
       for (const doc of documents) {
         i++
-        yield doc
+        yield options?.parse ? parseDocument(doc) : doc
       }
       if (documents.length < params.size || count <= documents.length) return
       params[direction] = docParser.parse(documents.pop()).published
@@ -125,13 +146,22 @@ export class Docs extends Auth {
    * @param uno - A unique identifier for the document
    * @returns The document
    */
-  public async get (uno: string) {
+  public async get (uno: string): Promise<unknown>
+  /**
+   * Get a specific document using its Uno, parsed into the canonical `AfpDocument` model
+   * @param uno - A unique identifier for the document
+   * @param options - Pass `{ parse: true }` to get a typed `AfpDocument`
+   * @returns The parsed document
+   */
+  public async get (uno: string, options: ParseOption): Promise<AfpDocument>
+  public async get (uno: string, options?: { parse?: boolean }): Promise<unknown> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${uno}`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json' }
     }))
     const { response: { docs }} = getResponse.parse(data)
-    return docs[0]
+    const doc = docs[0]
+    return options?.parse ? parseDocument(doc) : doc
   }
 
   /**

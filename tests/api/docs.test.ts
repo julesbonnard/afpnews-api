@@ -9,6 +9,19 @@ const TOKEN_RESPONSE = {
   expires_in: 3600
 }
 
+const RAW_TEXT_DOC = {
+  uno: 'newsml.afp.com.20240315T143000Z.doc-abc12',
+  class: 'text',
+  news: ['Titre du document', 'Premier paragraphe'],
+  urgency: 3,
+  created: '2024-03-15T14:30:00Z',
+  published: '2024-03-15T14:30:00Z',
+  lang: 'fr',
+  revision: 1,
+  provider: 'AFP',
+  status: 'Usable'
+}
+
 function createAuthenticatedDocs() {
   const docs = new Docs()
   docs.token = {
@@ -111,6 +124,26 @@ describe('Docs', () => {
       expect(body.sortField).toBe('published')
       expect(body.sortOrder).toBe('desc')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+      expect(result.documents[0]?.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
+    })
   })
 
   describe('get', () => {
@@ -129,6 +162,26 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
+    })
+
+    it('should return the raw document by default, even when it is parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123')
+
+      expect(result).toEqual(RAW_TEXT_DOC)
+    })
+
+    it('should return an AfpDocument when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123', { parse: true })
+
+      expect(result.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.headline).toBe('Titre du document')
+      expect(result.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
     })
   })
 
@@ -367,6 +420,19 @@ describe('Docs', () => {
 
       expect(collected).toHaveLength(1)
       expect(searchSpy).toHaveBeenCalled()
+    })
+
+    it('should yield AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const collected: { headline?: string }[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
+      expect(collected[0]?.headline).toBe('Titre du document')
     })
   })
 

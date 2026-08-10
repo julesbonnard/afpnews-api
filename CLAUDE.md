@@ -60,7 +60,9 @@ src/
 ├── utils/
 │   ├── request.ts        # HTTP helpers (get, post, postForm, del) using fetch
 │   ├── QueryBuilder.ts   # Query DSL parser -> API search request builder
-│   └── normalizer.ts     # Unicode text normalization
+│   ├── normalizer.ts     # Unicode text normalization
+│   ├── shotlist.ts       # parseShotList: video shot list parser (Shot[])
+│   └── parseDocument.ts  # parseDocument: raw doc -> canonical AfpDocument model
 └── grammar/
     ├── index.ne          # Nearley grammar definition for query DSL
     └── grammar.d.ts      # Type definitions for parser AST nodes
@@ -73,6 +75,7 @@ src/
 - **Zod validation**: All API responses are validated at runtime with Zod schemas defined inline in each module.
 - **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets.
 - **Query DSL**: Complex boolean query strings are parsed via Nearley/Moo into an AST, then converted to nested `SearchQuery` objects by `QueryBuilder`.
+- **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll` return raw `unknown` documents by default; passing `{ parse: true }` (a second/third argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
 
 ### Build Output
 

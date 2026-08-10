@@ -164,6 +164,31 @@ The `query` parameter supports a boolean query DSL:
 const document = await afp.get('uno')
 ```
 
+## Parsed Documents (`AfpDocument`)
+
+By default, `get`, `search` and `searchAll` return raw, untyped API documents. Pass `{ parse: true }` to get the canonical, presentation-agnostic `AfpDocument` model instead — a TypeScript overload, not a union type, so the return type is inferred correctly in both cases:
+
+```ts
+import { ApiCore, parseDocument } from 'afpnews-api'
+import type { AfpDocument } from 'afpnews-api'
+
+const raw = await afp.get('uno') // unknown
+const doc = await afp.get('uno', { parse: true }) // AfpDocument
+
+const { documents } = await afp.search({ query: 'Macron' }, [], { parse: true }) // AfpDocument[]
+
+for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true })) {
+  console.log(doc.headline)
+}
+
+// Or parse a raw document you already fetched:
+const doc = parseDocument(raw)
+```
+
+`AfpDocument` reflects the underlying AFP data: `class`, `headline`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions`, and `shots` for video documents. Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+
+This is an additive, opt-in change — `mlt`, `latest`, `list` and `searchWithFilter` are not affected and keep returning raw documents.
+
 ## More Like This
 
 Find documents similar to a given one:
