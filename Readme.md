@@ -190,7 +190,7 @@ const doc = parseDocument(raw)
 
 `AfpDocument` reflects the underlying AFP data: `class`, `headline`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions`, and `shots` for video documents. Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
 
-This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values (`{ name, count }`), not documents, so parsing doesn't apply to it.
+This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values, not documents, so `AfpDocument` parsing doesn't apply to it — but its `keywords` are still a named, zod-validated type: `AfpFacetValue` (`{ name?: string | null; count: number }`).
 
 ## More Like This
 
@@ -213,6 +213,8 @@ const { count, keywords } = await afp.list('slug')
 // With custom search scope and minimum document count
 const { keywords } = await afp.list('country', { dateFrom: 'now-7d', langs: ['en'] }, 5)
 ```
+
+`keywords` is typed as `AfpFacetValue[]` (`{ name?: string | null; count: number }`), validated at runtime with the same Zod schema.
 
 ## Field Mapping
 

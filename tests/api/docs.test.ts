@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-import type { SearchRequest } from '../../src/types'
+import type { SearchRequest, AfpFacetValue } from '../../src/types'
 import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
@@ -317,6 +317,18 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=5')
+    })
+
+    it('should type keywords as the exported AfpFacetValue', async () => {
+      mockFetch({
+        response: { topics: [{ name: 'politics', count: 150 }], numFound: 1 }
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+      const keywords: AfpFacetValue[] = result.keywords
+
+      expect(keywords).toEqual([{ name: 'politics', count: 150 }])
     })
   })
 

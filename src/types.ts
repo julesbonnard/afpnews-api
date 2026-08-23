@@ -18,6 +18,15 @@ export type FacetConfig = { size: number; minDocCount: number }
 export type WantedFacets = { empty?: boolean; [facetName: string]: FacetConfig | boolean | undefined }
 export type SortEntry = { sortField: string; sortOrder: SearchQuerySortOrder }
 
+/**
+ * A single value returned by `list()` for a given facet, with its document count.
+ * `name` can be `null`/absent when the API has no label for that value.
+ */
+export type AfpFacetValue = {
+  name?: string | null
+  count: number
+}
+
 export type AdditionalParamValue =
   string |
   number |

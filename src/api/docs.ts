@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import type { AuthClientCredentials, SearchQueryParams, AfpDocument } from '../types.js'
+import type { AuthClientCredentials, SearchQueryParams, AfpDocument, AfpFacetValue } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument } from '../utils/parseDocument.js'
@@ -205,9 +205,9 @@ export class Docs extends Auth {
    * @param facet - A facet name
    * @param params - An object containing the search parameters
    * @param minDocCount - The minimum number of documents a value must have to be included in the response
-   * @returns An object containing the keywords and their count
+   * @returns An object containing the keywords (typed, zod-validated `AfpFacetValue[]`) and their count
    */
-  public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1) {
+  public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1): Promise<{ count: number; keywords: AfpFacetValue[] }> {
     const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
