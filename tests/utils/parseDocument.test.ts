@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { parseDocument } from '../../src/utils/parseDocument'
+import * as shotlist from '../../src/utils/shotlist'
 
 const BASE = {
   uno: 'newsml.afp.com.20240315T143000Z.doc-abc12',
@@ -118,6 +119,16 @@ describe('parseDocument', () => {
     it('uppercases shortId', () => {
       const doc = parseDocument({ ...TEXT_DOC, afpshortid: 'abc1234' })
       expect(doc.shortId).toBe('ABC1234')
+    })
+
+    it('passes through source when present', () => {
+      const doc = parseDocument({ ...TEXT_DOC, source: 'AFP' })
+      expect(doc.source).toBe('AFP')
+    })
+
+    it('leaves source undefined when absent', () => {
+      const doc = parseDocument(TEXT_DOC)
+      expect(doc.source).toBeUndefined()
     })
 
     it('extracts events from afpentity', () => {
@@ -251,6 +262,15 @@ describe('parseDocument', () => {
     it('defaults shots to an empty array when news is absent', () => {
       const doc = parseDocument(VIDEO_DOC)
       expect(doc.shots).toEqual([])
+    })
+
+    it('falls back to an empty array instead of throwing when parseShotList fails', () => {
+      vi.spyOn(shotlist, 'parseShotList').mockImplementation(() => {
+        throw new Error('malformed shot list')
+      })
+      const doc = parseDocument({ ...VIDEO_DOC, news: ['whatever'] })
+      expect(doc.shots).toEqual([])
+      vi.restoreAllMocks()
     })
 
     it('parses the shot list from news', () => {

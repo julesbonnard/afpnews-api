@@ -166,6 +166,7 @@ export type AfpDocument = {
   uno: string
   shortId?: string
   class: AfpDocumentClass
+  source?: string
   headline?: string
   paragraphs: AfpParagraph[]
   lang: string

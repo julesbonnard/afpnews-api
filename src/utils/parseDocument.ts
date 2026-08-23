@@ -56,6 +56,7 @@ const DocumentSourceSchema = z.object({
     'webstory'
   ]),
   headline: z.string().optional(),
+  source: z.string().optional(),
   news: z.string().array().default([]),
   caption: z.string().array().optional(),
   urgency: z.number(),
@@ -146,6 +147,14 @@ function extractTextParagraphs (doc: DocumentSource): { headline?: string; parag
   }
 }
 
+function extractShots (news: string[]) {
+  try {
+    return parseShotList(news.join('\n'))
+  } catch {
+    return []
+  }
+}
+
 function extractHasBeenAlerted (doc: DocumentSource): boolean {
   if (!doc.hopHistory || doc.urgency <= 3) return false
   return doc.hopHistory.hop.some(hop =>
@@ -158,6 +167,7 @@ function extractBase (doc: DocumentSource): Omit<AfpDocument, 'headline' | 'para
     uno: doc.uno,
     shortId: doc.afpshortid,
     class: doc.class,
+    source: doc.source,
     lang: doc.lang,
     country: { id: doc.country, name: doc.countryname },
     city: doc.city,
@@ -227,7 +237,7 @@ export function parseDocument (raw: unknown): AfpDocument {
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
         caption: doc.caption?.[0] ?? '',
-        shots: parseShotList(doc.news.join('\n'))
+        shots: extractShots(doc.news)
       }
     case 'webstory':
       return {
