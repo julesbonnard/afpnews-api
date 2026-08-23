@@ -220,6 +220,25 @@ describe('Docs', () => {
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('size=10')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
   })
 
   describe('list', () => {
@@ -560,6 +579,25 @@ describe('Docs', () => {
       expect(calledUrl).toContain('tz=Europe%2FParis')
       expect(calledUrl).toContain('tr=foo')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
   })
 
   describe('mapping', () => {
@@ -606,6 +644,29 @@ describe('Docs', () => {
       mockFetch({ response: { docs: [], numFound: 0 } })
       const docs = createAuthenticatedDocs()
       await docs.searchWithFilter('my-filter', { startat: 10, size: 20 })
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('startat=10')
+      expect(calledUrl).toContain('size=20')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', { startat: 10, size: 20 }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=10')

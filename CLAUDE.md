@@ -75,7 +75,7 @@ src/
 - **Zod validation**: All API responses are validated at runtime with Zod schemas defined inline in each module.
 - **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets.
 - **Query DSL**: Complex boolean query strings are parsed via Nearley/Moo into an AST, then converted to nested `SearchQuery` objects by `QueryBuilder`.
-- **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll` return raw `unknown` documents by default; passing `{ parse: true }` (a second/third argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
+- **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll`/`mlt`/`latest`/`searchWithFilter` return raw `unknown` documents by default; passing `{ parse: true }` (a trailing argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `list` is excluded: it returns facet values (`{ name, count }`), not documents, so there is nothing to parse. `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
 
 ### Build Output
 

@@ -74,6 +74,9 @@ Get the most recent documents:
 
 ```js
 const { count, documents } = await afp.latest({ lang: 'fr', tz: 'Europe/Paris' })
+
+// Parsed into AfpDocument
+const { documents } = await afp.latest({ lang: 'fr' }, { parse: true })
 ```
 
 ## Searching Documents
@@ -187,7 +190,7 @@ const doc = parseDocument(raw)
 
 `AfpDocument` reflects the underlying AFP data: `class`, `headline`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions`, and `shots` for video documents. Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
 
-This is an additive, opt-in change — `mlt`, `latest`, `list` and `searchWithFilter` are not affected and keep returning raw documents.
+This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values (`{ name, count }`), not documents, so parsing doesn't apply to it.
 
 ## More Like This
 
@@ -195,6 +198,9 @@ Find documents similar to a given one:
 
 ```js
 const { count, documents } = await afp.mlt('uno', 'en', 10)
+
+// Parsed into AfpDocument (pass `undefined` for size to keep its default of 10)
+const { documents } = await afp.mlt('uno', 'en', undefined, { parse: true })
 ```
 
 ## Listing Facet Values
@@ -246,6 +252,9 @@ const { count, documents } = await afp.searchWithFilter('my-filter', {
   startat: 0,
   size: 50
 })
+
+// Parsed into AfpDocument
+const { documents } = await afp.searchWithFilter('my-filter', { startat: 0, size: 50 }, { parse: true })
 ```
 
 ## RSS/ATOM Feed

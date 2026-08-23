@@ -171,7 +171,17 @@ export class Docs extends Auth {
    * @param size - The number of documents to return
    * @returns An object containing the documents and their count
    */
-  public async mlt (uno: string, lang: string, size: number = 10) {
+  public async mlt (uno: string, lang: string, size?: number): Promise<{ count: number; documents: unknown[] }>
+  /**
+   * Get more like this documents, parsed into the canonical `AfpDocument` model
+   * @param uno - A unique identifier for one document
+   * @param lang - The language of the documents
+   * @param size - The number of documents to return
+   * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
+   * @returns An object containing the parsed documents and their count
+   */
+  public async mlt (uno: string, lang: string, size: number | undefined, options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async mlt (uno: string, lang: string, size: number = 10, options?: { parse?: boolean }): Promise<{ count: number; documents: unknown[] }> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mlt`, {
       headers: this.authorizationBearerHeaders,
       params: {
@@ -186,7 +196,7 @@ export class Docs extends Auth {
 
     return {
       count,
-      documents
+      documents: options?.parse ? documents.map(doc => parseDocument(doc)) : documents
     }
   }
 
@@ -221,7 +231,15 @@ export class Docs extends Auth {
    * @param params - Optional query params: lang, tz, tr
    * @returns An object containing the documents and their count
    */
-  public async latest (params: { lang?: string; tz?: string; tr?: string } = {}) {
+  public async latest (params?: { lang?: string; tz?: string; tr?: string }): Promise<{ count: number; documents: unknown[] }>
+  /**
+   * Get the latest documents, parsed into the canonical `AfpDocument` model
+   * @param params - Optional query params: lang, tz, tr
+   * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
+   * @returns An object containing the parsed documents and their count
+   */
+  public async latest (params: { lang?: string; tz?: string; tr?: string }, options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async latest (params: { lang?: string; tz?: string; tr?: string } = {}, options?: { parse?: boolean }): Promise<{ count: number; documents: unknown[] }> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/latest`, {
       headers: this.authorizationBearerHeaders,
       params: {
@@ -234,7 +252,7 @@ export class Docs extends Auth {
 
     return {
       count,
-      documents
+      documents: options?.parse ? documents.map(doc => parseDocument(doc)) : documents
     }
   }
 
@@ -264,7 +282,16 @@ export class Docs extends Auth {
    * @param options - Optional startat and size parameters
    * @returns An object containing the documents and their count
    */
-  public async searchWithFilter (filter: string, options: { startat?: number; size?: number } = {}) {
+  public async searchWithFilter (filter: string, options?: { startat?: number; size?: number }): Promise<{ count: number; documents: unknown[] }>
+  /**
+   * Search documents using a saved filter, parsed into the canonical `AfpDocument` model
+   * @param filter - The filter name
+   * @param options - Optional startat and size parameters
+   * @param parseOptions - Pass `{ parse: true }` to get typed `AfpDocument`s
+   * @returns An object containing the parsed documents and their count
+   */
+  public async searchWithFilter (filter: string, options: { startat?: number; size?: number }, parseOptions: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async searchWithFilter (filter: string, options: { startat?: number; size?: number } = {}, parseOptions?: { parse?: boolean }): Promise<{ count: number; documents: unknown[] }> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/search_with_filter`, {
       headers: this.authorizationBearerHeaders,
       params: {
@@ -278,7 +305,7 @@ export class Docs extends Auth {
 
     return {
       count,
-      documents
+      documents: parseOptions?.parse ? documents.map(doc => parseDocument(doc)) : documents
     }
   }
 
