@@ -24,7 +24,8 @@ const MediaRenditionSchema = z.object({
   width: z.number(),
   height: z.number(),
   href: z.url(),
-  type: z.enum(['Photo', 'Video'])
+  type: z.enum(['Photo', 'Video']),
+  sizeInBytes: z.number().optional()
 })
 
 function makeFilteredArraySchema<T extends z.ZodType> (schema: T) {
@@ -57,6 +58,9 @@ const DocumentSourceSchema = z.object({
   ]),
   headline: z.string().optional(),
   source: z.string().optional(),
+  title: z.string().optional(),
+  creditLine: z.string().optional(),
+  aspectRatios: z.string().array().optional(),
   news: z.string().array().default([]),
   caption: z.string().array().optional(),
   urgency: z.number(),
@@ -185,7 +189,10 @@ function extractBase (doc: DocumentSource): Omit<AfpDocument, 'headline' | 'para
     embargoed: doc.embargoed,
     revision: doc.revision,
     status: doc.status,
-    signal: extractSignal(doc.signal)
+    signal: extractSignal(doc.signal),
+    title: doc.title,
+    creditLine: doc.creditLine,
+    aspectRatios: doc.aspectRatios
   }
 }
 

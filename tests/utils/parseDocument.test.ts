@@ -131,6 +131,18 @@ describe('parseDocument', () => {
       expect(doc.source).toBeUndefined()
     })
 
+    it('passes through title, creditLine and aspectRatios when present', () => {
+      const doc = parseDocument({
+        ...TEXT_DOC,
+        title: 'CRICKET-SRI-IND-TEST',
+        creditLine: 'ISHARA S. KODIKARA / AFP',
+        aspectRatios: ['afparatio:horizontal']
+      })
+      expect(doc.title).toBe('CRICKET-SRI-IND-TEST')
+      expect(doc.creditLine).toBe('ISHARA S. KODIKARA / AFP')
+      expect(doc.aspectRatios).toEqual(['afparatio:horizontal'])
+    })
+
     it('extracts events from afpentity', () => {
       const doc = parseDocument({
         ...TEXT_DOC,
@@ -257,6 +269,19 @@ describe('parseDocument', () => {
       expect(doc.medias[0]?.uno).toBe('vid-uno')
       expect(doc.medias[0]?.dateline).toBe('Londres')
       expect(doc.medias[0]?.renditions).toHaveLength(2)
+    })
+
+    it('passes through sizeInBytes on renditions when present', () => {
+      const doc = parseDocument({
+        ...VIDEO_DOC,
+        bagItem: [
+          {
+            ...VIDEO_DOC.bagItem[0],
+            medias: VIDEO_DOC.bagItem[0].medias.map(m => ({ ...m, sizeInBytes: 13684554 }))
+          }
+        ]
+      })
+      expect(doc.medias[0]?.renditions[0]?.sizeInBytes).toBe(13684554)
     })
 
     it('defaults shots to an empty array when news is absent', () => {

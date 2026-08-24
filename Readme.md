@@ -188,7 +188,7 @@ for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true }))
 const doc = parseDocument(raw)
 ```
 
-`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions`, and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
 
 This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values, not documents, so `AfpDocument` parsing doesn't apply to it — but its `keywords` are still a named, zod-validated type: `AfpFacetValue` (`{ name?: string | null; count: number }`).
 

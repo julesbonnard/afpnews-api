@@ -145,6 +145,7 @@ export type AfpMediaRendition = {
   width: number
   height: number
   href: string
+  sizeInBytes?: number
 }
 
 export type AfpMedia = {
@@ -194,4 +195,7 @@ export type AfpDocument = {
   caption?: string
   shots?: Shot[]
   href?: string
+  title?: string
+  creditLine?: string
+  aspectRatios?: string[]
 }
