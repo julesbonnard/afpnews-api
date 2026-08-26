@@ -43,7 +43,7 @@ const BagItemSchema = z.object({
   medias: makeFilteredArraySchema(MediaRenditionSchema).default([])
 })
 
-const DocumentSourceSchema = z.object({
+export const DocumentSourceSchema = z.object({
   uno: z.string(),
   afpshortid: z.string().transform(d => d.toUpperCase()).optional(),
   class: z.enum([
