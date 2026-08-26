@@ -144,6 +144,42 @@ describe('Docs', () => {
       expect(result.documents[0]?.headline).toBe('Titre du document')
       expect(result.documents[0]?.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
     })
+
+    it('should inject the mandatory socle when parse: true is passed with a partial field list', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(body.fields).toContain(f)
+      }
+      expect(body.fields).toContain('headline')
+    })
+
+    it('should not inject the socle without parse: true (fields stay as requested)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'])
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual(['uno', 'headline'])
+    })
+
+    it('should leave an empty field list empty even with parse: true (fields: [] means "no restriction")', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, [], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual([])
+    })
   })
 
   describe('get', () => {
@@ -417,6 +453,21 @@ describe('Docs', () => {
       }
 
       expect(collected).toHaveLength(0)
+    })
+
+    it('should inject the mandatory socle into the field list when parse: true is passed', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockResolvedValue({ count: 0, documents: [] })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, ['uno', 'headline'], { parse: true })) {
+        collected.push(doc)
+      }
+
+      const [, fieldsArg] = searchSpy.mock.calls[0]
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(fieldsArg).toContain(f)
+      }
     })
 
     it('should stop when count <= documents.length', async () => {

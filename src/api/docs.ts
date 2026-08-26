@@ -3,6 +3,7 @@ import type { AuthClientCredentials, SearchQueryParams, AfpDocument, AfpFacetVal
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument } from '../utils/parseDocument.js'
+import { MANDATORY_RAW_FIELDS } from '../fields.js'
 import { z } from 'zod'
 import { Auth } from './auth.js'
 import { Story } from './story.js'
@@ -41,6 +42,14 @@ const getResponse = z.object({
 export class Docs extends Auth {
   constructor (credentials?: AuthClientCredentials) {
     super(credentials)
+  }
+
+  // `fields: []` veut dire "aucune restriction" côté API (toutes les colonnes) — ne jamais y
+  // injecter le socle, ça le transformerait en restriction. Uniquement pertinent avec `parse`,
+  // sinon `parseDocument()` n'est pas appelé et le socle brut n'a pas besoin d'être garanti.
+  private withMandatorySocle (fields: string[], parse?: boolean): string[] {
+    if (!parse || fields.length === 0) return fields
+    return [...new Set([...fields, ...MANDATORY_RAW_FIELDS])]
   }
 
   protected prepareRequest (params: SearchQueryParams, fields: string[] = []) {
@@ -93,7 +102,7 @@ export class Docs extends Auth {
    */
   public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
   public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean }): Promise<{ count: number; documents: unknown[] }> {
-    const body = this.prepareRequest(params, fields)
+    const body = this.prepareRequest(params, this.withMandatorySocle(fields, options?.parse))
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders,
@@ -127,10 +136,11 @@ export class Docs extends Auth {
     const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
     const maxRequestSize = 1000
     const maxSize = params.size || defaultSearchParams.size
+    const effectiveFields = this.withMandatorySocle(fields, options?.parse)
     let i = 0
     while (i < maxSize) {
       params.size = Math.min(maxSize - i, maxRequestSize)
-      const { count, documents } = await this.search(params, fields)
+      const { count, documents } = await this.search(params, effectiveFields)
       if (!documents.length) return
       for (const doc of documents) {
         i++
