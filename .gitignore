@@ -12,3 +12,5 @@ dist
 .rts2_cache_*
 src/grammar/index.ts
 *.tgz
+# Claude Code skills auto-installés (autoskills) — non partagés
+.claude/skills/

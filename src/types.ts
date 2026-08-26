@@ -141,7 +141,7 @@ export type AfpParagraph = {
 
 export type AfpMediaRendition = {
   role: string
-  type: 'Photo' | 'Video'
+  type: 'Photo' | 'Video' | 'Graphic'
   width: number
   height: number
   href: string

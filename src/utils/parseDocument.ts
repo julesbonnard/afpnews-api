@@ -24,7 +24,7 @@ const MediaRenditionSchema = z.object({
   width: z.number(),
   height: z.number(),
   href: z.url(),
-  type: z.enum(['Photo', 'Video']),
+  type: z.enum(['Photo', 'Video', 'Graphic']),
   sizeInBytes: z.number().optional()
 })
 

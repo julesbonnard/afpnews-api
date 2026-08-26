@@ -229,6 +229,21 @@ describe('parseDocument', () => {
       expect(doc.medias[0]?.renditions).toHaveLength(2)
     })
 
+    it('keeps renditions whose type is Graphic (infographics)', () => {
+      const doc = parseDocument({
+        ...PICTURE_DOC,
+        class: 'graphic',
+        bagItem: [
+          {
+            ...PICTURE_DOC.bagItem[0],
+            medias: PICTURE_DOC.bagItem[0].medias.map(m => ({ ...m, type: 'Graphic' }))
+          }
+        ]
+      })
+      expect(doc.medias[0]?.renditions).toHaveLength(2)
+      expect(doc.medias[0]?.renditions[0]?.type).toBe('Graphic')
+    })
+
     it('has no paragraphs', () => {
       const doc = parseDocument(PICTURE_DOC)
       expect(doc.paragraphs).toEqual([])
