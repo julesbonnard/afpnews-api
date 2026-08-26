@@ -289,7 +289,7 @@ describe('Docs', () => {
       mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
 
       const docs = createAuthenticatedDocs()
-      const result = await docs.mlt('AFP-123', 'fr', undefined, { parse: true })
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true })
 
       expect(result.documents).toHaveLength(1)
       expect(result.documents[0]?.headline).toBe('Titre du document')
@@ -299,10 +299,41 @@ describe('Docs', () => {
       mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
 
       const docs = createAuthenticatedDocs()
-      const result = await docs.mlt('AFP-123', 'fr', undefined, { parse: true, lenient: true })
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true, lenient: true })
 
       expect(result.documents).toHaveLength(1)
       expect(result.skipped).toBe(1)
+    })
+
+    it('does not send fl when no fields are requested', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).not.toContain('fl=')
+    })
+
+    it('sends the requested fields as fl (Solr convention, not `fields`)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['uno', 'headline'])
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('fl=uno%2Cheadline')
+      expect(calledUrl).not.toContain('fields=')
+    })
+
+    it('injects the mandatory socle into fl when parse: true is used', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['headline'], { parse: true })
+
+      const calledUrl = decodeURIComponent((fetch as Mock<typeof fetch>).mock.calls[0][0] as string)
+      expect(calledUrl).toContain('fl=headline,uno,class,urgency,created,published,lang,revision,provider,status')
     })
   })
 

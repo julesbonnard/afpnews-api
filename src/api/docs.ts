@@ -218,35 +218,43 @@ export class Docs extends Auth {
    * @param uno - A unique identifier for one document
    * @param lang - The language of the documents
    * @param size - The number of documents to return
+   * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async mlt (uno: string, lang: string, size?: number): Promise<{ count: number; documents: unknown[] }>
+  public async mlt (uno: string, lang: string, size?: number, fields?: string[]): Promise<{ count: number; documents: unknown[] }>
   /**
    * Get more like this documents, parsed into the canonical `AfpDocument` model
    * @param uno - A unique identifier for one document
    * @param lang - The language of the documents
    * @param size - The number of documents to return
+   * @param fields - An array of fields to include in the response
    * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
    * @returns An object containing the parsed documents and their count
    */
-  public async mlt (uno: string, lang: string, size: number | undefined, options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async mlt (uno: string, lang: string, size: number | undefined, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
   /**
    * Get more like this documents, parsed into the canonical `AfpDocument` model, skipping any
    * document that fails to parse instead of failing the whole request
    * @param uno - A unique identifier for one document
    * @param lang - The language of the documents
    * @param size - The number of documents to return
+   * @param fields - An array of fields to include in the response
    * @param options - Pass `{ parse: true, lenient: true }` to skip malformed documents
    * @returns An object containing the parsed documents, their count, and how many were skipped
    */
-  public async mlt (uno: string, lang: string, size: number | undefined, options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
-  public async mlt (uno: string, lang: string, size: number = 10, options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
+  public async mlt (uno: string, lang: string, size: number | undefined, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
+  public async mlt (uno: string, lang: string, size: number = 10, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
+    // Contrairement à search (fields dans le body POST), l'API expose ici `fl` (convention Solr),
+    // sur la requête GET — vérifié en conditions réelles, `fields` est silencieusement ignoré ici.
+    const fl = this.withMandatorySocle(fields, options?.parse)
+
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mlt`, {
       headers: this.authorizationBearerHeaders,
       params: {
         uno,
         lang,
         size,
+        ...(fl.length > 0 ? { fl: fl.join(',') } : {}),
         wt: 'json'
       }
     }))
