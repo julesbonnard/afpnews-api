@@ -256,3 +256,16 @@ export function parseDocument (raw: unknown): AfpDocument {
       }
   }
 }
+
+/**
+ * Same as `parseDocument()`, but returns `undefined` instead of throwing when `raw` does not
+ * match the expected shape. Used by the `{ parse: true, lenient: true }` methods on `Docs` to
+ * skip malformed documents in a batch instead of failing the whole request.
+ */
+export function safeParseDocument (raw: unknown): AfpDocument | undefined {
+  try {
+    return parseDocument(raw)
+  } catch {
+    return undefined
+  }
+}

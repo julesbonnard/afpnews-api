@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { parseDocument } from '../../src/utils/parseDocument'
+import { parseDocument, safeParseDocument } from '../../src/utils/parseDocument'
 import * as shotlist from '../../src/utils/shotlist'
 
 const BASE = {
@@ -355,5 +355,16 @@ describe('parseDocument', () => {
       expect(doc.medias).toHaveLength(1)
       expect(doc.paragraphs).toEqual([])
     })
+  })
+})
+
+describe('safeParseDocument', () => {
+  it('returns the parsed document for a valid payload', () => {
+    const doc = safeParseDocument(TEXT_DOC)
+    expect(doc?.uno).toBe(TEXT_DOC.uno)
+  })
+
+  it('returns undefined instead of throwing for an invalid payload', () => {
+    expect(safeParseDocument({ uno: 'incomplete' })).toBeUndefined()
   })
 })

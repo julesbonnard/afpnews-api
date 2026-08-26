@@ -180,6 +180,25 @@ describe('Docs', () => {
       const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.fields).toEqual([])
     })
+
+    it('should throw on a malformed document with parse: true (strict, default)', async () => {
+      mockFetch({ response: { docs: [{ uno: 'bad-doc' }], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search({}, [], { parse: true })).rejects.toThrow()
+    })
+
+    it('should skip malformed documents and report how many with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.skipped).toBe(1)
+      expect(result.count).toBe(2)
+    })
   })
 
   describe('get', () => {
@@ -274,6 +293,16 @@ describe('Docs', () => {
 
       expect(result.documents).toHaveLength(1)
       expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
     })
   })
 
@@ -470,6 +499,21 @@ describe('Docs', () => {
       }
     })
 
+    it('should skip malformed documents instead of throwing with parse: true, lenient: true', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockResolvedValue({
+        count: 2,
+        documents: [RAW_TEXT_DOC, { uno: 'bad-doc' }]
+      })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true, lenient: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
+    })
+
     it('should stop when count <= documents.length', async () => {
       const docs = createAuthenticatedDocs()
       vi.spyOn(docs, 'search').mockResolvedValue({
@@ -661,6 +705,16 @@ describe('Docs', () => {
       expect(result.documents).toHaveLength(1)
       expect(result.documents[0]?.headline).toBe('Titre du document')
     })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
+    })
   })
 
   describe('mapping', () => {
@@ -734,6 +788,16 @@ describe('Docs', () => {
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=10')
       expect(calledUrl).toContain('size=20')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', {}, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
     })
   })
 
