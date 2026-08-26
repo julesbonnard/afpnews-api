@@ -1,4 +1,6 @@
+import type { z } from 'zod'
 import type { Shot } from './utils/shotlist.js'
+import type { AfpDocumentClassSchema } from './utils/parseDocument.js'
 
 type StringOrNumber = string | number
 
@@ -110,15 +112,7 @@ export type AuthUserCredentials = {
   password: string
 }
 
-export type AfpDocumentClass =
-  'text' |
-  'factcheck' |
-  'multimedia' |
-  'picture' |
-  'graphic' |
-  'video' |
-  'videography' |
-  'webstory'
+export type AfpDocumentClass = z.infer<typeof AfpDocumentClassSchema>
 
 export type AfpDocumentStatus = 'Usable' | 'Canceled' | 'Embargoed' | 'WithHeld'
 

@@ -19,6 +19,17 @@ const HopHistorySchema = z.object({
   }))
 })
 
+export const AfpDocumentClassSchema = z.enum([
+  'text',
+  'factcheck',
+  'multimedia',
+  'picture',
+  'graphic',
+  'video',
+  'videography',
+  'webstory'
+])
+
 const MediaRenditionSchema = z.object({
   role: z.string(),
   width: z.number(),
@@ -46,16 +57,7 @@ const BagItemSchema = z.object({
 export const DocumentSourceSchema = z.object({
   uno: z.string(),
   afpshortid: z.string().transform(d => d.toUpperCase()).optional(),
-  class: z.enum([
-    'text',
-    'factcheck',
-    'multimedia',
-    'picture',
-    'graphic',
-    'video',
-    'videography',
-    'webstory'
-  ]),
+  class: AfpDocumentClassSchema,
   headline: z.string().optional(),
   source: z.string().optional(),
   title: z.string().optional(),
