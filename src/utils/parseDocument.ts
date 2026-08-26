@@ -236,6 +236,9 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
+        // Comme pour video, `caption` brut est normalement un champ document (vérifié en conditions
+        // réelles) — repli sur bagItem[].caption pour les docs (partenaires, anciens) qui ne l'ont pas.
+        caption: doc.caption?.[0] ?? doc.bagItem[0]?.caption,
         topshot: doc.urgency === 1
       }
     case 'video':

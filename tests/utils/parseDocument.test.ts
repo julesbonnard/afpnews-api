@@ -25,6 +25,7 @@ const PICTURE_DOC = {
   ...BASE,
   class: 'picture',
   urgency: 4,
+  caption: ['Une photo'],
   bagItem: [
     {
       uno: 'pic-uno',
@@ -263,6 +264,26 @@ describe('parseDocument', () => {
       const doc = parseDocument({ ...PICTURE_DOC, class: 'graphic' })
       expect(doc.class).toBe('graphic')
       expect(doc.medias).toHaveLength(1)
+    })
+
+    it('reads caption from the document field, like video does', () => {
+      const doc = parseDocument(PICTURE_DOC)
+      expect(doc.caption).toBe('Une photo')
+    })
+
+    it('falls back to the bagItem caption when the document field is absent', () => {
+      const { caption: _caption, ...docWithoutCaption } = PICTURE_DOC
+      const doc = parseDocument(docWithoutCaption)
+      expect(doc.caption).toBe('Une photo')
+    })
+
+    it('leaves caption undefined when neither the document nor bagItem has one', () => {
+      const { caption: _caption, ...docWithoutCaption } = PICTURE_DOC
+      const doc = parseDocument({
+        ...docWithoutCaption,
+        bagItem: [{ ...docWithoutCaption.bagItem[0], caption: undefined }]
+      })
+      expect(doc.caption).toBeUndefined()
     })
   })
 
