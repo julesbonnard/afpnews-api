@@ -152,15 +152,14 @@ export type AfpMedia = {
 }
 
 /**
- * Canonical, presentation-agnostic representation of an AFP document.
- * Returned by `parseDocument()` and by `get`/`search`/`searchAll` when called with `{ parse: true }`.
- * Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`)
- * are only populated for the classes they apply to.
+ * Fields common to every `AfpDocument`, regardless of `class`. Fields specific to a subset of
+ * classes (`caption`, `shots`, `topshot`, `topics`, `href`, `hasBeenAlerted`) stay optional here
+ * so they remain accessible without narrowing — each per-class member below tightens the ones it
+ * guarantees to a required type, for callers that do switch/narrow on `class`.
  */
-export type AfpDocument = {
+type AfpDocumentCommon = {
   uno: string
   shortId?: string
-  class: AfpDocumentClass
   source?: string
   headline?: string
   paragraphs: AfpParagraph[]
@@ -193,3 +192,41 @@ export type AfpDocument = {
   creditLine?: string
   aspectRatios?: string[]
 }
+
+export type AfpTextDocument = AfpDocumentCommon & {
+  class: 'text' | 'factcheck'
+  hasBeenAlerted: boolean
+}
+
+export type AfpMultimediaDocument = AfpDocumentCommon & {
+  class: 'multimedia'
+  hasBeenAlerted: boolean
+}
+
+export type AfpPictureDocument = AfpDocumentCommon & {
+  class: 'picture' | 'graphic'
+  topshot: boolean
+}
+
+export type AfpVideoDocument = AfpDocumentCommon & {
+  class: 'video' | 'videography'
+  caption: string
+  shots: Shot[]
+}
+
+export type AfpWebStoryDocument = AfpDocumentCommon & {
+  class: 'webstory'
+}
+
+/**
+ * Canonical, presentation-agnostic representation of an AFP document.
+ * Returned by `parseDocument()` and by `get`/`search`/`searchAll` when called with `{ parse: true }`.
+ * A discriminated union on `class` — switch/narrow on it to get the fields a given class
+ * guarantees as required, or access any field directly (still optional-typed) without narrowing.
+ */
+export type AfpDocument =
+  | AfpTextDocument
+  | AfpMultimediaDocument
+  | AfpPictureDocument
+  | AfpVideoDocument
+  | AfpWebStoryDocument
