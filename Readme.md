@@ -74,6 +74,9 @@ Get the most recent documents:
 
 ```js
 const { count, documents } = await afp.latest({ lang: 'fr', tz: 'Europe/Paris' })
+
+// Parsed into AfpDocument
+const { documents } = await afp.latest({ lang: 'fr' }, { parse: true })
 ```
 
 ## Searching Documents
@@ -164,12 +167,40 @@ The `query` parameter supports a boolean query DSL:
 const document = await afp.get('uno')
 ```
 
+## Parsed Documents (`AfpDocument`)
+
+By default, `get`, `search` and `searchAll` return raw, untyped API documents. Pass `{ parse: true }` to get the canonical, presentation-agnostic `AfpDocument` model instead — a TypeScript overload, not a union type, so the return type is inferred correctly in both cases:
+
+```ts
+import { ApiCore, parseDocument } from 'afpnews-api'
+import type { AfpDocument } from 'afpnews-api'
+
+const raw = await afp.get('uno') // unknown
+const doc = await afp.get('uno', { parse: true }) // AfpDocument
+
+const { documents } = await afp.search({ query: 'Macron' }, [], { parse: true }) // AfpDocument[]
+
+for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true })) {
+  console.log(doc.headline)
+}
+
+// Or parse a raw document you already fetched:
+const doc = parseDocument(raw)
+```
+
+`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+
+This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values, not documents, so `AfpDocument` parsing doesn't apply to it — but its `keywords` are still a named, zod-validated type: `AfpFacetValue` (`{ name?: string | null; count: number }`).
+
 ## More Like This
 
 Find documents similar to a given one:
 
 ```js
 const { count, documents } = await afp.mlt('uno', 'en', 10)
+
+// Parsed into AfpDocument (pass `undefined` for size to keep its default of 10)
+const { documents } = await afp.mlt('uno', 'en', undefined, { parse: true })
 ```
 
 ## Listing Facet Values
@@ -182,6 +213,8 @@ const { count, keywords } = await afp.list('slug')
 // With custom search scope and minimum document count
 const { keywords } = await afp.list('country', { dateFrom: 'now-7d', langs: ['en'] }, 5)
 ```
+
+`keywords` is typed as `AfpFacetValue[]` (`{ name?: string | null; count: number }`), validated at runtime with the same Zod schema.
 
 ## Field Mapping
 
@@ -221,6 +254,9 @@ const { count, documents } = await afp.searchWithFilter('my-filter', {
   startat: 0,
   size: 50
 })
+
+// Parsed into AfpDocument
+const { documents } = await afp.searchWithFilter('my-filter', { startat: 0, size: 50 }, { parse: true })
 ```
 
 ## RSS/ATOM Feed

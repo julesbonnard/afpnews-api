@@ -19,19 +19,17 @@ npm run test:watch
 # Lint
 npm run lint
 
-# Full build (clean -> parser -> types -> esm/cjs/bundles -> fixup)
+# Full build (parser -> tsdown)
 npm run build
 
-# Development with auto-rebuild
+# Development with auto-rebuild (tsdown's native watch mode)
 npm run build:watch
 
-# Individual build steps
-npm run build:parser    # Generate Nearley parser -> src/grammar/index.ts
-npm run build:types     # Generate .d.ts/.d.cts/.d.mts declarations
-npm run build:esm       # Build ES modules to dist/esm/
-npm run build:cjs       # Build CommonJS to dist/cjs/
-npm run build:esmBundled # Bundle ESM for browsers
-npm run build:umdBundled # Bundle UMD for browsers
+# Generate the Nearley parser only -> src/grammar/index.ts
+npm run build:parser
+
+# Validate the built package.json exports/types (publint + Are the Types Wrong)
+npm run verify:package
 ```
 
 ## Architecture
@@ -62,7 +60,9 @@ src/
 ├── utils/
 │   ├── request.ts        # HTTP helpers (get, post, postForm, del) using fetch
 │   ├── QueryBuilder.ts   # Query DSL parser -> API search request builder
-│   └── normalizer.ts     # Unicode text normalization
+│   ├── normalizer.ts     # Unicode text normalization
+│   ├── shotlist.ts       # parseShotList: video shot list parser (Shot[])
+│   └── parseDocument.ts  # parseDocument: raw doc -> canonical AfpDocument model
 └── grammar/
     ├── index.ne          # Nearley grammar definition for query DSL
     └── grammar.d.ts      # Type definitions for parser AST nodes
@@ -75,15 +75,15 @@ src/
 - **Zod validation**: All API responses are validated at runtime with Zod schemas defined inline in each module.
 - **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets.
 - **Query DSL**: Complex boolean query strings are parsed via Nearley/Moo into an AST, then converted to nested `SearchQuery` objects by `QueryBuilder`.
+- **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll`/`mlt`/`latest`/`searchWithFilter` return raw `unknown` documents by default; passing `{ parse: true }` (a trailing argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `list` doesn't fit this pattern (it returns facet values, not documents, so there is no raw/parsed choice) but is still typed: its `keywords` are `AfpFacetValue[]`, a named type matching the existing zod-validated shape (no behavior change, just an explicit exported type). `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
 
 ### Build Output
 
 ```
 dist/
-├── cjs/        # CommonJS (package.json with "type": "commonjs")
-├── esm/        # ES Modules (package.json with "type": "module")
-├── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
-└── types/      # Intermediate (cleaned after build)
+├── cjs/        # Unbundled CommonJS, one .cjs + .d.cts + sourcemap per source module
+├── esm/        # Unbundled ES Modules, one .mjs + .d.mts + sourcemap per source module
+└── bundles/    # apicore.min.js (UMD) + apicore.min.mjs (ESM), minified with source maps
 ```
 
 ## Code Conventions
@@ -96,10 +96,10 @@ dist/
 - **TypeScript strict mode**: All strict checks enabled (`noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters`, etc.)
 
 ### Linting
-- ESLint v9 flat config (`eslint.config.mjs`)
-- Extends: `@eslint/js` recommended + `typescript-eslint` recommended
-- Ignored paths: `node_modules`, `dist`, `src/grammar/index.ts` (generated), `examples`
+- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) (`.oxlintrc.json`), type-aware via `oxlint-tsgolint` (`options.typeAware: true`) — the enabled `typescript/*` rule set matches `typescript-eslint`'s `recommendedTypeChecked` preset (the non-type-checked `recommended` rules, plus its `recommended-type-checked-only` additions)
+- Ignored paths: `node_modules`, `dist`, `src/grammar/index.ts` (generated), `examples`, `tools`
 - Run with: `npm run lint`
+- Test-only `fetch` mocks are typed via `tests/helpers/mockFetch.ts` (`Mock<typeof fetch>`) rather than each test file rolling its own loosely-typed mock
 
 ### TypeScript
 - Target: ES6, Module: ESNext, Lib: ES2015
@@ -120,12 +120,9 @@ dist/
 
 ### Build Order Matters
 The full build (`npm run build`) runs in a specific sequence:
-1. `clean` - Remove dist/ and caches
-2. `build:parser` - Generate parser from grammar
-3. `build:types` - Generate TypeScript declarations
-4. Parallel: `build:esm`, `build:cjs`, `build:esmBundled`, `build:umdBundled`
-5. `fixup` script - Creates `package.json` files in dist subdirectories
-6. `postbuild` - Removes intermediate `dist/types/`
+1. `build:parser` - Generate parser from grammar
+2. `tsdown` - Single [tsdown](https://tsdown.dev) run producing unbundled esm/cjs (with per-module `.d.mts`/`.d.cts` declarations and sourcemaps) and the two minified browser bundles, all defined in `tsdown.config.mts`. tsdown cleans `dist/` itself before writing (use `--no-clean` to skip); `npm run clean` is only needed as a manual utility.
+- CJS output uses `.cjs` and ESM output uses `.mjs` (not a shared `.js` + a `dist/*/package.json` `"type"` marker) so module type is unambiguous by extension alone — this is also what `tsdown --publint --attw` flagged when the old `.js`-based setup was tried.
 
 ### Environment Variables (for testing/examples)
 ```

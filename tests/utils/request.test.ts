@@ -1,14 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { get, post, postForm, del } from '../../src/utils/request'
-
-function mockFetchResponse(body: unknown, status = 200, statusText = 'OK') {
-  return vi.fn().mockResolvedValue({
-    status,
-    statusText,
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(typeof body === 'string' ? body : JSON.stringify(body))
-  })
-}
+import { mockFetchResponse } from '../helpers/mockFetch'
 
 describe('request utilities', () => {
   beforeEach(() => {
@@ -36,7 +28,7 @@ describe('request utilities', () => {
         params: { grant_type: 'anonymous', foo: 'bar' }
       })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('grant_type=anonymous')
       expect(calledUrl).toContain('foo=bar')
     })
@@ -48,7 +40,7 @@ describe('request utilities', () => {
         headers: { Authorization: 'Bearer token123' }
       })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       const headers = calledOptions.headers as Headers
       expect(headers.get('Authorization')).toBe('Bearer token123')
       expect(headers.get('Accept')).toBe('application/json')
@@ -62,23 +54,15 @@ describe('request utilities', () => {
     })
 
     it('should throw ApiError on HTTP error with error body', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        status: 401,
-        statusText: 'Unauthorized',
-        json: () => Promise.resolve({
-          error: { code: 401, message: 'Invalid token; please re-authenticate' }
-        })
-      })
+      globalThis.fetch = mockFetchResponse({
+        error: { code: 401, message: 'Invalid token; please re-authenticate' }
+      }, 401, 'Unauthorized')
 
       await expect(get('https://api.example.com/test', {})).rejects.toThrow('Invalid token')
     })
 
     it('should throw ApiError with status text when error body is not parseable', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: () => Promise.resolve({ unexpected: 'format' })
-      })
+      globalThis.fetch = mockFetchResponse({ unexpected: 'format' }, 500, 'Internal Server Error')
 
       await expect(get('https://api.example.com/test', {})).rejects.toThrow()
     })
@@ -96,7 +80,7 @@ describe('request utilities', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
       expect(calledOptions.body).toBe(JSON.stringify(body))
 
@@ -112,7 +96,7 @@ describe('request utilities', () => {
         params: { minDocCount: 1 }
       })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=1')
     })
   })
@@ -130,7 +114,7 @@ describe('request utilities', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
       expect(calledOptions.body).toBeInstanceOf(FormData)
     })
@@ -145,7 +129,7 @@ describe('request utilities', () => {
         params: { service: 'myService' }
       })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('DELETE')
     })
 
@@ -156,7 +140,7 @@ describe('request utilities', () => {
         headers: { Authorization: 'Bearer token' }
       }, ['sub1', 'sub2'])
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.body).toBe(JSON.stringify(['sub1', 'sub2']))
     })
 
@@ -167,7 +151,7 @@ describe('request utilities', () => {
         headers: { Authorization: 'Bearer token' }
       })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.body).toBeUndefined()
     })
   })

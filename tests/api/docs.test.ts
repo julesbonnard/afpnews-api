@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
+import type { SearchRequest, AfpFacetValue } from '../../src/types'
+import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
   access_token: 'test-access-token',
@@ -7,22 +9,17 @@ const TOKEN_RESPONSE = {
   expires_in: 3600
 }
 
-function mockFetchSequence(responses: Array<{ body: unknown; status?: number }>) {
-  let callIndex = 0
-  globalThis.fetch = vi.fn().mockImplementation(() => {
-    const resp = responses[callIndex] || responses[responses.length - 1]
-    callIndex++
-    return Promise.resolve({
-      status: resp.status || 200,
-      statusText: 'OK',
-      json: () => Promise.resolve(resp.body),
-      text: () => Promise.resolve(JSON.stringify(resp.body))
-    })
-  })
-}
-
-function mockFetch(body: unknown, status = 200) {
-  mockFetchSequence([{ body, status }])
+const RAW_TEXT_DOC = {
+  uno: 'newsml.afp.com.20240315T143000Z.doc-abc12',
+  class: 'text',
+  news: ['Titre du document', 'Premier paragraphe'],
+  urgency: 3,
+  created: '2024-03-15T14:30:00Z',
+  published: '2024-03-15T14:30:00Z',
+  lang: 'fr',
+  revision: 1,
+  provider: 'AFP',
+  status: 'Usable'
 }
 
 function createAuthenticatedDocs() {
@@ -102,11 +99,11 @@ describe('Docs', () => {
         sortOrder: 'desc'
       })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/search')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.maxRows).toBe(20)
       expect(body.dateRange.from).toBe('2023-01-01')
       expect(body.dateRange.to).toBe('2023-12-31')
@@ -121,11 +118,86 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search()
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.maxRows).toBe(10)
       expect(body.sortField).toBe('published')
       expect(body.sortOrder).toBe('desc')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+      expect(result.documents[0]?.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
+    })
+
+    it('should inject the mandatory socle when parse: true is passed with a partial field list', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(body.fields).toContain(f)
+      }
+      expect(body.fields).toContain('headline')
+    })
+
+    it('should not inject the socle without parse: true (fields stay as requested)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'])
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual(['uno', 'headline'])
+    })
+
+    it('should leave an empty field list empty even with parse: true (fields: [] means "no restriction")', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, [], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual([])
+    })
+
+    it('should throw on a malformed document with parse: true (strict, default)', async () => {
+      mockFetch({ response: { docs: [{ uno: 'bad-doc' }], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search({}, [], { parse: true })).rejects.toThrow()
+    })
+
+    it('should skip malformed documents and report how many with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.skipped).toBe(1)
+      expect(result.count).toBe(2)
     })
   })
 
@@ -143,8 +215,28 @@ describe('Docs', () => {
 
       expect(result).toEqual({ uno: 'AFP-123', title: 'Test Document' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
+    })
+
+    it('should return the raw document by default, even when it is parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123')
+
+      expect(result).toEqual(RAW_TEXT_DOC)
+    })
+
+    it('should return an AfpDocument when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123', { parse: true })
+
+      expect(result.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.headline).toBe('Titre du document')
+      expect(result.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
     })
   })
 
@@ -164,7 +256,7 @@ describe('Docs', () => {
       expect(result.count).toBe(2)
       expect(result.documents).toHaveLength(2)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mlt')
       expect(calledUrl).toContain('uno=AFP-123')
       expect(calledUrl).toContain('lang=en')
@@ -180,8 +272,68 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mlt('AFP-123', 'fr')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('size=10')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
+    })
+
+    it('does not send fl when no fields are requested', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).not.toContain('fl=')
+    })
+
+    it('sends the requested fields as fl (Solr convention, not `fields`)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['uno', 'headline'])
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('fl=uno%2Cheadline')
+      expect(calledUrl).not.toContain('fields=')
+    })
+
+    it('injects the mandatory socle into fl when parse: true is used', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['headline'], { parse: true })
+
+      const calledUrl = decodeURIComponent((fetch as Mock<typeof fetch>).mock.calls[0][0] as string)
+      expect(calledUrl).toContain('fl=headline,uno,class,urgency,created,published,lang,revision,provider,status')
     })
   })
 
@@ -205,7 +357,7 @@ describe('Docs', () => {
       expect(result.keywords).toHaveLength(2)
       expect(result.keywords[0]).toEqual({ name: 'politics', count: 150 })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/list/slug')
       expect(calledUrl).toContain('minDocCount=1')
     })
@@ -259,8 +411,20 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.list('keyword', {}, 5)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=5')
+    })
+
+    it('should type keywords as the exported AfpFacetValue', async () => {
+      mockFetch({
+        response: { topics: [{ name: 'politics', count: 150 }], numFound: 1 }
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+      const keywords: AfpFacetValue[] = result.keywords
+
+      expect(keywords).toEqual([{ name: 'politics', count: 150 }])
     })
   })
 
@@ -271,26 +435,26 @@ describe('Docs', () => {
       // Mock search to simulate pagination: 2 pages of 3 docs each
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
-      searchSpy.mockImplementation(async () => {
+      searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
-          return {
+          return Promise.resolve({
             count: 6,
             documents: [
               { uno: 'doc1', published: '2023-06-15T12:00:00Z' },
               { uno: 'doc2', published: '2023-06-14T12:00:00Z' },
               { uno: 'doc3', published: '2023-06-13T12:00:00Z' }
             ]
-          }
+          })
         }
-        return {
+        return Promise.resolve({
           count: 6,
           documents: [
             { uno: 'doc4', published: '2023-06-12T12:00:00Z' },
             { uno: 'doc5', published: '2023-06-11T12:00:00Z' },
             { uno: 'doc6', published: '2023-06-10T12:00:00Z' }
           ]
-        }
+        })
       })
 
       const collected: unknown[] = []
@@ -310,7 +474,7 @@ describe('Docs', () => {
 
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
-      searchSpy.mockImplementation(async () => {
+      searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
           // Return exactly 1000 docs (matching maxRequestSize) so pagination continues
@@ -318,14 +482,14 @@ describe('Docs', () => {
             uno: `doc-${i}`,
             published: `2023-06-${String(15).padStart(2, '0')}T${String(i).padStart(2, '0')}:00:00Z`
           }))
-          return { count: 1500, documents: pageDocs }
+          return Promise.resolve({ count: 1500, documents: pageDocs })
         }
         // Second page: fewer than requested → stops
         const pageDocs = Array.from({ length: 100 }, (_, i) => ({
           uno: `doc-${1000 + i}`,
           published: `2023-06-14T${String(i).padStart(2, '0')}:00:00Z`
         }))
-        return { count: 1500, documents: pageDocs }
+        return Promise.resolve({ count: 1500, documents: pageDocs })
       })
 
       const collected: unknown[] = []
@@ -349,6 +513,36 @@ describe('Docs', () => {
       }
 
       expect(collected).toHaveLength(0)
+    })
+
+    it('should inject the mandatory socle into the field list when parse: true is passed', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockResolvedValue({ count: 0, documents: [] })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, ['uno', 'headline'], { parse: true })) {
+        collected.push(doc)
+      }
+
+      const [, fieldsArg] = searchSpy.mock.calls[0]
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(fieldsArg).toContain(f)
+      }
+    })
+
+    it('should skip malformed documents instead of throwing with parse: true, lenient: true', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockResolvedValue({
+        count: 2,
+        documents: [RAW_TEXT_DOC, { uno: 'bad-doc' }]
+      })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true, lenient: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
     })
 
     it('should stop when count <= documents.length', async () => {
@@ -384,6 +578,19 @@ describe('Docs', () => {
       expect(collected).toHaveLength(1)
       expect(searchSpy).toHaveBeenCalled()
     })
+
+    it('should yield AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const collected: { headline?: string }[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
+      expect(collected[0]?.headline).toBe('Titre du document')
+    })
   })
 
   describe('wt=json query parameter', () => {
@@ -392,7 +599,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search()
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -401,7 +608,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.get('AFP-123')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -410,7 +617,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mlt('AFP-123', 'en')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
 
@@ -419,7 +626,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.list('slug')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('wt=json')
     })
   })
@@ -430,8 +637,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ startAt: 5 })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.startAt).toBe(5)
     })
 
@@ -440,8 +647,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ tz: 'Europe/Paris' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.tz).toBe('Europe/Paris')
     })
 
@@ -450,8 +657,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ dateGap: '+1HOUR' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.dateGap).toBe('+1HOUR')
     })
 
@@ -460,8 +667,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ wantCluster: true })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.wantCluster).toBe(true)
     })
 
@@ -470,8 +677,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ wantedFacets: { slug: { size: 10, minDocCount: 1 } } })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.wantedFacets).toEqual({ slug: { size: 10, minDocCount: 1 } })
     })
 
@@ -480,8 +687,8 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.search({ sort: [{ sortField: 'published', sortOrder: 'desc' }] })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
-      const body = JSON.parse(calledOptions.body)
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
       expect(body.sort).toEqual([{ sortField: 'published', sortOrder: 'desc' }])
     })
   })
@@ -495,7 +702,7 @@ describe('Docs', () => {
       expect(result.count).toBe(1)
       expect(result.documents).toHaveLength(1)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/latest')
       expect(calledUrl).toContain('wt=json')
     })
@@ -505,10 +712,39 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.latest({ lang: 'fr', tz: 'Europe/Paris', tr: 'foo' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('lang=fr')
       expect(calledUrl).toContain('tz=Europe%2FParis')
       expect(calledUrl).toContain('tr=foo')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
     })
   })
 
@@ -521,7 +757,7 @@ describe('Docs', () => {
 
       expect(result).toEqual({ fields: ['uno', 'title'] })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mapping')
       expect(calledUrl).toContain('wt=json')
       expect(calledUrl).toContain('lang=en')
@@ -532,7 +768,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.mapping('fr')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('lang=fr')
     })
   })
@@ -546,7 +782,7 @@ describe('Docs', () => {
       expect(result.count).toBe(1)
       expect(result.documents).toHaveLength(1)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/search_with_filter')
       expect(calledUrl).toContain('filter=my-filter')
       expect(calledUrl).toContain('wt=json')
@@ -557,9 +793,42 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.searchWithFilter('my-filter', { startat: 10, size: 20 })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=10')
       expect(calledUrl).toContain('size=20')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', { startat: 10, size: 20 }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('startat=10')
+      expect(calledUrl).toContain('size=20')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', {}, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
     })
   })
 
@@ -576,12 +845,12 @@ describe('Docs', () => {
 
       expect(result).toBe(feedXml)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/feed')
       expect(calledUrl).toContain('filter=my-filter')
       expect(calledUrl).toContain('wt=xml')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       const headers = calledOptions.headers as Headers
       expect(headers.get('Accept')).toBe('application/rss+xml')
     })
@@ -595,7 +864,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       await docs.feed('my-filter', { startat: 5, size: 10, role: 'admin', wt: 'atom' })
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('startat=5')
       expect(calledUrl).toContain('size=10')
       expect(calledUrl).toContain('role=admin')

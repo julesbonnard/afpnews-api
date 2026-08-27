@@ -289,6 +289,8 @@ describe('QueryBuilder', () => {
       expect(result!.or).toBeDefined()
       expect(result!.or).toEqual(
         expect.arrayContaining([
+          // vitest's asymmetric matchers (arrayContaining/objectContaining) are typed to return `any`
+          // eslint-disable-next-line typescript/no-unsafe-assignment
           expect.objectContaining({ name: 'country', in: expect.arrayContaining(['fra']) })
         ])
       )

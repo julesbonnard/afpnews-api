@@ -1,11 +1,12 @@
 {
   "name": "afpnews-api",
-  "version": "2.4.1",
+  "version": "2.7.0",
   "description": "Node helper functions to authenticate and fetch AFP Core API",
-  "main": "dist/cjs/index.js",
+  "sideEffects": false,
+  "main": "dist/cjs/index.cjs",
   "type": "commonjs",
   "types": "./dist/cjs/index.d.cts",
-  "module": "dist/esm/index.js",
+  "module": "dist/esm/index.mjs",
   "unpkg": "./dist/bundles/apicore.min.js",
   "jsdelivr": "./dist/bundles/apicore.min.js",
   "exports": {
@@ -24,11 +25,11 @@
       },
       "import": {
         "types": "./dist/esm/index.d.mts",
-        "default": "./dist/esm/index.js"
+        "default": "./dist/esm/index.mjs"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.js"
+        "default": "./dist/cjs/index.cjs"
       }
     }
   },
@@ -39,19 +40,14 @@
     "LICENSE.md"
   ],
   "scripts": {
-    "clean": "rimraf dist .rts2_cache_* src/grammar/index.ts",
+    "clean": "rimraf dist src/grammar/index.ts",
     "build:parser": "nearleyc src/grammar/index.ne --out ./src/grammar/index.ts",
-    "build:types": "tsc -p tsconfig.json --declaration --emitDeclarationOnly --declarationDir 'dist/types' && rollup -c rollup.config.mjs",
-    "build:esm": "cross-env BABEL_ENV=esmUnbundled babel src --extensions '.ts' --out-dir 'dist/esm'",
-    "build:cjs": "cross-env BABEL_ENV=cjs babel src --extensions '.ts' --out-dir 'dist/cjs'",
-    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.mjs",
-    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.mjs",
-    "build": "npm-run-all -l clean build:parser build:types -p build:esm build:cjs build:esmBundled build:umdBundled && ./fixup",
-    "postbuild": "rimraf dist/types",
-    "build:watch": "nodemon -L -e ts,json,js --config ./nodemon.json --exec \"npm build\"",
+    "build": "npm run build:parser && tsdown",
+    "build:watch": "npm run build:parser && tsdown --watch",
+    "verify:package": "npm run build:parser && tsdown --publint --attw",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint .",
+    "lint": "npm run build:parser && oxlint .",
     "prepare": "npm run lint && npm run build"
   },
   "engines": {
@@ -74,43 +70,27 @@
   },
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
-    "@babel/cli": "^7.28.6",
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.2",
-    "@babel/preset-typescript": "^7.28.5",
-    "@eslint/js": "^10.0.1",
-    "@rollup/plugin-babel": "^7.0.0",
-    "@rollup/plugin-commonjs": "^29.0.2",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-terser": "^1.0.0",
-    "@rollup/plugin-typescript": "^12.3.0",
-    "babel-plugin-add-import-extension": "^1.6.0",
-    "cross-env": "^10.1.0",
-    "eslint": "^10.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsdoc": "^62.8.0",
-    "nodemon": "^3.1.14",
-    "npm-run-all": "^4.1.5",
+    "@arethetypeswrong/core": "^0.18.5",
+    "oxlint": "^1.74.0",
+    "oxlint-tsgolint": "^0.24.0",
+    "publint": "^0.3.21",
     "rimraf": "^6.1.3",
-    "rollup": "^4.60.0",
-    "rollup-plugin-dts": "^6.4.1",
-    "rollup-plugin-polyfill-node": "^0.13.0",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.1"
+    "tsdown": "^0.22.8",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@types/btoa-lite": "^1.0.2",
+    "@types/events": "^3.0.3",
     "@types/moo": "^0.5.10",
     "@types/nearley": "^2.11.5",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.1",
     "@types/statuses": "^2.0.6",
     "btoa-lite": "^1.0.0",
     "events": "^3.3.0",
     "moo": "^0.5.3",
     "nearley": "^2.20.1",
     "statuses": "^2.0.2",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   }
 }

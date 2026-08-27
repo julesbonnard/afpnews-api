@@ -1,19 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Auth } from '../../src/api/auth'
+import { mockFetch } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
   access_token: 'test-access-token',
   refresh_token: 'test-refresh-token',
   expires_in: 3600
-}
-
-function mockFetch(body: unknown, status = 200) {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    status,
-    statusText: 'OK',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body))
-  })
 }
 
 describe('Auth', () => {
@@ -111,11 +103,11 @@ describe('Auth', () => {
       const auth = new Auth()
 
       const token1 = await auth.authenticate()
-      const fetchCallCount = (fetch as ReturnType<typeof vi.fn>).mock.calls.length
+      const fetchCallCount = (fetch as Mock<typeof fetch>).mock.calls.length
 
       const token2 = await auth.authenticate()
       expect(token2).toBe(token1)
-      expect((fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(fetchCallCount)
+      expect((fetch as Mock<typeof fetch>).mock.calls.length).toBe(fetchCallCount)
     })
 
     it('should refresh anonymous token when expired', async () => {
@@ -158,7 +150,7 @@ describe('Auth', () => {
       expect(token.accessToken).toBe('test-access-token')
       expect(token.authType).toBe('credentials')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
     })
 
@@ -269,7 +261,7 @@ describe('Auth', () => {
       expect(result.user.additionalProperties.infosLdap.mail).toBe('test@example.com')
       expect(result.user.additionalProperties.infosLdap.uid).toBe('TESTUSER')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
     })
 

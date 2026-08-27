@@ -1,14 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-
-function mockFetch(body: unknown, status = 200) {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    status,
-    statusText: 'OK',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body))
-  })
-}
+import { mockFetch } from '../helpers/mockFetch'
 
 function createAuthenticatedDocs() {
   const docs = new Docs()
@@ -39,7 +31,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       })
 
       expect(uno).toBe('service-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/register')
     })
 
@@ -105,7 +97,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const uno = await nc.deleteService('myService')
 
       expect(uno).toBe('deleted-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/delete')
       expect(calledUrl).toContain('service=myService')
     })
@@ -122,7 +114,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       })
 
       expect(uno).toBe('sub-123')
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/subscription/add')
       expect(calledUrl).toContain('name=mySub')
       expect(calledUrl).toContain('service=myService')
@@ -166,7 +158,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const subs = await nc.subscriptionsInService('myService')
 
       expect(subs).toHaveLength(2)
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/service/subscriptions')
       expect(calledUrl).toContain('service=myService')
     })
@@ -198,7 +190,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       const nc = docs.notificationCenter
       await nc.deleteSubscription('myService', 'mySub')
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/notification/api/subscription/delete')
       expect(calledUrl).toContain('service=myService')
       expect(calledUrl).toContain('name=mySub')
@@ -223,7 +215,7 @@ describe('NotificationCenter (via Docs.notificationCenter)', () => {
       expect(result).toHaveLength(2)
       expect(result[0]).toEqual({ name: 'sub1', status: 'deleted' })
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('DELETE')
       expect(calledOptions.body).toBe(JSON.stringify(['sub1', 'sub2']))
     })

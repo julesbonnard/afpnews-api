@@ -1,14 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-
-function mockFetch(body: unknown, status = 200) {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    status,
-    statusText: 'OK',
-    json: () => Promise.resolve(body),
-    text: () => Promise.resolve(JSON.stringify(body))
-  })
-}
+import { mockFetch } from '../helpers/mockFetch'
 
 function createAuthenticatedDocs() {
   const docs = new Docs()
@@ -36,12 +28,12 @@ describe('FilterCenter', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/filter/add')
       expect(calledUrl).toContain('name=my-filter')
       expect(calledUrl).toContain('wt=json')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
     })
   })
@@ -56,12 +48,12 @@ describe('FilterCenter', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/filter/update')
       expect(calledUrl).toContain('name=my-filter')
       expect(calledUrl).toContain('wt=json')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
     })
   })
@@ -76,12 +68,12 @@ describe('FilterCenter', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/filter/get')
       expect(calledUrl).toContain('name=my-filter')
       expect(calledUrl).toContain('wt=json')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('GET')
     })
   })
@@ -96,12 +88,12 @@ describe('FilterCenter', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/filter/delete')
       expect(calledUrl).toContain('name=my-filter')
       expect(calledUrl).toContain('wt=json')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('GET')
     })
   })
@@ -116,11 +108,11 @@ describe('FilterCenter', () => {
 
       expect(result).toEqual(responseData)
 
-      const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/filter/all')
       expect(calledUrl).toContain('wt=json')
 
-      const calledOptions = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1]
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('GET')
     })
   })

@@ -1,8 +1,8 @@
-import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config'
-import { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types"
+import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
+import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
-import { default as grammar } from '../grammar'
-import { normalize } from './normalizer'
+import { default as grammar } from '../grammar/index.js'
+import { normalize } from './normalizer.js'
 import { z } from 'zod'
 
 const querySchema = z.string().default('')
@@ -247,7 +247,9 @@ export class QueryBuilder {
     if (parser.results.length > 1) {
       console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
     }
-    const parsedQuery = parser.results[0]
+    // nearley's parser.results is typed `any[]`; the grammar guarantees each
+    // result matches the Ast shape declared in grammar/grammar.d.ts.
+    const parsedQuery = parser.results[0] as Ast
     return this.serialize(parsedQuery)
   }
 }
