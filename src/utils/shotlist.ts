@@ -30,6 +30,16 @@ export function parseShotList (input: string): Shot[] {
   const soundbiteRegex =
     /^(\d+)\.\s+(\d{2}:\d{2})-(\d{2}:\d{2})\s+(?:SONORE|SOUNDBITE) \d+ - (.*)$/i
 
+  const buildShot = (numero = '', start = '', end = '', description = ''): Shot => ({
+    numero: parseInt(numero || '0', 10),
+    start: start || '00:00',
+    end: end || '00:00',
+    startSec: timeToSeconds(start || '00:00'),
+    endSec: timeToSeconds(end || '00:00'),
+    description: description || '',
+    citations: []
+  })
+
   let currentShot: Shot | null = null
 
   for (let i = 0; i < lines.length; i++) {
@@ -39,33 +49,16 @@ export function parseShotList (input: string): Shot[] {
 
     const matchSoundbite = line.match(soundbiteRegex)
     if (matchSoundbite) {
-      const [, numero = '', start = '', end = '', description = ''] =
-        matchSoundbite
-      currentShot = {
-        numero: parseInt(numero || '0', 10),
-        start: start || '00:00',
-        end: end || '00:00',
-        startSec: timeToSeconds(start || '00:00'),
-        endSec: timeToSeconds(end || '00:00'),
-        description: description || '',
-        citations: []
-      }
+      const [, numero, start, end, description] = matchSoundbite
+      currentShot = buildShot(numero, start, end, description)
       shots.push(currentShot)
       continue
     }
 
     const matchShot = line.match(shotRegex)
     if (matchShot && !line.includes('SOUNDBITE') && !line.includes('SONORE')) {
-      const [, numero = '', start = '', end = '', description = ''] = matchShot
-      currentShot = {
-        numero: parseInt(numero || '0', 10),
-        start: start || '00:00',
-        end: end || '00:00',
-        startSec: timeToSeconds(start || '00:00'),
-        endSec: timeToSeconds(end || '00:00'),
-        description: description || '',
-        citations: []
-      }
+      const [, numero, start, end, description] = matchShot
+      currentShot = buildShot(numero, start, end, description)
       shots.push(currentShot)
       continue
     }

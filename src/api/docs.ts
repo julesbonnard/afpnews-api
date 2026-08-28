@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import type { AuthClientCredentials, SearchQueryParams, AfpDocument, AfpFacetValue } from '../types.js'
+import type { SearchQueryParams, AfpDocument, AfpFacetValue } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -20,6 +20,20 @@ function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: 
     return parsed ? [parsed] : []
   })
   return { documents, skipped: docs.length - documents.length }
+}
+
+// Dispatch commun aux quatre méthodes qui exposent `{ parse, lenient }` (search/mlt/latest/searchWithFilter).
+function applyParseOption (
+  count: number,
+  documents: unknown[],
+  options?: { parse?: boolean; lenient?: boolean }
+): { count: number; documents: unknown[]; skipped?: number } {
+  if (!options?.parse) return { count, documents }
+  if (options.lenient) {
+    const { documents: parsed, skipped } = parseLeniently(documents)
+    return { count, documents: parsed, skipped }
+  }
+  return { count, documents: documents.map(doc => parseDocument(doc)) }
 }
 
 const docParser = z.object({
@@ -50,10 +64,6 @@ const getResponse = z.object({
 })
 
 export class Docs extends Auth {
-  constructor (credentials?: AuthClientCredentials) {
-    super(credentials)
-  }
-
   // `fields: []` veut dire "aucune restriction" côté API (toutes les colonnes) — ne jamais y
   // injecter le socle, ça le transformerait en restriction. Uniquement pertinent avec `parse`,
   // sinon `parseDocument()` n'est pas appelé et le socle brut n'a pas besoin d'être garanti.
@@ -130,12 +140,7 @@ export class Docs extends Auth {
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
-    if (!options?.parse) return { count, documents }
-    if (options.lenient) {
-      const { documents: parsed, skipped } = parseLeniently(documents)
-      return { count, documents: parsed, skipped }
-    }
-    return { count, documents: documents.map(doc => parseDocument(doc)) }
+    return applyParseOption(count, documents, options)
   }
 
   /**
@@ -261,12 +266,7 @@ export class Docs extends Auth {
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
-    if (!options?.parse) return { count, documents }
-    if (options.lenient) {
-      const { documents: parsed, skipped } = parseLeniently(documents)
-      return { count, documents: parsed, skipped }
-    }
-    return { count, documents: documents.map(doc => parseDocument(doc)) }
+    return applyParseOption(count, documents, options)
   }
 
   /**
@@ -327,12 +327,7 @@ export class Docs extends Auth {
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
-    if (!options?.parse) return { count, documents }
-    if (options.lenient) {
-      const { documents: parsed, skipped } = parseLeniently(documents)
-      return { count, documents: parsed, skipped }
-    }
-    return { count, documents: documents.map(doc => parseDocument(doc)) }
+    return applyParseOption(count, documents, options)
   }
 
   /**
@@ -391,12 +386,7 @@ export class Docs extends Auth {
 
     const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
 
-    if (!parseOptions?.parse) return { count, documents }
-    if (parseOptions.lenient) {
-      const { documents: parsed, skipped } = parseLeniently(documents)
-      return { count, documents: parsed, skipped }
-    }
-    return { count, documents: documents.map(doc => parseDocument(doc)) }
+    return applyParseOption(count, documents, parseOptions)
   }
 
   /**

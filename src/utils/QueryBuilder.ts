@@ -35,7 +35,6 @@ export class QueryBuilder {
     this.dateTo = defaultSearchParams.dateTo
     this.sortField = defaultSearchParams.sortField
     this.sortOrder = defaultSearchParams.sortOrder
-    return this
   }
 
   public setMaxRows (maxRows?: number) {
