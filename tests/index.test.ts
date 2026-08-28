@@ -2,14 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { ApiCore, defaultSearchParams, defaultBaseUrl, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../src/index'
 
 describe('index exports', () => {
-  it('should export ApiCore class', () => {
-    expect(ApiCore).toBeDefined()
-    expect(typeof ApiCore).toBe('function')
-  })
-
-  it('should allow creating an ApiCore instance', () => {
+  it('should export a constructible ApiCore class', () => {
     const api = new ApiCore()
-    expect(api).toBeDefined()
+    expect(api).toBeInstanceOf(ApiCore)
     expect(typeof api.search).toBe('function')
     expect(typeof api.get).toBe('function')
     expect(typeof api.mlt).toBe('function')
