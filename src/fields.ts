@@ -26,6 +26,7 @@ export const FIELD_SOURCES = {
   provider: ['provider'],
   genre: ['genre'],
   urgency: ['urgency'],
+  wordCount: ['wordCount'],
   events: ['afpentity'],
   slugs: ['slug'],
   keywords: ['keyword'],

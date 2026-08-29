@@ -66,6 +66,7 @@ export const DocumentSourceSchema = z.object({
   news: z.string().array().default([]),
   caption: z.string().array().optional(),
   urgency: z.number(),
+  wordCount: z.number().optional(),
   genre: z.union([
     z.string().array().nonempty().transform(d => d[0]),
     z.string()
@@ -180,6 +181,7 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     provider: doc.provider,
     genre: doc.genre,
     urgency: doc.urgency,
+    wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
     slugs: doc.slug,
     keywords: doc.keyword,
