@@ -157,7 +157,7 @@ export type AfpMedia = {
  * so they remain accessible without narrowing — each per-class member below tightens the ones it
  * guarantees to a required type, for callers that do switch/narrow on `class`.
  */
-type AfpDocumentCommon = {
+export type AfpDocumentCommon = {
   uno: string
   shortId?: string
   source?: string

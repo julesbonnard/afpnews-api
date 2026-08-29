@@ -8,19 +8,17 @@ export type AfpRawField = typeof AFP_RAW_FIELDS[number]
 
 /**
  * Pour chaque champ de `AfpDocument`, le ou les champs bruts de l'API AFP dont sa
- * construction dépend (voir `extractBase`/`parseDocument` dans `utils/parseDocument.ts`).
- * `satisfies Record<keyof AfpDocument, ...>` force une erreur de compilation si un champ
- * est ajouté à `AfpDocument` sans déclarer sa provenance ici.
+ * construction dépend
  */
 export const FIELD_SOURCES = {
   uno: ['uno'],
   shortId: ['afpshortid'],
   class: ['class'],
   source: ['source'],
-  // `headline` peut être promu depuis la première ligne de `news` en dessous de urgency 4
-  // (voir extractTextParagraphs) — superset volontaire, valable même quand ça ne s'applique pas.
   headline: ['headline', 'news', 'urgency'],
-  paragraphs: ['news'],
+  // Comme `headline` : sans elle, `extractTextParagraphs` peut retirer la 1re ligne de `news`
+  // au titre de titre replié (urgency < 4).
+  paragraphs: ['news', 'headline', 'urgency'],
   lang: ['lang'],
   country: ['country', 'countryname'],
   city: ['city'],
@@ -43,7 +41,8 @@ export const FIELD_SOURCES = {
   medias: ['bagItem'],
   topics: ['topic'],
   topshot: ['urgency'],
-  caption: ['caption'],
+  // Repli sur bagItem[0].caption pour picture/graphic (voir parseDocument).
+  caption: ['caption', 'bagItem'],
   shots: ['news'],
   href: ['href'],
   title: ['title'],

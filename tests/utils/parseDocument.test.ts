@@ -165,6 +165,18 @@ describe('parseDocument', () => {
     it('throws for an unrecognised signal', () => {
       expect(() => parseDocument({ ...TEXT_DOC, signal: 'other' })).toThrow()
     })
+
+    it('normalises signal: cwarn alone yields undefined (not part of AfpDocumentSignal)', () => {
+      // A valid raw signal (accepted by SignalEnum), but AfpDocumentSignal only models
+      // 'correction' | 'update' — cwarn (content warning) is deliberately not surfaced here.
+      const doc = parseDocument({ ...TEXT_DOC, signal: 'cwarn' })
+      expect(doc.signal).toBeUndefined()
+    })
+
+    it('accepts a non-empty genre array and keeps only the first value', () => {
+      const doc = parseDocument({ ...TEXT_DOC, genre: ['General', 'Sport'] })
+      expect(doc.genre).toBe('General')
+    })
   })
 
   describe('text / factcheck', () => {

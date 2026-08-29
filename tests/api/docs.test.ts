@@ -872,34 +872,7 @@ describe('Docs', () => {
     })
   })
 
-  describe('notificationCenter', () => {
-    it('should return a notification center object', () => {
-      const docs = createAuthenticatedDocs()
-      const nc = docs.notificationCenter
-
-      expect(nc).toBeDefined()
-      expect(typeof nc.registerService).toBe('function')
-      expect(typeof nc.listServices).toBe('function')
-      expect(typeof nc.deleteService).toBe('function')
-      expect(typeof nc.addSubscription).toBe('function')
-      expect(typeof nc.listSubscriptions).toBe('function')
-      expect(typeof nc.subscriptionsInService).toBe('function')
-      expect(typeof nc.deleteSubscription).toBe('function')
-      expect(typeof nc.removeSubscriptionsFromService).toBe('function')
-    })
-  })
-
-  describe('filterCenter', () => {
-    it('should return a filter center object', () => {
-      const docs = createAuthenticatedDocs()
-      const fc = docs.filterCenter
-
-      expect(fc).toBeDefined()
-      expect(typeof fc.add).toBe('function')
-      expect(typeof fc.update).toBe('function')
-      expect(typeof fc.get).toBe('function')
-      expect(typeof fc.delete).toBe('function')
-      expect(typeof fc.all).toBe('function')
-    })
-  })
+  // notificationCenter / filterCenter behavior (registerService, add, delete, ...) is already
+  // exercised in tests/api/notification.test.ts and tests/api/filter.test.ts — no need to
+  // re-assert their method presence here.
 })

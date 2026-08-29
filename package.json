@@ -47,8 +47,10 @@
     "verify:package": "npm run build:parser && tsdown --publint --attw",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "npm run build:parser && oxlint .",
-    "prepare": "npm run lint && npm run build"
+    "typecheck": "npm run build:parser && tsc --noEmit",
+    "prepare": "npm run lint && npm run typecheck && npm run build"
   },
   "engines": {
     "node": ">= 12.20.0"
@@ -71,6 +73,7 @@
   "homepage": "https://github.com/julesbonnard/afpnews-api#readme",
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.5",
+    "@vitest/coverage-v8": "4.1.10",
     "oxlint": "^1.74.0",
     "oxlint-tsgolint": "^0.24.0",
     "publint": "^0.3.21",

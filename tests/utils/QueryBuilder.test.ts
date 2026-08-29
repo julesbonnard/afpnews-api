@@ -47,11 +47,6 @@ describe('QueryBuilder', () => {
       qb.setMaxRows(1000)
       expect(qb.maxRows).toBe(1000)
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setMaxRows(10)).toBe(qb)
-    })
   })
 
   describe('setDateRange', () => {
@@ -75,11 +70,6 @@ describe('QueryBuilder', () => {
       expect(qb.dateFrom).toBe('1980-01-01')
       expect(qb.dateTo).toBe('2023-12-31')
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setDateRange('2023-01-01', '2023-12-31')).toBe(qb)
-    })
   })
 
   describe('setSort', () => {
@@ -96,11 +86,6 @@ describe('QueryBuilder', () => {
       expect(qb.sortField).toBe('published')
       expect(qb.sortOrder).toBe('desc')
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setSort('published', 'desc')).toBe(qb)
-    })
   })
 
   describe('setLangs', () => {
@@ -108,17 +93,6 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
       expect(qb.langs).toEqual(['fr', 'en'])
-    })
-
-    it('should not set langs when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setLangs(undefined)
-      expect(qb.langs).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setLangs(['fr'])).toBe(qb)
     })
   })
 
@@ -128,28 +102,12 @@ describe('QueryBuilder', () => {
       qb.setQuery('Macron')
       expect(qb.queryString).toBe('Macron')
     })
-
-    it('should not set query when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setQuery(undefined)
-      expect(qb.queryString).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setQuery('test')).toBe(qb)
-    })
   })
 
   describe('addAdditionalParams', () => {
     it('should return this when params is undefined', () => {
       const qb = new QueryBuilder()
       expect(qb.addAdditionalParams(undefined)).toBe(qb)
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.addAdditionalParams({ country: 'fra' })).toBe(qb)
     })
   })
 
@@ -516,17 +474,6 @@ describe('QueryBuilder', () => {
       qb.setStartAt(0)
       expect(qb.startAt).toBe(0)
     })
-
-    it('should not set startAt when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setStartAt(undefined)
-      expect(qb.startAt).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setStartAt(0)).toBe(qb)
-    })
   })
 
   describe('setTz', () => {
@@ -535,17 +482,6 @@ describe('QueryBuilder', () => {
       qb.setTz('Europe/Paris')
       expect(qb.tz).toBe('Europe/Paris')
     })
-
-    it('should not set tz when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setTz(undefined)
-      expect(qb.tz).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setTz('UTC')).toBe(qb)
-    })
   })
 
   describe('setDateGap', () => {
@@ -553,17 +489,6 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       qb.setDateGap('+1HOUR')
       expect(qb.dateGap).toBe('+1HOUR')
-    })
-
-    it('should not set dateGap when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setDateGap(undefined)
-      expect(qb.dateGap).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setDateGap('+1DAY')).toBe(qb)
     })
   })
 
@@ -579,17 +504,6 @@ describe('QueryBuilder', () => {
       qb.setWantCluster(false)
       expect(qb.wantCluster).toBe(false)
     })
-
-    it('should not set wantCluster when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setWantCluster(undefined)
-      expect(qb.wantCluster).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setWantCluster(true)).toBe(qb)
-    })
   })
 
   describe('setWantedFacets', () => {
@@ -598,17 +512,6 @@ describe('QueryBuilder', () => {
       const facets = { slug: { size: 10, minDocCount: 1 } }
       qb.setWantedFacets(facets)
       expect(qb.wantedFacets).toEqual(facets)
-    })
-
-    it('should not set wantedFacets when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setWantedFacets(undefined)
-      expect(qb.wantedFacets).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })).toBe(qb)
     })
   })
 
@@ -619,16 +522,44 @@ describe('QueryBuilder', () => {
       qb.setMultiSort(sort)
       expect(qb.multiSort).toEqual(sort)
     })
+  })
 
-    it('should not set multiSort when undefined', () => {
+  describe('setter chaining contract', () => {
+    // Every setter returns `this`. Instead of repeating the same assertion once per describe
+    // block above, verify it here for all of them in one parameterized pass.
+    it.each<[string, (qb: QueryBuilder) => unknown]>([
+      ['setMaxRows', qb => qb.setMaxRows(10)],
+      ['setDateRange', qb => qb.setDateRange('2023-01-01', '2023-12-31')],
+      ['setSort', qb => qb.setSort('published', 'desc')],
+      ['setLangs', qb => qb.setLangs(['fr'])],
+      ['setQuery', qb => qb.setQuery('test')],
+      ['addAdditionalParams', qb => qb.addAdditionalParams({ country: 'fra' })],
+      ['setStartAt', qb => qb.setStartAt(0)],
+      ['setTz', qb => qb.setTz('UTC')],
+      ['setDateGap', qb => qb.setDateGap('+1DAY')],
+      ['setWantCluster', qb => qb.setWantCluster(true)],
+      ['setWantedFacets', qb => qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })],
+      ['setMultiSort', qb => qb.setMultiSort([])]
+    ])('%s returns the same instance', (_name, call) => {
       const qb = new QueryBuilder()
-      qb.setMultiSort(undefined)
-      expect(qb.multiSort).toBeUndefined()
+      expect(call(qb)).toBe(qb)
     })
+  })
 
-    it('should return this for chaining', () => {
+  describe('setters ignore an undefined argument (value stays unset)', () => {
+    it.each<[string, (qb: QueryBuilder) => unknown, (qb: QueryBuilder) => unknown]>([
+      ['langs', qb => qb.setLangs(undefined), qb => qb.langs],
+      ['queryString', qb => qb.setQuery(undefined), qb => qb.queryString],
+      ['startAt', qb => qb.setStartAt(undefined), qb => qb.startAt],
+      ['tz', qb => qb.setTz(undefined), qb => qb.tz],
+      ['dateGap', qb => qb.setDateGap(undefined), qb => qb.dateGap],
+      ['wantCluster', qb => qb.setWantCluster(undefined), qb => qb.wantCluster],
+      ['wantedFacets', qb => qb.setWantedFacets(undefined), qb => qb.wantedFacets],
+      ['multiSort', qb => qb.setMultiSort(undefined), qb => qb.multiSort]
+    ])('%s stays undefined', (_name, call, read) => {
       const qb = new QueryBuilder()
-      expect(qb.setMultiSort([])).toBe(qb)
+      call(qb)
+      expect(read(qb)).toBeUndefined()
     })
   })
 
