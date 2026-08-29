@@ -12,10 +12,6 @@ const storySchema = z.object({
   href: z.string()
 })
 
-function insert (mainString: string, insString: string, pos: number) {
-  return mainString.slice(0, pos) + insString + mainString.slice(pos)
-}
-
 export async function Story (this: ApiCore, doc: unknown) {
   const docHref = docStorySchema.parse(doc).href
   const data = await get(docHref, {
@@ -30,9 +26,8 @@ export async function Story (this: ApiCore, doc: unknown) {
 
   const head = '<head>'
 
-  let content = await get(link, {}, 'text') as string
+  const content = await get(link, {}, 'text') as string
+  const pos = content.indexOf(head) + head.length
 
-  content = insert(content, docbase, content.indexOf(head) + head.length)
-
-  return content
+  return content.slice(0, pos) + docbase + content.slice(pos)
 }

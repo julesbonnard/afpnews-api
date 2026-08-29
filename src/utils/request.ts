@@ -1,4 +1,3 @@
-import status from 'statuses'
 import type { AuthorizationHeaders, AuthForm } from '../types.js'
 import { z } from 'zod'
 
@@ -42,7 +41,7 @@ export class ApiError extends Error {
 }
 
 function apiError (code: number, message?: string) {
-  return new ApiError(message || status(code) || `Request rejected with status ${code}`, code)
+  return new ApiError(message || `Request rejected with status ${code}`, code)
 }
 
 async function fetchJson (url: string, method: string, headers: object = {}, body?: string | FormData) {
@@ -52,17 +51,17 @@ async function fetchJson (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  const data: unknown = await response.json();
+  const data: unknown = await response.json()
 
-  // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier dans les deux cas
-  const errorData = errorSchema.safeParse(data);                                                                              
-  if (errorData.success) {                                                                                                    
-    throw apiError(errorData.data.error.code, errorData.data.error.message);                                                  
-  }                                                                                                                           
-  if (response.status >= 300) {                           
-    throw apiError(response.status, response.statusText);                                                                     
+  // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier même si le statut est OK
+  const errorData = errorSchema.safeParse(data)
+  if (errorData.success) {
+    throw apiError(errorData.data.error.code, errorData.data.error.message)
   }
-  return data;                                                                                
+  if (response.status >= 300) {
+    throw apiError(response.status, response.statusText)
+  }
+  return data
 }
 
 async function fetchText (url: string, method: string, headers: object = {}, body?: string, accept = 'text/*') {
@@ -72,17 +71,12 @@ async function fetchText (url: string, method: string, headers: object = {}, bod
     body
   })
 
-  const data = await response.text();  
+  const data = await response.text()
 
-  // AFP peut retourner HTTP 200 avec un payload d'erreur — vérifier dans les deux cas
-  const errorData = errorSchema.safeParse(data);                                                                              
-  if (errorData.success) {                                                                                                    
-    throw apiError(errorData.data.error.code, errorData.data.error.message);                                                  
-  }                                                                                                                           
-  if (response.status >= 300) {                           
-    throw apiError(response.status, response.statusText);                                                                     
+  if (response.status >= 300) {
+    throw apiError(response.status, response.statusText)
   }
-  return data;                 
+  return data
 }
 
 export async function get (
