@@ -30,6 +30,10 @@ describe('FIELD_SOURCES', () => {
     expect(FIELD_SOURCES.events).toEqual(['afpentity'])
   })
 
+  it('maps a same-named optional field to its single raw source', () => {
+    expect(FIELD_SOURCES.wordCount).toEqual(['wordCount'])
+  })
+
   it('maps two output fields sharing the same raw source', () => {
     expect(FIELD_SOURCES.paragraphs).toContain('news')
     expect(FIELD_SOURCES.shots).toEqual(['news'])

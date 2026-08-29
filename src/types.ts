@@ -170,6 +170,7 @@ export type AfpDocumentCommon = {
   provider: string
   genre?: string
   urgency: number
+  wordCount?: number
   events: AfpEvent[]
   slugs?: string[]
   keywords?: string[]

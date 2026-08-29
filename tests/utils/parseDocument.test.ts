@@ -177,6 +177,16 @@ describe('parseDocument', () => {
       const doc = parseDocument({ ...TEXT_DOC, genre: ['General', 'Sport'] })
       expect(doc.genre).toBe('General')
     })
+
+    it('passes through wordCount when present', () => {
+      const doc = parseDocument({ ...TEXT_DOC, wordCount: 536 })
+      expect(doc.wordCount).toBe(536)
+    })
+
+    it('leaves wordCount undefined when absent', () => {
+      const doc = parseDocument(TEXT_DOC)
+      expect(doc.wordCount).toBeUndefined()
+    })
   })
 
   describe('text / factcheck', () => {
