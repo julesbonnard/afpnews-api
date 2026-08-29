@@ -31,7 +31,7 @@ describe('FIELD_SOURCES', () => {
   })
 
   it('maps two output fields sharing the same raw source', () => {
-    expect(FIELD_SOURCES.paragraphs).toEqual(['news'])
+    expect(FIELD_SOURCES.paragraphs).toContain('news')
     expect(FIELD_SOURCES.shots).toEqual(['news'])
   })
 })

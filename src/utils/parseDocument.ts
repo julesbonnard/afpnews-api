@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AfpDocument, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia } from '../types.js'
+import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia } from '../types.js'
 import { parseShotList } from './shotlist.js'
 
 const EventSchema = z.object({
@@ -168,11 +168,10 @@ function extractHasBeenAlerted (doc: DocumentSource): boolean {
   )
 }
 
-function extractBase (doc: DocumentSource): Omit<AfpDocument, 'headline' | 'paragraphs' | 'medias'> {
+function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' | 'paragraphs' | 'medias'> {
   return {
     uno: doc.uno,
     shortId: doc.afpshortid,
-    class: doc.class,
     source: doc.source,
     lang: doc.lang,
     country: { id: doc.country, name: doc.countryname },
@@ -212,6 +211,7 @@ export function parseDocument (raw: unknown): AfpDocument {
       const { headline, paragraphs } = extractTextParagraphs(doc)
       return {
         ...base,
+        class: doc.class,
         headline,
         paragraphs,
         medias: [],
@@ -222,6 +222,7 @@ export function parseDocument (raw: unknown): AfpDocument {
       const { headline, paragraphs } = extractTextParagraphs(doc)
       return {
         ...base,
+        class: doc.class,
         headline,
         paragraphs,
         medias: doc.bagItem.map(extractMedia),
@@ -233,6 +234,7 @@ export function parseDocument (raw: unknown): AfpDocument {
     case 'graphic':
       return {
         ...base,
+        class: doc.class,
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
@@ -245,6 +247,7 @@ export function parseDocument (raw: unknown): AfpDocument {
     case 'videography':
       return {
         ...base,
+        class: doc.class,
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
@@ -254,6 +257,7 @@ export function parseDocument (raw: unknown): AfpDocument {
     case 'webstory':
       return {
         ...base,
+        class: doc.class,
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
