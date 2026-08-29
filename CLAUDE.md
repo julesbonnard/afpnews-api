@@ -19,6 +19,9 @@ npm run test:watch
 # Lint
 npm run lint
 
+# Typecheck (tsc --noEmit — tsdown doesn't type-check, only lint/build won't catch type errors)
+npm run typecheck
+
 # Full build (parser -> tsdown)
 npm run build
 
@@ -167,7 +170,7 @@ tests/
 - Tokens emit `tokenChanged` events via EventEmitter
 
 ### Publish Lifecycle
-`npm run prepare` runs `lint` then `build` before publish, ensuring dist/ is always fresh.
+`npm run prepare` runs `lint`, `typecheck`, then `build` before publish, ensuring dist/ is always fresh.
 
 ### Node.js Compatibility
 Minimum Node.js version: 12.20.0 (declared in `engines` field).
