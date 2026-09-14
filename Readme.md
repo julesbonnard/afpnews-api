@@ -161,6 +161,8 @@ The `query` parameter supports a boolean query DSL:
 | Quoted phrase | `title:"climate change"` |
 | Implicit AND | `Macron France` (space-separated terms) |
 
+> **Note:** `NOT` only works reliably on keyword/facet fields (e.g. `country:fra`, `slug:...`). The Core API ignores exclusion on full-text fields (the default field, `title`, `news`), so `NOT "some phrase"` or `Macron AND NOT Merkel` won't actually filter anything out server-side — the SDK logs a `console.warn` when this happens.
+
 ## Retrieving a Single Document
 
 ```js

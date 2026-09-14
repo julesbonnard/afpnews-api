@@ -165,9 +165,17 @@ export class QueryBuilder {
     if (expression.type !== 'LiteralExpression') throw new Error('Unexpected expression token')
   
     const fieldName = field?.name || 'all'
-    const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
-    const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
-  
+    const isFullTextField = fullTextSearchFields.includes(fieldName)
+    const fieldOperator = exclude ? 'exclude' : isFullTextField ? 'contains' : 'in'
+    const fieldValue = expression.quoted && isFullTextField ? [quote(expression.value)] : [normalize(String(expression.value))]
+
+    if (exclude && isFullTextField) {
+      // The Core API's `exclude` operator only applies to keyword/facet fields (e.g. country, slug):
+      // it is silently ignored on analyzed full-text fields, so `NOT <word or "phrase">` on the
+      // default/title/news fields never actually filters anything out server-side.
+      console.warn(`NOT on full-text field "${fieldName}" has no effect on the API: ${fieldValue[0]}`)
+    }
+
     if (fieldOperator === 'contains') {
       const langs =  this.langs && this.langs.length > 0 ? this.langs : langsWithTranslation
       return [{

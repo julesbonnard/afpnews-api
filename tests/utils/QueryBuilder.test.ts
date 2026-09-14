@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { QueryBuilder } from '../../src/utils/QueryBuilder'
 
 describe('QueryBuilder', () => {
@@ -354,6 +354,34 @@ describe('QueryBuilder', () => {
       expect(result!.or).toBeDefined()
       const flat = JSON.stringify(result)
       expect(flat).toContain('android')
+    })
+
+    it('should warn and keep quotes when NOT excludes a phrase on a full-text field', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const qb = new QueryBuilder()
+        const result = qb.parseQueryString('Macron NOT "extrême droite"')
+
+        // The Core API ignores `exclude` on full-text fields (all/title/news): warn so callers
+        // don't silently believe the phrase was filtered out.
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('NOT on full-text field "all" has no effect'))
+        const flat = JSON.stringify(result)
+        expect(flat).toContain('\\"extrême droite\\"')
+      } finally {
+        warnSpy.mockRestore()
+      }
+    })
+
+    it('should not warn when NOT excludes a keyword field', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const qb = new QueryBuilder()
+        qb.parseQueryString('NOT country:fra')
+
+        expect(warnSpy).not.toHaveBeenCalled()
+      } finally {
+        warnSpy.mockRestore()
+      }
     })
 
     it('should parse "notice" as a word, not NOT + ice', () => {
