@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import type { SearchQueryParams, AfpDocument, AfpFacetValue } from '../types.js'
+import type { SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -9,10 +9,6 @@ import { Auth } from './auth.js'
 import { Story } from './story.js'
 import { NotificationCenter } from './notification.js'
 import { FilterCenter } from './filter.js'
-
-type ParseOption = { parse: true; lenient?: false }
-// Saute les documents malformés au lieu de faire échouer tout le lot (voir `parseLeniently`).
-type LenientParseOption = { parse: true; lenient: true }
 
 function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: number } {
   const documents = docs.flatMap(doc => {

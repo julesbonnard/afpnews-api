@@ -231,3 +231,28 @@ export type AfpDocument =
   | AfpPictureDocument
   | AfpVideoDocument
   | AfpWebStoryDocument
+
+export type ParseOption = { parse: true; lenient?: false }
+// Saute les documents malformés au lieu de faire échouer tout le lot (voir `parseLeniently` dans docs.ts).
+export type LenientParseOption = { parse: true; lenient: true }
+
+/**
+ * Union des tuples d'arguments des 3 surcharges de `search()`, pour typer un wrapper de
+ * forwarding générique (ex. un `Proxy`) sans le piège `Parameters<typeof instance.search>`,
+ * qui ne résout qu'à la dernière surcharge et tronquerait `options`.
+ */
+export type SearchArgs =
+  | [params?: SearchQueryParams, fields?: string[]]
+  | [params: SearchQueryParams, fields: string[], options: ParseOption]
+  | [params: SearchQueryParams, fields: string[], options: LenientParseOption]
+
+/** Même besoin que `SearchArgs`, pour `mlt()`. */
+export type MltArgs =
+  | [uno: string, lang: string, size?: number, fields?: string[]]
+  | [uno: string, lang: string, size: number | undefined, fields: string[], options: ParseOption]
+  | [uno: string, lang: string, size: number | undefined, fields: string[], options: LenientParseOption]
+
+/** Même besoin que `SearchArgs`, pour `get()`. */
+export type GetArgs =
+  | [uno: string]
+  | [uno: string, options: ParseOption]
