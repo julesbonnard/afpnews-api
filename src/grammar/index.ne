@@ -5,29 +5,57 @@
   // https://github.com/no-context/moo
 
   import moo from 'moo'
+
+  // All casings of a keyword (AND, And, aNd, ...), not just a few hardcoded ones.
+  const caseVariants = (word: string): string[] =>
+    word.length === 0
+      ? ['']
+      : caseVariants(word.slice(1)).flatMap(rest => [word[0].toLowerCase() + rest, word[0].toUpperCase() + rest])
+
   const lexer = moo.compile({
-    newline: { match: /\r?\n/, lineBreaks: true },
-    space: { match: /[\t\s]/, lineBreaks: true },
+    space: { match: /\s/, lineBreaks: true },
     lparen: '(',
     rparen: ')',
     dquote: '"',
     backslash: '\\',
     is: ':',
     word: {
-      match: /[,'\._*?@#%$a-zA-Z0-9\u0080-\uFFFF-]+/,
+      match: /[,'\._*?@#%$a-zA-Z0-9\u0080-￿-]+/,
       type: moo.keywords({
-        and: ['AND', 'And', 'and'],
-        or: ['OR', 'Or', 'or'],
-        not: ['NOT', 'Not', 'not'],
+        and: caseVariants('and'),
+        or: caseVariants('or'),
+        not: caseVariants('not')
       })
     }
   });
+
+  const buildField = (raw: { name: string, quoted: boolean, quotes?: string }) => {
+    const negated = !raw.quoted && raw.name.startsWith('-') && raw.name.length > 1
+    const field: { type: string, name: string, quoted: boolean, quotes?: string } = {
+      type: 'Field',
+      name: negated ? raw.name.slice(1) : raw.name,
+      quoted: raw.quoted
+    }
+    if (raw.quotes) field.quotes = raw.quotes
+    return { field, negated }
+  }
+
+  const negate = (negated: boolean, node: any) => negated ? { type: 'UnaryOperator', operator: 'NOT', operand: node } : node
+
+  // Rewrites every ImplicitField leaf of a `field:(...)` group to the group's own field, so `title:(a OR b)` reads as `title:a OR title:b`.
+  const applyFieldToGroup = (field: unknown, node: any): any => {
+    if (node.type === 'Tag' && node.field?.type === 'ImplicitField') return { ...node, field }
+    if (node.type === 'LogicalExpression') return { ...node, left: applyFieldToGroup(field, node.left), right: applyFieldToGroup(field, node.right) }
+    if (node.type === 'UnaryOperator') return { ...node, operand: applyFieldToGroup(field, node.operand) }
+    if (node.type === 'ParenthesizedExpression') return { ...node, expression: applyFieldToGroup(field, node.expression) }
+    return node
+  }
 %}
 
 # Pass your lexer with @lexer:
 @lexer lexer
 
-main -> _ logical_expression _ {% (data) => data[1] %}
+main -> _ expr _ {% (data) => data[1] %}
 
 # Double-quoted string with escape support
 dqstring -> %dquote dqchar:* %dquote {% (data) => data[1].join('') %}
@@ -38,10 +66,9 @@ dqchar ->
   | %lparen {% () => '(' %}
   | %rparen {% () => ')' %}
   | %is {% () => ':' %}
-  | %and {% () => 'AND' %}
-  | %or {% () => 'OR' %}
-  | %not {% () => 'NOT' %}
-  | %newline {% (data) => data[0].text || data[0].value %}
+  | %and {% (data) => data[0].text %}
+  | %or {% (data) => data[0].text %}
+  | %not {% (data) => data[0].text %}
   | %backslash %dquote {% () => '"' %}
   | %backslash %backslash {% () => '\\' %}
   | %backslash %word {% (data) => {
@@ -60,26 +87,18 @@ boolean_operator ->
     %or {% () => ({operator: 'OR', type: 'BooleanOperator'}) %}
   | %and {% () => ({operator: 'AND', type: 'BooleanOperator'}) %}
 
-boolean_primary ->
-  tag_expression {% id %}
-
-post_boolean_primary ->
-    __ %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[3]}) %}
-  | __ boolean_primary {% d => d[1] %}
-
-_ -> %space:?
+_ -> %space:*
 __ -> %space:+
 
-logical_expression -> two_op_logical_expression {% id %}
-
-two_op_logical_expression ->
-    pre_two_op_logical_expression boolean_operator post_one_op_logical_expression {% (data) => ({
+# AND, OR and implicit AND (space-separated terms) share one left-assoc precedence tier; NOT binds tighter; parens override.
+expr ->
+    expr _ boolean_operator _ unary_expr {% (data) => ({
       type: 'LogicalExpression',
-      operator: data[1],
+      operator: data[2],
       left: data[0],
-      right: data[2]
+      right: data[4]
     }) %}
-  | pre_two_op_implicit_logical_expression __ post_one_op_implicit_logical_expression {% (data) => ({
+  | expr __ unary_expr {% (data) => ({
       type: 'LogicalExpression',
       operator: {
         operator: 'AND',
@@ -88,81 +107,54 @@ two_op_logical_expression ->
       left: data[0],
       right: data[2]
     }) %}
-  | one_op_logical_expression {% d => d[0] %}
+  | unary_expr {% id %}
 
-pre_two_op_implicit_logical_expression ->
-    two_op_logical_expression {% d => d[0] %}
-  | %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
+unary_expr ->
+    %not __ primary {% (data) => ({
+      type: 'UnaryOperator',
+      operator: 'NOT',
+      operand: data[2]
+    }) %}
+  | primary {% id %}
 
-post_one_op_implicit_logical_expression ->
-    one_op_logical_expression {% d => d[0] %}
-  | %lparen _ one_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
-
-pre_two_op_logical_expression ->
-    two_op_logical_expression __ {% d => d[0] %}
-  | %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
-
-one_op_logical_expression ->
-    %lparen _ %rparen {% _ => ({type: 'ParenthesizedExpression', expression: {
+primary ->
+    %lparen _ %rparen {% () => ({type: 'ParenthesizedExpression', expression: {
       type: 'EmptyExpression'
     }}) %}
-  | %lparen _ two_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
-  | %not post_boolean_primary {% (data) => {
-      return {
-        type: 'UnaryOperator',
-        operator: 'NOT',
-        operand: data[1]
-      };
-    } %}
-  | boolean_primary {% d => d[0] %}
-
-post_one_op_logical_expression ->
-    __ one_op_logical_expression {% d => d[1] %}
-  | %lparen _ one_op_logical_expression _ %rparen {% d => ({type: 'ParenthesizedExpression', expression: d[2]}) %}
+  | %lparen _ expr _ %rparen {% data => ({type: 'ParenthesizedExpression', expression: data[2]}) %}
+  | tag_expression {% id %}
 
 tag_expression ->
-    field comparison_operator expression {% data => {
-      const field = {
-        type: 'Field',
-        name: data[0].name,
-        quoted: data[0].quoted,
-        quotes: data[0].quotes
-      };
-
-      if (!data[0].quotes) {
-        delete field.quotes;
-      }
-
-      return {
+    field comparison_operator %lparen _ expr _ %rparen {% data => {
+      const { field, negated } = buildField(data[0])
+      return negate(negated, applyFieldToGroup(field, data[4]))
+    } %}
+  | field comparison_operator expression {% data => {
+      const { field, negated } = buildField(data[0])
+      return negate(negated, {
         type: 'Tag',
         field,
         operator: data[1],
         expression: data[2].expression
-      }
+      })
     } %}
   | field comparison_operator {% data => {
-      const field = {
-        type: 'Field',
-        name: data[0].name,
-        quoted: data[0].quoted,
-        quotes: data[0].quotes
-      };
-
-      if (!data[0].quotes) {
-        delete field.quotes;
-      }
-
-      return {
+      const { field, negated } = buildField(data[0])
+      return negate(negated, {
         type: 'Tag',
         field,
         operator: data[1],
         expression: {
           type: 'EmptyExpression'
         }
-      }
+      })
     } %}
   | expression {% (data) => {
-      return {field: {type: 'ImplicitField'}, ...data[0]};
+      const tag = data[0]
+      const expr = tag.expression
+      const negated = !expr.quoted && typeof expr.value === 'string' && expr.value.startsWith('-') && expr.value.length > 1
+      const stripped = negated ? { ...tag, expression: { ...expr, value: expr.value.slice(1) } } : tag
+      return negate(negated, { field: {type: 'ImplicitField'}, ...stripped })
     } %}
 
 field ->

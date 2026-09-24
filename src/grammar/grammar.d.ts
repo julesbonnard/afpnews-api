@@ -8,7 +8,6 @@ type ImplicitFieldToken = {
 }
 type FieldToken = {
   name: string
-  path?: readonly string[]
   type: 'Field'
 } & ({
   quoted: false
@@ -52,7 +51,7 @@ type LogicalExpressionToken = {
 }
 type UnaryOperatorToken = {
   operand: ParserAst
-  operator: '-' | 'NOT'
+  operator: 'NOT'
   type: 'UnaryOperator'
 }
 type ParenthesizedExpressionToken = {

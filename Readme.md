@@ -157,7 +157,9 @@ The `query` parameter supports a boolean query DSL:
 | AND | `Macron AND Merkel` |
 | OR | `title:Macron OR title:Merkel` |
 | NOT | `Macron AND NOT country:fra` |
+| NOT (shorthand) | `-Macron`, `-title:Macron` |
 | Parentheses | `(title:Macron OR title:Merkel) AND country:fra` |
+| Field group | `title:(Macron OR Merkel)` (same as `title:Macron OR title:Merkel`) |
 | Quoted phrase | `title:"climate change"` |
 | Implicit AND | `Macron France` (space-separated terms) |
 

@@ -346,6 +346,13 @@ describe('QueryBuilder', () => {
       expect(result!.and).toBeDefined()
     })
 
+    it('should parse any casing of AND/OR/NOT, not just the 3 hardcoded ones', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('Macron aNd France')).toEqual(qb.parseQueryString('Macron AND France'))
+      expect(qb.parseQueryString('Macron oR France')).toEqual(qb.parseQueryString('Macron OR France'))
+      expect(qb.parseQueryString('nOT country:fra')).toEqual(qb.parseQueryString('NOT country:fra'))
+    })
+
     it('should parse "android" as a word, not AND + roid', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('android')
@@ -376,14 +383,75 @@ describe('QueryBuilder', () => {
       expect(flat).toContain('forest')
     })
 
-    it('should throw on unmatched parenthesis', () => {
+    it('should auto-close an unmatched opening parenthesis instead of throwing', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.parseQueryString('(Macron')).toThrow('Failed to parse query')
+      const result = qb.parseQueryString('(Macron')
+      expect(result).toEqual(qb.parseQueryString('(Macron)'))
     })
 
-    it('should throw on unmatched quote', () => {
+    it('should auto-close an unmatched opening quote instead of throwing', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.parseQueryString('"unclosed')).toThrow('Failed to parse query')
+      const result = qb.parseQueryString('"unclosed')
+      expect(result).toEqual(qb.parseQueryString('"unclosed"'))
+    })
+
+    it('should still throw on an extra unmatched closing parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('Macron)')).toThrow('Failed to parse query')
+    })
+
+    it('should produce a readable error message without the raw grammar trace', () => {
+      const qb = new QueryBuilder()
+      let caught: unknown
+      try {
+        qb.parseQueryString('foo AND AND bar')
+      } catch (error) {
+        caught = error
+      }
+      expect(caught).toBeInstanceOf(Error)
+      const error = caught as Error
+      expect(error.message).toContain('Failed to parse query')
+      expect(error.message).toContain('line 1 col')
+      expect(error.message).not.toContain('based on:')
+      expect(error.cause).toBeInstanceOf(Error)
+    })
+
+    it('should tolerate multiple spaces and newlines between terms', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('foo  bar')).toEqual(qb.parseQueryString('foo bar'))
+      expect(qb.parseQueryString('foo\nbar')).toEqual(qb.parseQueryString('foo bar'))
+      expect(qb.parseQueryString('(  foo)')).toEqual(qb.parseQueryString('(foo)'))
+    })
+
+    it('should not be ambiguous for a parenthesized term followed by an implicit AND', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('(Macron) France')
+      expect(result).toEqual(qb.parseQueryString('Macron AND France'))
+    })
+
+    it('should allow AND/OR to sit directly against a parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('(Macron)AND France')).toEqual(qb.parseQueryString('Macron AND France'))
+      expect(qb.parseQueryString('Macron AND(France)')).toEqual(qb.parseQueryString('Macron AND France'))
+    })
+
+    it('should report the position on an incomplete query, without pointing at an auto-added closer', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('foo AND')).toThrow('unexpected end of input at line 1, col 8')
+      let caught: unknown
+      try {
+        qb.parseQueryString('(foo AND')
+      } catch (error) {
+        caught = error
+      }
+      const error = caught as Error
+      expect(error.message).not.toContain('(foo AND)')
+      expect(error.message).toContain('unexpected end of input')
+    })
+
+    it('should give a readable message for a field with no value', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('country:')).toThrow('Failed to parse query "country:": missing value after "country:"')
     })
 
     it('should parse escaped quotes in strings', () => {
@@ -402,12 +470,6 @@ describe('QueryBuilder', () => {
       expect(result).toBeDefined()
       const flat = JSON.stringify(result)
       expect(flat).toContain('path\\\\file')
-    })
-
-    it('should parse field with empty value (country:)', () => {
-      const qb = new QueryBuilder()
-      // Empty value after colon produces EmptyExpression which serializer cannot handle
-      expect(() => qb.parseQueryString('country:')).toThrow()
     })
 
     it('should parse double parentheses', () => {
@@ -459,6 +521,56 @@ describe('QueryBuilder', () => {
 
       const flat = JSON.stringify(result)
       expect(flat).not.toContain('translated')
+    })
+
+    it('should group multiple values under one field with field:(a OR b)', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('title:(Macron OR Merkel)')).toEqual(qb.parseQueryString('title:Macron OR title:Merkel'))
+    })
+
+    it('should allow NOT and nested parens inside a field group', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('title:(Macron AND NOT Merkel)'))
+        .toEqual(qb.parseQueryString('title:Macron AND NOT title:Merkel'))
+    })
+
+    it('should parse -term as shorthand for NOT term', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('-Macron')).toEqual(qb.parseQueryString('NOT Macron'))
+      expect(qb.parseQueryString('-title:Macron')).toEqual(qb.parseQueryString('NOT title:Macron'))
+      expect(qb.parseQueryString('-title:(a OR b)')).toEqual(qb.parseQueryString('NOT title:(a OR b)'))
+    })
+
+    it('should cancel out a double negation (NOT -term)', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('NOT -Macron')).toEqual(qb.parseQueryString('Macron'))
+    })
+
+    it('should not treat a mid-word hyphen or a value-side hyphen as NOT', () => {
+      const qb = new QueryBuilder()
+      // "Jean-Luc": interior hyphen, still one literal word, not negated
+      expect(JSON.stringify(qb.parseQueryString('Jean-Luc'))).not.toContain('exclude')
+      // title:-Macron: dash on the value side of an explicit field is literal text, not NOT
+      const result = qb.parseQueryString('title:-Macron')
+      expect(JSON.stringify(result)).toContain('-macron')
+      expect(JSON.stringify(result)).not.toContain('exclude')
+    })
+
+    it('should apply De Morgan when NOT wraps an OR/AND group', () => {
+      const qb = new QueryBuilder()
+      // NOT (a OR b) == NOT a AND NOT b
+      expect(qb.parseQueryString('NOT (title:a OR title:b)').and).toBeDefined()
+      expect(qb.parseQueryString('-title:(a OR b)')).toEqual(qb.parseQueryString('NOT (title:a OR title:b)'))
+      // NOT (a AND b) == NOT a OR NOT b
+      expect(qb.parseQueryString('NOT (title:a AND title:b)').or).toBeDefined()
+    })
+
+    it('should keep flipping the connective through nested groups under NOT', () => {
+      const qb = new QueryBuilder()
+      // NOT (a OR (b AND c)) == NOT a AND (NOT b OR NOT c)
+      const result = qb.parseQueryString('NOT (a OR (b AND c))')
+      expect(result!.and).toBeDefined()
+      expect(result!.and![1].or).toBeDefined()
     })
   })
 

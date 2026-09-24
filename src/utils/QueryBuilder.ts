@@ -11,6 +11,56 @@ const quote = (value: string) => {
   return `"${value}"`
 }
 
+// Auto-closes a trailing unclosed `(` or `"`; an extra unmatched `)` is left as a real error.
+const balanceQuery = (query: string): string => {
+  let parenDepth = 0
+  let inQuote = false
+  for (let i = 0; i < query.length; i++) {
+    const char = query[i]
+    if (inQuote) {
+      if (char === '\\') { i++; continue }
+      if (char === '"') inQuote = false
+      continue
+    }
+    if (char === '"') inQuote = true
+    else if (char === '(') parenDepth++
+    else if (char === ')') parenDepth = Math.max(0, parenDepth - 1)
+  }
+  return query + (inQuote ? '"' : '') + ')'.repeat(parenDepth)
+}
+
+const tokenLabels: Record<string, string> = {
+  lparen: '(',
+  rparen: ')',
+  dquote: '"',
+  is: ':',
+  and: 'AND',
+  or: 'OR',
+  not: 'NOT',
+  word: 'a term'
+}
+
+// Drops nearley's raw Earley derivation trace, keeping only the position/pointer and a deduped "expected" list.
+const formatParseError = (rawMessage: string): string => {
+  const lines = rawMessage.split('\n')
+  const unexpectedLineIndex = lines.findIndex(line => line.startsWith('Unexpected'))
+  if (unexpectedLineIndex === -1) return rawMessage
+
+  const header = lines.slice(0, unexpectedLineIndex).join('\n').trimEnd()
+  const [reason] = lines[unexpectedLineIndex].split('. Instead,')
+  const expected = [...new Set(
+    lines
+      .filter(line => /^A .+ token based on:$/.test(line))
+      .map(line => line.replace(/^A (.+) token based on:$/, '$1'))
+      .filter(type => type !== 'space')
+      .map(type => tokenLabels[type] ?? type)
+  )]
+
+  const parts = [header, `${reason}.`]
+  if (expected.length > 0) parts.push(`Expected one of: ${expected.join(', ')}`)
+  return parts.join('\n')
+}
+
 export class QueryBuilder {
   public fields?: string[]
   public maxRows: number
@@ -162,7 +212,9 @@ export class QueryBuilder {
   }
 
   private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
-    if (expression.type !== 'LiteralExpression') throw new Error('Unexpected expression token')
+    if (expression.type !== 'LiteralExpression') {
+      throw new Error(`missing value after "${field?.name ?? ''}:"`)
+    }
   
     const fieldName = field?.name || 'all'
     const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
@@ -211,8 +263,11 @@ export class QueryBuilder {
     }
   
     if (ast.type === 'LogicalExpression') {
+      const operator = ast.operator.operator.toLowerCase()
+      // De Morgan: NOT distributes over AND/OR by flipping the connective, e.g. NOT (a OR b) = NOT a AND NOT b.
+      const connective = exclude ? (operator === 'and' ? 'or' : 'and') : operator
       return {
-        [ast.operator.operator.toLowerCase()]: [this.serialize(ast.left, exclude), this.serialize(ast.right, exclude)]
+        [connective]: [this.serialize(ast.left, exclude), this.serialize(ast.right, exclude)]
       }
     }
   
@@ -227,12 +282,46 @@ export class QueryBuilder {
     throw new Error('Unexpected AST type.')
   }
 
+  // nearley's parser.results is typed `any[]`; the grammar guarantees each
+  // result matches the Ast shape declared in grammar/grammar.d.ts.
+  private runParser (queryToFeed: string, typedQuery: string): Ast {
+    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
+    try {
+      parser.feed(queryToFeed)
+    } catch (error) {
+      const rawMessage = error instanceof Error ? error.message : String(error)
+      throw Object.assign(
+        new Error(`Failed to parse query "${typedQuery}": ${formatParseError(rawMessage)}`),
+        { cause: error }
+      )
+    }
+    if (parser.results.length === 0) {
+      const lexerState = parser.lexerState as { line?: number, col?: number } | undefined
+      const position = lexerState?.line !== undefined && lexerState.col !== undefined
+        ? ` at line ${lexerState.line}, col ${lexerState.col}`
+        : ''
+      throw new Error(`Failed to parse query "${typedQuery}": incomplete query, unexpected end of input${position}`)
+    }
+    if (parser.results.length > 1) {
+      console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
+    }
+    return parser.results[0] as Ast
+  }
+
   public parseQueryString (queryString?: string) {
     if (!queryString) return
     const typedQuery = querySchema.parse(queryString)
-    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
+    const balancedQuery = balanceQuery(typedQuery)
+    let parsedQuery: Ast
     try {
-      parser.feed(typedQuery)
+      parsedQuery = this.runParser(balancedQuery, typedQuery)
+    } catch (error) {
+      // Re-report against what the user typed, never against an auto-added `)`/`"`.
+      if (balancedQuery === typedQuery) throw error
+      parsedQuery = this.runParser(typedQuery, typedQuery)
+    }
+    try {
+      return this.serialize(parsedQuery)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw Object.assign(
@@ -240,15 +329,5 @@ export class QueryBuilder {
         { cause: error }
       )
     }
-    if (parser.results.length === 0) {
-      throw new Error(`Failed to parse query "${typedQuery}": unexpected end of input`)
-    }
-    if (parser.results.length > 1) {
-      console.warn(`Ambiguous query "${typedQuery}": ${parser.results.length} possible parses`)
-    }
-    // nearley's parser.results is typed `any[]`; the grammar guarantees each
-    // result matches the Ast shape declared in grammar/grammar.d.ts.
-    const parsedQuery = parser.results[0] as Ast
-    return this.serialize(parsedQuery)
   }
 }
