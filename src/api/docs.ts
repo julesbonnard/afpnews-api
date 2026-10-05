@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import type { AdditionalParamValue, SearchFilters, SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
+import type { AdditionalParamValue, AfpFieldMapping, SearchFilters, SearchMeta, SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -15,10 +15,12 @@ import { FilterCenter } from './filter.js'
  * au profit de `params.filters`. Garde les entrées qui ont la forme d'un filtre et ignore les autres
  * (booléens, valeurs absentes, objets d'options).
  */
+const FILTER_OPERATORS = ['in', 'exclude', 'and', 'contains', 'range', 'exists']
+
 function legacyFilters (rest: Record<string, unknown>): SearchFilters {
   const isFilterValue = (value: unknown): value is AdditionalParamValue =>
     typeof value === 'string' || typeof value === 'number' || Array.isArray(value) ||
-    (typeof value === 'object' && value !== null && ('in' in value || 'exclude' in value))
+    (typeof value === 'object' && value !== null && FILTER_OPERATORS.some(operator => operator in value))
   const filters: SearchFilters = {}
   for (const [name, value] of Object.entries(rest)) {
     if (isFilterValue(value)) filters[name] = value
@@ -59,7 +61,8 @@ const searchResponse = z.object({
   response: z.object({
     docs: z.unknown().array().default([]),
     numFound: z.number().default(0),
-    facets: z.record(z.string(), facetBuckets).optional()
+    facets: z.record(z.string(), facetBuckets).optional(),
+    relation: z.enum(['eq', 'gt']).optional()
   })
 })
 
@@ -70,6 +73,19 @@ const listResponse = z.object({
       count: z.number()
     }).array().default([]),
     numFound: z.number().default(0)
+  })
+})
+
+// Forme constatée en prod (le YAML décrit à tort `response.fields[]`).
+const mappingResponse = z.object({
+  response: z.object({
+    mapping: z.record(z.string(), z.looseObject({
+      type: z.string(),
+      facet: z.boolean(),
+      analyzer: z.string().optional(),
+      term_vector: z.string().optional(),
+      store: z.boolean().optional()
+    }))
   })
 })
 
@@ -103,6 +119,8 @@ export class Docs extends Auth {
       wantCluster,
       wantedFacets,
       sort,
+      exactNumFound,
+      dateField,
       filters,
       ...rest
     } = Object.assign({}, defaultSearchParams, params)
@@ -119,6 +137,8 @@ export class Docs extends Auth {
       .setWantCluster(wantCluster)
       .setWantedFacets(wantedFacets)
       .setMultiSort(sort)
+      .setExactNumFound(exactNumFound)
+      .setDateField(dateField)
       .addFilters(legacyFilters(rest))
       .addFilters(filters)
       .build()
@@ -130,7 +150,7 @@ export class Docs extends Auth {
    * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[]; facets?: Record<string, AfpFacetValue[]> }>
+  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[] } & SearchMeta>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model
    * @param params - An object containing the search parameters
@@ -138,7 +158,7 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
    * @returns An object containing the parsed documents and their count
    */
-  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[]; facets?: Record<string, AfpFacetValue[]> }>
+  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] } & SearchMeta>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model, skipping any
    * document that fails to parse instead of failing the whole request
@@ -147,8 +167,8 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true, lenient: true }` to skip malformed documents
    * @returns An object containing the parsed documents, their count, and how many were skipped
    */
-  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number; facets?: Record<string, AfpFacetValue[]> }>
-  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number; facets?: Record<string, AfpFacetValue[]> }> {
+  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number } & SearchMeta>
+  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number } & SearchMeta> {
     const body = this.prepareRequest(params, this.withMandatorySocle(fields, options?.parse))
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
@@ -157,10 +177,9 @@ export class Docs extends Auth {
       params: { wt: 'json' }
     }))
 
-    const { response: { docs: documents, numFound: count, facets } } = searchResponse.parse(data)
+    const { response: { docs: documents, numFound: count, facets, relation } } = searchResponse.parse(data)
 
-    const result = applyParseOption(count, documents, options)
-    return facets ? { ...result, facets } : result
+    return { ...applyParseOption(count, documents, options), ...(facets && { facets }), ...(relation && { relation }) }
   }
 
   /**
@@ -355,23 +374,18 @@ export class Docs extends Auth {
   }
 
   /**
-   * Get the API field mapping
+   * Get the API field mapping: every indexed field (464 in prod, Oct. 2026) with its type and whether it is
+   * facetable. `lang` is required (the API returns an empty mapping without it) but does not change the result.
    * @param lang - The language for the mapping
-   * @returns The mapping object
+   * @returns The mapping, keyed by field name
    */
-  public async mapping (lang: string) {
+  public async mapping (lang: string): Promise<AfpFieldMapping> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mapping`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json', lang }
     }))
 
-    const { response: { mapping } } = z.object({
-      response: z.object({
-        mapping: z.unknown()
-      })
-    }).parse(data)
-
-    return mapping
+    return mappingResponse.parse(data).response.mapping
   }
 
   /**

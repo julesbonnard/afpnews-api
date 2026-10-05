@@ -9,7 +9,7 @@ const querySchema = z.string().default('')
 
 /**
  * Convertit un filtre en conditions de requête : une valeur ou une liste devient `in` ; un objet donne
- * une condition par opérateur renseigné (deux si `in` et `exclude` le sont). Valeur vide → aucune condition.
+ * une condition par opérateur renseigné (voir `AdditionalParamValue`). Valeur vide → aucune condition.
  */
 function toConditions (name: string, value: AdditionalParamValue): SearchQuery[] {
   if (typeof value === 'string' || typeof value === 'number') return value === '' ? [] : [{ name, in: [value] }]
@@ -18,6 +18,10 @@ function toConditions (name: string, value: AdditionalParamValue): SearchQuery[]
   const conditions: SearchQuery[] = []
   if (value.in?.length) conditions.push({ name, in: value.in })
   if (value.exclude?.length) conditions.push({ name, exclude: value.exclude })
+  if (value.and?.length) conditions.push({ name, and: value.and })
+  if (value.contains) conditions.push({ name, contains: value.contains })
+  if (value.range) conditions.push({ name, range: value.range })
+  if (value.exists !== undefined) conditions.push(value.exists ? { having: name } : { missing: name })
   return conditions
 }
 
@@ -90,6 +94,8 @@ export class QueryBuilder {
   public wantCluster?: boolean
   public wantedFacets?: WantedFacets
   public multiSort?: SortEntry[]
+  public exactNumFound?: boolean | number
+  public dateField?: string
   private additionalParams: SearchQuery[] = []
 
   constructor (fields?: string[]) {
@@ -140,6 +146,16 @@ export class QueryBuilder {
     return this
   }
 
+  public setExactNumFound (exactNumFound?: boolean | number) {
+    if (exactNumFound !== undefined) this.exactNumFound = exactNumFound
+    return this
+  }
+
+  public setDateField (dateField?: string) {
+    if (dateField) this.dateField = dateField
+    return this
+  }
+
   public setDateGap (dateGap?: string) {
     if (dateGap) this.dateGap = dateGap
     return this
@@ -183,6 +199,7 @@ export class QueryBuilder {
   public build () {
     const request: SearchRequest = {
       dateRange: {
+        ...(this.dateField ? { targetField: this.dateField } : {}),
         from: this.dateFrom,
         to: this.dateTo
       },
@@ -200,6 +217,7 @@ export class QueryBuilder {
     if (this.wantCluster !== undefined) request.wantCluster = this.wantCluster
     if (this.wantedFacets) request.wantedFacets = this.wantedFacets
     if (this.multiSort) request.sort = this.multiSort
+    if (this.exactNumFound !== undefined) request.exactNumFound = this.exactNumFound
 
     return request
   }

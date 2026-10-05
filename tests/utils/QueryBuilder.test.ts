@@ -241,6 +241,39 @@ describe('QueryBuilder', () => {
       expect(result.query!.and).toEqual([{ name: 'revision', in: [0] }])
     })
 
+    it('should turn each filter operator into its own condition', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({
+          topic: { and: ['alc-fr', 'base-illimitee-afpnews-fr'] },
+          news: { contains: '"Jean-Vincent Placé"' },
+          wordCount: { range: { from: 300, to: 800, toExcluded: true } },
+          genre: { exists: true },
+          embargoed: { exists: false }
+        })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'topic', and: ['alc-fr', 'base-illimitee-afpnews-fr'] },
+        { name: 'news', contains: '"Jean-Vincent Placé"' },
+        { name: 'wordCount', range: { from: 300, to: 800, toExcluded: true } },
+        { having: 'genre' },
+        { missing: 'embargoed' }
+      ])
+    })
+
+    it('should combine several operators on the same field', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ topic: { in: ['ONLINE-NEWS-EN'], exclude: ['ONLINE-NEWS-EN_MIDDLE-EAST'] } })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'topic', in: ['ONLINE-NEWS-EN'] },
+        { name: 'topic', exclude: ['ONLINE-NEWS-EN_MIDDLE-EAST'] }
+      ])
+    })
+
     it('should skip empty array additional params', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
@@ -598,6 +631,22 @@ describe('QueryBuilder', () => {
       const result = qb.parseQueryString('NOT (a OR (b AND c))')
       expect(result!.and).toBeDefined()
       expect(result!.and![1].or).toBeDefined()
+    })
+  })
+
+  describe('setExactNumFound / setDateField', () => {
+    it('should send exactNumFound (boolean or bound) and dateRange.targetField', () => {
+      expect(new QueryBuilder().setExactNumFound(false).build().exactNumFound).toBe(false)
+      expect(new QueryBuilder().setExactNumFound(1000).build().exactNumFound).toBe(1000)
+
+      const result = new QueryBuilder().setDateRange('now-7d', 'now').setDateField('contentCreated').build()
+      expect(result.dateRange).toEqual({ targetField: 'contentCreated', from: 'now-7d', to: 'now' })
+    })
+
+    it('should leave both out when not set', () => {
+      const result = new QueryBuilder().build()
+      expect(result).not.toHaveProperty('exactNumFound')
+      expect(result.dateRange).not.toHaveProperty('targetField')
     })
   })
 

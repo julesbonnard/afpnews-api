@@ -4,14 +4,28 @@ import type { AfpDocumentClassSchema } from './utils/parseDocument.js'
 
 type StringOrNumber = string | number
 
+/** Intervalle de l'opérateur `range` : bornes incluses par défaut, l'une des deux peut manquer. */
+export type SearchRange = {
+  from?: StringOrNumber
+  to?: StringOrNumber
+  fromExcluded?: boolean
+  toExcluded?: boolean
+}
+
 export type SearchQuery = {
-  and?: SearchQuery[]
+  /** Sans `name` : conditions à combiner. Avec `name` : valeurs que le document doit toutes porter. */
+  and?: SearchQuery[] | StringOrNumber[]
   or?: SearchQuery[]
   name?: string
   in?: StringOrNumber[]
-  contains?: string[]
+  contains?: string | string[]
   fullText?: boolean
   exclude?: StringOrNumber[]
+  range?: SearchRange
+  /** Nom d'un champ qui doit être présent */
+  having?: string
+  /** Nom d'un champ qui doit être absent */
+  missing?: string
 }
 
 export type SearchQuerySortOrder = 'asc' | 'desc'
@@ -29,6 +43,31 @@ export type AfpFacetValue = {
   count: number
 }
 
+/**
+ * Filtre sur un champ. Une valeur ou une liste vaut `in`. Un objet combine des opérateurs, chacun
+ * donnant une condition (toutes combinées en ET) :
+ * - `in` : au moins une des valeurs ; `exclude` : aucune ; `and` : toutes les valeurs ;
+ * - `contains` : recherche textuelle (`'"expression exacte"'` entre guillemets) ;
+ * - `range` : intervalle ; `exists` : champ présent (`true`) ou absent (`false`).
+ */
+/**
+ * Informations renvoyées par `search()` en plus des documents : facettes demandées via `wantedFacets`,
+ * et `relation` (`eq` : total exact ; `gt` : total supérieur à la borne demandée via `exactNumFound`).
+ */
+export type SearchMeta = {
+  facets?: Record<string, AfpFacetValue[]>
+  relation?: 'eq' | 'gt'
+}
+
+/** Résultat de `mapping()` : chaque champ indexé, par nom. */
+export type AfpFieldMapping = Record<string, {
+  type: string
+  facet: boolean
+  analyzer?: string
+  term_vector?: string
+  store?: boolean
+}>
+
 export type AdditionalParamValue =
   string |
   number |
@@ -37,6 +76,10 @@ export type AdditionalParamValue =
   {
     in?: StringOrNumber[]
     exclude?: StringOrNumber[]
+    and?: StringOrNumber[]
+    contains?: string
+    range?: SearchRange
+    exists?: boolean
   }
 
 /** Filtres par champ : `{ country: 'fra', urgency: [1, 2], class: { exclude: ['picture'] } }`. */
@@ -60,6 +103,10 @@ export type SearchQueryParams = Partial<{
   wantCluster: boolean
   wantedFacets: WantedFacets
   sort: SortEntry[]
+  /** `true` : total exact ; `false` : pas de total (requête plus légère) ; nombre : total borné à cette valeur */
+  exactNumFound: boolean | number
+  /** Champ de date auquel s'appliquent `dateFrom`/`dateTo` (`dateRange.targetField`) ; `published` par défaut côté API */
+  dateField: string
   filters: SearchFilters
   /** @deprecated Passer les filtres dans `filters`. */
   [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | SearchFilters
@@ -89,7 +136,9 @@ export type SearchRequest = {
   dateRange: {
     from: string
     to: string
+    targetField?: string
   }
+  exactNumFound?: boolean | number
   query?: SearchQuery
   uno?: string
   fields?: string[]

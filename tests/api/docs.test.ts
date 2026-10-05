@@ -125,6 +125,20 @@ describe('Docs', () => {
       })
     })
 
+    it('should send exactNumFound and dateField as options, not as filters, and return relation', async () => {
+      mockFetch({ response: { docs: [], numFound: 1000, relation: 'gt' } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({ exactNumFound: 1000, dateField: 'contentCreated', dateFrom: 'now-7d' })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      const body = JSON.parse(init!.body as string) as SearchRequest
+      expect(body.exactNumFound).toBe(1000)
+      expect(body.dateRange).toEqual({ targetField: 'contentCreated', from: 'now-7d', to: 'now' })
+      expect(body.query).toBeUndefined()
+      expect(result.relation).toBe('gt')
+    })
+
     it('should still read deprecated flat filters, and ignore entries that are not filters', async () => {
       mockFetch({ response: { docs: [], numFound: 0 } })
 
@@ -826,13 +840,17 @@ describe('Docs', () => {
   })
 
   describe('mapping', () => {
-    it('should fetch mapping and return response.mapping', async () => {
-      const mappingData = { response: { mapping: { fields: ['uno', 'title'] } } }
-      mockFetch(mappingData)
+    it('should fetch mapping and return response.mapping (prod shape, keyed by field)', async () => {
+      const mapping = {
+        title: { analyzer: 'search_langue', type: 'text', facet: false },
+        country: { type: 'keyword', facet: true }
+      }
+      mockFetch({ response: { status: { code: 0, reason: 'Success' }, took: 3, numFound: 2, mapping } })
       const docs = createAuthenticatedDocs()
       const result = await docs.mapping('en')
 
-      expect(result).toEqual({ fields: ['uno', 'title'] })
+      expect(result).toEqual(mapping)
+      expect(result.country?.facet).toBe(true)
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mapping')

@@ -147,6 +147,28 @@ const { documents } = await afp.search({
 })
 ```
 
+An object can use several operators; each one becomes a separate condition:
+
+| Operator | Meaning | Example |
+|---|---|---|
+| `in` | at least one of the values | `{ class: { in: ['text', 'picture'] } }` |
+| `exclude` | none of the values | `{ genreid: { exclude: ['afpedtype:docrobot'] } }` |
+| `and` | all of the values | `{ topic: { and: ['alc-fr', 'base-illimitee-afpnews-fr'] } }` |
+| `contains` | full-text search in a text field (quote for an exact phrase) | `{ news: { contains: '"Jean-Vincent Placé"' } }` |
+| `range` | interval, bounds included unless `fromExcluded` / `toExcluded` | `{ wordCount: { range: { from: 300, to: 800 } } }` |
+| `exists` | field present (`true`) or absent (`false`) | `{ genre: { exists: false } }` |
+
+Two options are related: `dateField` picks the date field `dateFrom` / `dateTo` apply to (`published` by default), and `exactNumFound` controls the total count (`true`: exact; `false`: none, lighter request; a number: bounded, with `relation: 'gt'` in the result when the total exceeds it).
+
+```js
+const { documents, relation } = await afp.search({
+  dateField: 'contentCreated',
+  dateFrom: 'now-7d',
+  exactNumFound: 1000,
+  filters: { class: 'text', wordCount: { range: { from: 600 } } }
+})
+```
+
 > Deprecated: filters passed as flat keys (`afp.search({ country: 'fra' })`) still work but will be removed in 4.0. Move them into `filters`.
 
 ### Specify Response Fields
@@ -345,7 +367,9 @@ const html = afp.getStoryHtml(doc)
 | `dateGap` | `string` | — | Date gap for facet ranges (e.g. `'+1HOUR'`, `'+1DAY'`) |
 | `wantedFacets` | `WantedFacets` | — | Facets configuration `{ facetName: { size, minDocCount }, empty?: boolean }` |
 | `sort` | `SortEntry[]` | — | Multi-field sort `[{ sortField, sortOrder }]` |
-| `filters` | `SearchFilters` | — | Field filters `{ field: value \| value[] \| { in, exclude } }` (see Field Filters) |
+| `filters` | `SearchFilters` | — | Field filters `{ field: value \| value[] \| { in, exclude, and, contains, range, exists } }` (see Field Filters) |
+| `dateField` | `string` | `'published'` (API) | Date field `dateFrom` / `dateTo` apply to (`dateRange.targetField`) |
+| `exactNumFound` | `boolean \| number` | — | Total count: exact, none, or bounded |
 
 Any other key-value pair is still read as a field filter, but this is deprecated (removed in 4.0): use `filters`.
 
