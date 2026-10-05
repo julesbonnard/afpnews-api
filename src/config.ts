@@ -12,13 +12,8 @@ export const maxRowsByRequest = 10000
 
 import { TEXT_FIELDS } from './searchFields.js'
 
-/** Champs interrogés avec `contains` par le langage de requête : `all` (champ virtuel) et les champs texte de la doc. */
 export const fullTextSearchFields: readonly string[] = ['all', ...TEXT_FIELDS]
 
-/**
- * Champs texte qui ont un équivalent traduit `translated.{lang}.<champ>` dans le mapping de prod (oct. 2026).
- * La doc (search-index-fields) ne cite que `all` et `news`.
- */
 export const translatedSearchFields: readonly string[] = ['all', 'news', 'title', 'headline', 'subheadline', 'caption', 'script']
 
 export const langsWithTranslation = ['fr', 'en', 'es', 'de', 'pt', 'ar']

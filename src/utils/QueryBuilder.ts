@@ -25,7 +25,6 @@ function toConditions (name: string, value: AdditionalParamValue): SearchQuery[]
   return conditions
 }
 
-// Borne d'intervalle du langage de requête : nombre si elle en a la forme (`300`), sinon chaîne (`now-7d`).
 const toBound = (bound?: string): string | number | undefined =>
   bound !== undefined && /^-?\d+(\.\d+)?$/.test(bound) ? Number(bound) : bound
 
@@ -237,7 +236,6 @@ export class QueryBuilder {
     if (expression.type !== 'LiteralExpression') {
       throw new Error(`missing value after "${field?.name ?? ''}:"`)
     }
-    // `_exists_:genre` : champ présent ; sous NOT, champ absent.
     if (field?.name === '_exists_') {
       const name = String(expression.value)
       return [exclude ? { missing: name } : { having: name }]

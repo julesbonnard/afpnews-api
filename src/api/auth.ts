@@ -39,7 +39,6 @@ const userSchema = z.object({
   })
 })
 
-// Renouvellement anticipé : un jeton qui expire dans moins de 30 s est traité comme expiré
 const TOKEN_EXPIRY_MARGIN_MS = 30_000
 
 export class Auth extends EventEmitter {
@@ -88,8 +87,6 @@ export class Auth extends EventEmitter {
   public async authenticate (credentials?: AuthUserCredentials) {
     if (credentials) {
       if (!this.apiKey) throw new Error('Missing API Key to make authenticated requests')
-      // Une connexion passe après la demande en cours : sinon un refresh qui répondrait après elle
-      // écraserait le jeton de connexion. Les appels lancés pendant la connexion l'attendent.
       const previous = this.pendingToken?.catch(() => undefined)
       return this.trackPendingToken(previous
         ? previous.then(() => this.requestAuthenticatedToken(credentials))
@@ -104,7 +101,6 @@ export class Auth extends EventEmitter {
     return this.trackPendingToken(refresh ? this.requestRefreshToken() : this.requestAnonymousToken())
   }
 
-  // Une seule demande de jeton active à la fois ; elle ne se retire que si elle n'a pas été remplacée.
   private trackPendingToken (request: Promise<AuthToken>) {
     const pending: Promise<AuthToken> = request.finally(() => {
       if (this.pendingToken === pending) this.pendingToken = undefined

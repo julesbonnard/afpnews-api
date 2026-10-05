@@ -42,7 +42,6 @@ export const FIELD_SOURCES = {
   medias: ['bagItem'],
   topics: ['topic'],
   topshot: ['rating'],
-  // Repli sur bagItem[0].caption pour picture/graphic (voir parseDocument).
   caption: ['caption', 'captionContext', 'bagItem'],
   shots: ['news'],
   href: ['href'],

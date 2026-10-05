@@ -90,7 +90,6 @@ function retryDelay (error: unknown): number | undefined {
     const wait = Math.max(error.expireAt.getTime() - Date.now(), 0)
     return wait <= MAX_RETRY_WAIT_MS ? wait : undefined
   }
-  // 5xx transitoire : backoff court avec gigue, pour ne pas renvoyer tous les appels en même temps
   return 500 + Math.random() * 1000
 }
 
@@ -194,9 +193,6 @@ export async function postForm (
   }: {
     headers: AuthorizationHeaders
   }) {
-  // Corps urlencoded (exigé par la doc) : les identifiants restent dans le corps, jamais dans l'URL ni les
-  // journaux d'accès. Content-Type laissé à fetch, qui ajoute `charset=UTF-8` (mots de passe accentués).
-  // Pas de nouvel essai : rejouer un refresh peut invalider le jeton obtenu par le premier appel.
   return fetchJson(url, 'POST', headers, new URLSearchParams(formData), false)
 }
 

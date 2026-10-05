@@ -51,8 +51,6 @@ function applyParseOption (
   return { count, documents: documents.map(doc => parseDocument(doc)) }
 }
 
-// Taille d'une page de searchAll (une recherche peut aller jusqu'à maxRowsByRequest, mais des pages
-// plus petites gardent des réponses légères).
 const SEARCH_ALL_PAGE_SIZE = 1000
 
 const facetBuckets = z.object({ value: z.string(), occurence: z.number() }).array()
@@ -77,7 +75,6 @@ const listResponse = z.object({
   })
 })
 
-// Forme constatée en prod (le YAML décrit à tort `response.fields[]`).
 const mappingResponse = z.object({
   response: z.object({
     mapping: z.record(z.string(), z.looseObject({
@@ -178,9 +175,10 @@ export class Docs extends Auth {
       params: { wt: 'json' }
     }))
 
-    const { response: { docs: documents, numFound: count, facets, relation } } = searchResponse.parse(data)
+    const { response } = searchResponse.parse(data)
+    const result = applyParseOption(response.numFound, response.docs, options)
 
-    return { ...applyParseOption(count, documents, options), ...(facets && { facets }), ...(relation && { relation }) }
+    return { ...result, facets: response.facets, relation: response.relation }
   }
 
   /**
@@ -210,60 +208,56 @@ export class Docs extends Auth {
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): AsyncGenerator<unknown> {
     const maxSize = params.size ?? defaultSearchParams.size
     const sortField = params.sortField ?? defaultSearchParams.sortField
-    // Pagination par curseur sur le champ de tri quand c'est une date (la fenêtre doit alors porter sur ce
-    // champ, d'où dateField) ; sinon simple pagination par startAt.
     const cursorOnDate = (DATE_FIELDS as readonly string[]).includes(sortField)
     const bound = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
-    const pageParams: SearchQueryParams = { ...params, ...(cursorOnDate && { dateField: sortField }) }
-    // fields: [] = toutes les colonnes ; sinon le curseur a besoin du champ de tri et de uno.
-    const pageFields = fields.length > 0 ? [...new Set([...this.withMandatorySocle(fields, options?.parse), sortField, 'uno'])] : fields
+
+    const pageParams: SearchQueryParams = { ...params }
+    if (cursorOnDate) pageParams.dateField = sortField
+
+    let pageFields = this.withMandatorySocle(fields, options?.parse)
+    if (pageFields.length > 0) pageFields = [...new Set([...pageFields, sortField, 'uno'])]
 
     let yielded = 0
     let startAt = params.startAt ?? 0
-    let boundary: unknown
-    // Documents déjà renvoyés qui portent la valeur de borne : la page suivante, bornée de façon inclusive,
-    // commence par eux. On les saute avec startAt (pas de doublon, pas de boucle si toute une page partage
-    // la même date) ; la déduplication par uno reste un filet de sécurité.
-    // ponytail: suppose un ordre stable entre documents de même date ; sinon l'un d'eux peut être sauté.
-    // Si ça se produit, ajouter un second tri sur `timestamp` (recette « flux temps réel » de la doc).
-    let unosAtBoundary = new Set<string>()
+    let cursor: unknown
+    let seen = new Set<unknown>()
 
     while (yielded < maxSize) {
       const size = Math.min(maxSize - yielded, SEARCH_ALL_PAGE_SIZE)
       const { documents } = await this.search({ ...pageParams, size, startAt }, pageFields)
+      const page = documents as Record<string, unknown>[]
       const yieldedBefore = yielded
 
-      for (const doc of documents) {
-        const { uno, [sortField]: value } = doc as Record<string, unknown>
-        if (typeof uno === 'string' && value === boundary && unosAtBoundary.has(uno)) continue
+      for (const doc of page) {
+        if (seen.has(doc.uno)) continue
         yielded++
-        if (!options?.parse) yield doc
-        else if (!options.lenient) yield parseDocument(doc)
-        else {
+        if (!options?.parse) {
+          yield doc
+          continue
+        }
+        if (options.lenient) {
           const parsed = safeParseDocument(doc)
           if (parsed) yield parsed
+          continue
         }
+        yield parseDocument(doc)
       }
 
-      // Page incomplète : fin des résultats. Page sans aucun nouveau document : on n'avance plus, on s'arrête.
-      if (documents.length < size || yielded === yieldedBefore) return
+      if (page.length < size || yielded === yieldedBefore) return
 
       if (!cursorOnDate) {
-        startAt += documents.length
+        startAt += page.length
         continue
       }
 
-      const last = documents[documents.length - 1] as Record<string, unknown>
-      const lastValue = last[sortField]
+      const lastValue = page[page.length - 1]?.[sortField]
       if (typeof lastValue !== 'string') throw new Error(`searchAll: document without "${sortField}", cannot paginate`)
-      const atLast = documents
-        .map(doc => doc as Record<string, unknown>)
-        .filter(doc => doc[sortField] === lastValue)
-        .map(doc => String(doc.uno))
-      unosAtBoundary = lastValue === boundary ? new Set([...unosAtBoundary, ...atLast]) : new Set(atLast)
-      boundary = lastValue
+      if (lastValue !== cursor) seen = new Set()
+      for (const doc of page) if (doc[sortField] === lastValue) seen.add(doc.uno)
+
+      cursor = lastValue
       pageParams[bound] = lastValue
-      startAt = unosAtBoundary.size
+      startAt = seen.size
     }
   }
 
@@ -349,7 +343,6 @@ export class Docs extends Auth {
    * @returns An object containing the keywords (typed, zod-validated `AfpFacetValue[]`) and their count
    */
   public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1): Promise<{ count: number; keywords: AfpFacetValue[] }> {
-    // `size` = nombre de valeurs de facette, en query ; 100 est le défaut constaté côté API.
     const { size = 100, ...searchParams } = params
     const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, searchParams), [])
 
@@ -407,8 +400,7 @@ export class Docs extends Auth {
   }
 
   /**
-   * Get the API field mapping: every indexed field (464 in prod, Oct. 2026) with its type and whether it is
-   * facetable. `lang` is required (the API returns an empty mapping without it) but does not change the result.
+   * Get the API field mapping
    * @param lang - The language for the mapping
    * @returns The mapping, keyed by field name
    */

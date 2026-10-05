@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia } from '../types.js'
+import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
 import { parseShotList } from './shotlist.js'
 
 const EventSchema = z.object({
@@ -7,22 +7,15 @@ const EventSchema = z.object({
   keyword: z.string()
 })
 
-// Valeurs vérifiées en prod sur un an (facette signal, octobre 2026) : update, correction, cwarn.
-// Un document peut en porter plusieurs (ex. ["update", "cwarn"]).
 const SignalEnum = z.enum(['correction', 'update', 'cwarn'])
 const SignalInput = z.union([SignalEnum, z.array(SignalEnum)])
 
-// La facette status renvoie usable/withheld/canceled en minuscules, les documents "Usable"/"Canceled" :
-// on normalise la casse vers l'enum. Une valeur vide vaut usable (doc rights-restrictions#status).
 const STATUSES = ['Usable', 'Canceled', 'Embargoed', 'WithHeld'] as const
 const StatusInput = z.string()
   .transform(value => value.trim() === '' ? 'Usable' : STATUSES.find(status => status.toLowerCase() === value.toLowerCase()) ?? value)
   .pipe(z.enum(STATUSES))
 
-// Champs enrichis (droits, cycle de vie, classification) : jamais bloquants. Une forme inattendue donne
-// `undefined` au lieu de rejeter le document — un rejet le ferait disparaître en mode lenient.
 const tolerant = <T extends z.ZodType>(schema: T) => schema.optional().catch(undefined)
-// Une chaîne ou une liste de chaînes, selon la classe (ex. genreid : chaîne pour un texte, liste pour une vidéo).
 const StringList = z.union([z.string(), z.string().array()]).transform(v => Array.isArray(v) ? v : [v])
 
 const UsageRightSchema = z.object({ phrase: z.string(), name: z.string().optional() })
@@ -56,8 +49,6 @@ export const AfpDocumentClassSchema = z.enum([
   'webstory'
 ])
 
-// Tout composant d'un média, y compris sans dimensions (constaté en prod) : Zip, Preview et ZipVideoSet
-// d'une webstory sont des `CompressedContent`, sa Mpeg4 une `Video` sans width/height.
 const MediaComponentSchema = z.object({
   role: z.string(),
   type: z.string(),
@@ -69,20 +60,16 @@ const MediaComponentSchema = z.object({
   duration: z.number().optional()
 })
 
-// `renditions` garde son contrat : images et vidéos dimensionnées.
-const MediaRenditionSchema = MediaComponentSchema.extend({
-  type: z.enum(['Photo', 'Video', 'Graphic']),
-  width: z.number(),
-  height: z.number()
-})
-
-// Garde les éléments conformes au schéma et ignore les autres (un composant mal formé ne rejette pas le document).
-function keepValid<T extends z.ZodType> (items: unknown[], schema: T): z.infer<T>[] {
-  return items.flatMap(item => {
-    const parsed = schema.safeParse(item)
-    return parsed.success ? [parsed.data] : []
-  })
+function makeFilteredArraySchema<T extends z.ZodType> (schema: T) {
+  return z.array(z.unknown()).transform(items =>
+    items.filter((item): item is z.infer<T> => schema.safeParse(item).success)
+  )
 }
+
+type MediaComponent = z.infer<typeof MediaComponentSchema>
+
+const isRendition = (component: MediaComponent): component is AfpMediaRendition =>
+  ['Photo', 'Video', 'Graphic'].includes(component.type) && component.width !== undefined && component.height !== undefined
 
 const BagItemSchema = z.object({
   uno: z.string(),
@@ -90,7 +77,7 @@ const BagItemSchema = z.object({
   provider: z.object({ name: z.string() }).optional(),
   caption: z.string().optional(),
   newslines: z.object({ dateline: z.string().default('') }).optional(),
-  medias: z.array(z.unknown()).default([])
+  medias: makeFilteredArraySchema(MediaComponentSchema).default([])
 })
 
 export const DocumentSourceSchema = z.object({
@@ -186,8 +173,8 @@ function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
     provider: bagItem.provider?.name,
     caption: bagItem.caption,
     dateline: bagItem.newslines?.dateline ?? '',
-    renditions: keepValid(bagItem.medias, MediaRenditionSchema),
-    components: keepValid(bagItem.medias, MediaComponentSchema)
+    renditions: bagItem.medias.filter(isRendition),
+    components: bagItem.medias
   }
 }
 
@@ -237,8 +224,6 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     genre: doc.genre?.[0],
     genres: doc.genre,
     genreIds: doc.genreid,
-    // afpedtype : types éditoriaux, cumulables (2 à 5 sur une vidéo) ; afpattribute : au plus un par document
-    // (vérifié en prod sur 1 600 documents, oct. 2026).
     editorialTypes: doc.genreid?.filter(id => id.startsWith('afpedtype:')),
     editorialAttribute: doc.genreid?.find(id => id.startsWith('afpattribute:')),
     ratings: doc.rating?.map(({ ratingtype, value, scalemin, scalemax, scaleunit }) =>
@@ -276,8 +261,6 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
   }
 }
 
-// TOPSHOT = sélection photo AFP Forum (doc, guide photo) ; ce n'est pas urgency 1 (Flash), qui concerne
-// des milliers de photos par semaine contre quelques centaines de TOPSHOTS (constaté en prod, oct. 2026).
 function isTopshot (doc: DocumentSource): boolean {
   return doc.rating?.some(rating => rating.ratingtype === 'afpratingtype:afpforum' && rating.value === 60) ?? false
 }
@@ -334,7 +317,6 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
-        // captionContext = même légende sans le marqueur final (« STOCKSHOTS »…) : la doc le recommande pour la vidéo.
         caption: doc.captionContext ?? doc.caption?.[0] ?? '',
         shots: extractShots(doc.news),
         script: doc.script,

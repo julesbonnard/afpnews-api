@@ -92,7 +92,7 @@ describe('Docs', () => {
       const docs = createAuthenticatedDocs()
       const result = await docs.search()
 
-      expect(result).not.toHaveProperty('facets')
+      expect(result.facets).toBeUndefined()
     })
 
     it('should use existing valid token', async () => {

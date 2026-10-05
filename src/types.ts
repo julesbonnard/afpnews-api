@@ -213,7 +213,6 @@ export type AfpMediaRendition = {
   height: number
   href: string
   sizeInBytes?: number
-  /** Code de rendu, ex. `rnd:preview`, `afpveprnd:MP4_H264_1280x720p25_W` */
   rendition?: string
   /** Durée en secondes (vidéo) */
   duration?: number
@@ -293,7 +292,6 @@ export type AfpDocumentCommon = {
   title?: string
   creditLine?: string
   aspectRatios?: string[]
-  // Droits et mentions : à afficher ou à appliquer avant toute diffusion (doc « Droits, restrictions »)
   /** Copyright, à afficher aux utilisateurs finaux */
   copyright?: string
   /** Règles explicites, ex. `['GERMANY OUT']` */
@@ -306,11 +304,9 @@ export type AfpDocumentCommon = {
   countriesOnly?: string[]
   /** Le document ne doit plus être utilisé après cette date */
   expires?: Date
-  // Cycle de vie
   /** Statut de la première révision (`Usable`…) */
   initialStatus?: string
   contentWarnings?: AfpContentWarning[]
-  // Classification et contenu
   /** Tous les libellés `genre` (dans la langue du document) ; `genre` ne garde que le premier */
   genres?: string[]
   /** Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer */
