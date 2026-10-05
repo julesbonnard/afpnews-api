@@ -377,6 +377,21 @@ describe('parseDocument', () => {
       expect(doc.contentWarnings).toEqual([{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }])
     })
 
+    it('splits genreid into cumulative editorial types (afpedtype) and a single attribute (afpattribute)', () => {
+      const video = parseDocument({ ...VIDEO_DOC, genreid: ['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast', 'afpedtype:Images', 'afpattribute:Report'] })
+      expect(video.editorialTypes).toEqual(['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast', 'afpedtype:Images'])
+      expect(video.editorialAttribute).toBe('afpattribute:Report')
+
+      const text = parseDocument({ ...TEXT_DOC, genreid: 'afpedtype:Lead' })
+      expect(text.editorialTypes).toEqual(['afpedtype:Lead'])
+      expect(text.editorialAttribute).toBeUndefined()
+    })
+
+    it('exposes ratings', () => {
+      const doc = parseDocument({ ...PICTURE_DOC, rating: [{ ratingtype: 'afpratingtype:producer', scalemax: 5, value: 3, scaleunit: 'rscaleunit:star', scalemin: 0 }] })
+      expect(doc.ratings).toEqual([{ type: 'afpratingtype:producer', value: 3, scaleMin: 0, scaleMax: 5, unit: 'rscaleunit:star' }])
+    })
+
     it('keeps every genre and genreid, a string or a list depending on the class', () => {
       const doc = parseDocument(ENRICHED)
       expect(doc.genre).toBe('Actualité')
@@ -416,6 +431,23 @@ describe('parseDocument', () => {
     it('parses the caption (first line)', () => {
       const doc = parseDocument({ ...VIDEO_DOC, caption: ['Premiere ligne', 'Seconde ligne'] })
       expect(doc.caption).toBe('Premiere ligne')
+    })
+
+    it('prefers captionContext (same caption without the trailing STOCKSHOTS marker)', () => {
+      const doc = parseDocument({
+        ...VIDEO_DOC,
+        caption: ['STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh. STOCKSHOTS'],
+        captionContext: 'STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh.'
+      })
+      expect(doc.caption).toBe('STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh.')
+    })
+
+    it('keeps duration and rendition on video components', () => {
+      const doc = parseDocument({
+        ...VIDEO_DOC,
+        bagItem: [{ uno: 'v', medias: [{ duration: 55, role: 'Mpeg4-640x360_W', sizeInBytes: 7255427, rendition: 'afpveprnd:VID_MP4_H264_640x360p25_W', width: 640, type: 'Video', height: 360, href: 'https://example.com/v.mp4' }] }]
+      })
+      expect(doc.medias[0]?.renditions[0]).toMatchObject({ duration: 55, rendition: 'afpveprnd:VID_MP4_H264_640x360p25_W' })
     })
 
     it('falls back to an empty caption when caption is absent', () => {
@@ -506,6 +538,30 @@ describe('parseDocument', () => {
       expect(doc.href).toBe('https://example.com/webstory')
       expect(doc.medias).toHaveLength(1)
       expect(doc.paragraphs).toEqual([])
+    })
+
+    it('exposes every component in components, dimensionless ones included (Zip, ZipVideoSet, Mpeg4)', () => {
+      const href = 'https://example.com/objects/x'
+      const doc = parseDocument({
+        ...WEBSTORY_DOC,
+        bagItem: [{
+          uno: 'ws-uno',
+          medias: [
+            { role: 'Zip', sizeInBytes: 8154286, rendition: 'application/zip', type: 'CompressedContent', href },
+            { role: 'Preview', sizeInBytes: 8154286, rendition: 'rnd:preview', type: 'CompressedContent', href },
+            { role: 'ZipVideoSet', sizeInBytes: 94343724, rendition: 'afprnd:videoset', type: 'CompressedContent', href },
+            { role: 'Mpeg4', sizeInBytes: 94732183, rendition: 'afprnd:video', type: 'Video', href },
+            { role: 'Thumbnail', sizeInBytes: 24134, rendition: 'rnd:thumbnail', width: 240, type: 'Photo', height: 320, href }
+          ]
+        }]
+      })
+      const media = doc.medias[0]
+      // components : tout, dont les composants sans dimensions
+      expect(media?.components.map(c => c.role)).toEqual(['Zip', 'Preview', 'ZipVideoSet', 'Mpeg4', 'Thumbnail'])
+      expect(media?.components[0]).toEqual({ role: 'Zip', sizeInBytes: 8154286, rendition: 'application/zip', type: 'CompressedContent', href })
+      // renditions : contrat inchangé, images et vidéos dimensionnées seulement
+      expect(media?.renditions.map(r => r.role)).toEqual(['Thumbnail'])
+      expect(media?.renditions[0]?.width).toBe(240)
     })
   })
 })

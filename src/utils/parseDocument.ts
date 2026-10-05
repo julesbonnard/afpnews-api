@@ -28,7 +28,13 @@ const StringList = z.union([z.string(), z.string().array()]).transform(v => Arra
 const UsageRightSchema = z.object({ phrase: z.string(), name: z.string().optional() })
 const ExclusionSchema = z.object({ name: z.string(), type: z.string().optional(), untilDate: z.coerce.date().optional() })
 const ExcludeAudienceSchema = z.object({ qcode: z.string(), text: z.string().optional() })
-const RatingSchema = z.object({ ratingtype: z.string(), value: z.coerce.number() })
+const RatingSchema = z.object({
+  ratingtype: z.string(),
+  value: z.coerce.number(),
+  scalemin: z.coerce.number().optional(),
+  scalemax: z.coerce.number().optional(),
+  scaleunit: z.string().optional()
+})
 
 const HopHistorySchema = z.object({
   hop: z.array(z.object({
@@ -50,19 +56,32 @@ export const AfpDocumentClassSchema = z.enum([
   'webstory'
 ])
 
-const MediaRenditionSchema = z.object({
+// Tout composant d'un média, y compris sans dimensions (constaté en prod) : Zip, Preview et ZipVideoSet
+// d'une webstory sont des `CompressedContent`, sa Mpeg4 une `Video` sans width/height.
+const MediaComponentSchema = z.object({
   role: z.string(),
-  width: z.number(),
-  height: z.number(),
+  type: z.string(),
   href: z.url(),
-  type: z.enum(['Photo', 'Video', 'Graphic']),
-  sizeInBytes: z.number().optional()
+  width: z.number().optional(),
+  height: z.number().optional(),
+  sizeInBytes: z.number().optional(),
+  rendition: z.string().optional(),
+  duration: z.number().optional()
 })
 
-function makeFilteredArraySchema<T extends z.ZodType> (schema: T) {
-  return z.array(z.unknown()).transform(items =>
-    items.filter((item): item is z.infer<T> => schema.safeParse(item).success)
-  )
+// `renditions` garde son contrat : images et vidéos dimensionnées.
+const MediaRenditionSchema = MediaComponentSchema.extend({
+  type: z.enum(['Photo', 'Video', 'Graphic']),
+  width: z.number(),
+  height: z.number()
+})
+
+// Garde les éléments conformes au schéma et ignore les autres (un composant mal formé ne rejette pas le document).
+function keepValid<T extends z.ZodType> (items: unknown[], schema: T): z.infer<T>[] {
+  return items.flatMap(item => {
+    const parsed = schema.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  })
 }
 
 const BagItemSchema = z.object({
@@ -71,7 +90,7 @@ const BagItemSchema = z.object({
   provider: z.object({ name: z.string() }).optional(),
   caption: z.string().optional(),
   newslines: z.object({ dateline: z.string().default('') }).optional(),
-  medias: makeFilteredArraySchema(MediaRenditionSchema).default([])
+  medias: z.array(z.unknown()).default([])
 })
 
 export const DocumentSourceSchema = z.object({
@@ -167,7 +186,8 @@ function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
     provider: bagItem.provider?.name,
     caption: bagItem.caption,
     dateline: bagItem.newslines?.dateline ?? '',
-    renditions: bagItem.medias
+    renditions: keepValid(bagItem.medias, MediaRenditionSchema),
+    components: keepValid(bagItem.medias, MediaComponentSchema)
   }
 }
 
@@ -217,6 +237,12 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     genre: doc.genre?.[0],
     genres: doc.genre,
     genreIds: doc.genreid,
+    // afpedtype : types éditoriaux, cumulables (2 à 5 sur une vidéo) ; afpattribute : au plus un par document
+    // (vérifié en prod sur 1 600 documents, oct. 2026).
+    editorialTypes: doc.genreid?.filter(id => id.startsWith('afpedtype:')),
+    editorialAttribute: doc.genreid?.find(id => id.startsWith('afpattribute:')),
+    ratings: doc.rating?.map(({ ratingtype, value, scalemin, scalemax, scaleunit }) =>
+      ({ type: ratingtype, value, scaleMin: scalemin, scaleMax: scalemax, unit: scaleunit })),
     urgency: doc.urgency,
     wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
@@ -308,7 +334,8 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
-        caption: doc.caption?.[0] ?? '',
+        // captionContext = même légende sans le marqueur final (« STOCKSHOTS »…) : la doc le recommande pour la vidéo.
+        caption: doc.captionContext ?? doc.caption?.[0] ?? '',
         shots: extractShots(doc.news),
         script: doc.script,
         associatedWith: doc.associatedWith

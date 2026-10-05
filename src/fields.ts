@@ -43,7 +43,7 @@ export const FIELD_SOURCES = {
   topics: ['topic'],
   topshot: ['rating'],
   // Repli sur bagItem[0].caption pour picture/graphic (voir parseDocument).
-  caption: ['caption', 'bagItem'],
+  caption: ['caption', 'captionContext', 'bagItem'],
   shots: ['news'],
   href: ['href'],
   title: ['title'],
@@ -60,6 +60,9 @@ export const FIELD_SOURCES = {
   contentWarnings: ['excludeAudiences'],
   genres: ['genre'],
   genreIds: ['genreid'],
+  editorialTypes: ['genreid'],
+  editorialAttribute: ['genreid'],
+  ratings: ['rating'],
   summary: ['summary'],
   subheadline: ['subheadline'],
   captionContext: ['captionContext'],

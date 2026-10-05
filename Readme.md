@@ -247,8 +247,10 @@ It also exposes what you need to display or apply before publishing a document, 
 
 - **Rights and mentions**: `copyright` (to display to end users), `creditLine`, `disclaimer`, `rules` (e.g. `['GERMANY OUT']`), `usageRights`, `exclusions`, `countriesOut`, `countriesOnly`, `expires` (do not use the document after this date).
 - **Lifecycle**: `status`, `initialStatus`, `signal`, `contentWarnings` (e.g. `{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }`), `embargoed`.
-- **Classification**: `genres` and `genreIds` (language-independent, prefer them to filter), `channels`, `mediatopics` (IPTC), `summary`, `subheadline`, `captionContext`.
+- **Classification**: `genres` and `genreIds` (language-independent, prefer them to filter), split into `editorialTypes` (`afpedtype:*`, several per document) and `editorialAttribute` (`afpattribute:*`, at most one), `ratings`, `channels`, `mediatopics` (IPTC), `summary`, `subheadline`, `captionContext`.
 - `topshot` is `true` for AFP Forum TOPSHOT selections (`rating` 60), not for `urgency` 1 (Flash).
+- For a video, `caption` is `captionContext` when present (the same caption without the trailing marker such as `STOCKSHOTS`).
+- Each media has `renditions` (images and videos with dimensions, now with `rendition` and `duration`) and `components`: every component, including those without dimensions such as a webstory's Zip, ZipVideoSet and Mpeg4.
 
 These fields never make `parseDocument()` fail: a value with an unexpected shape is left `undefined`.
 

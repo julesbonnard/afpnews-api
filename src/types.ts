@@ -213,7 +213,25 @@ export type AfpMediaRendition = {
   height: number
   href: string
   sizeInBytes?: number
+  /** Code de rendu, ex. `rnd:preview`, `afpveprnd:MP4_H264_1280x720p25_W` */
+  rendition?: string
+  /** Durée en secondes (vidéo) */
+  duration?: number
 }
+
+/**
+ * N'importe quel composant d'un média, y compris ceux qui ne sont pas des images ou vidéos dimensionnées :
+ * Zip, ZipVideoSet et Preview `CompressedContent` d'une webstory, sa Mpeg4 (sans width/height).
+ */
+export type AfpMediaComponent = Omit<AfpMediaRendition, 'type' | 'width' | 'height'> & {
+  /** `Photo`, `Video`, `Graphic`, `CompressedContent`… */
+  type: string
+  width?: number
+  height?: number
+}
+
+/** Notation (`rating`) : TOPSHOT = `{ type: 'afpratingtype:afpforum', value: 60 }`, ESSENTIALS = `afpratingtype:producer` 3 */
+export type AfpRating = { type: string; value: number; scaleMin?: number; scaleMax?: number; unit?: string }
 
 /** Règle d'usage (`usageRight`) : `{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }` */
 export type AfpUsageRight = { phrase: string; name?: string }
@@ -228,7 +246,10 @@ export type AfpMedia = {
   provider?: string
   caption?: string
   dateline: string
+  /** Images et vidéos dimensionnées */
   renditions: AfpMediaRendition[]
+  /** Tous les composants, dont ceux sans dimensions (Zip d'une webstory…) */
+  components: AfpMediaComponent[]
 }
 
 /**
@@ -294,6 +315,11 @@ export type AfpDocumentCommon = {
   genres?: string[]
   /** Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer */
   genreIds?: string[]
+  /** Types éditoriaux (`afpedtype:*`), cumulables : ex. `['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast']` */
+  editorialTypes?: string[]
+  /** Attribut éditorial (`afpattribute:*`), au plus un par document : ex. `'afpattribute:Article'` */
+  editorialAttribute?: string
+  ratings?: AfpRating[]
   summary?: string[]
   subheadline?: string
   /** Contexte éditorial isolé (vidéo, photo), à préférer à `caption` pour une vidéo d'après la doc */
