@@ -10,7 +10,13 @@ export const defaultBaseUrl = 'https://afp-apicore-prod-v2-external.app.afp.com'
 
 export const maxRowsByRequest = 10000
 
-export const fullTextSearchFields = ['all', 'title', 'news']
+import { TEXT_FIELDS } from './searchFields.js'
+
+/** Champs interrogés avec `contains` par le langage de requête : `all` (champ virtuel) et les champs texte de la doc. */
+export const fullTextSearchFields: readonly string[] = ['all', ...TEXT_FIELDS]
+
+/** Seuls `all` et `news` ont un équivalent traduit (`translated.{lang}.all` / `.news`, doc search-index-fields). */
+export const translatedSearchFields: readonly string[] = ['all', 'news']
 
 export const langsWithTranslation = ['fr', 'en', 'es', 'de', 'pt', 'ar']
 

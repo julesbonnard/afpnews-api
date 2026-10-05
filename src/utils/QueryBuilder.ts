@@ -1,4 +1,4 @@
-import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
+import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, translatedSearchFields, langsWithTranslation } from '../config.js'
 import type { AdditionalParamValue, SearchFilters, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar/index.js'
@@ -231,7 +231,7 @@ export class QueryBuilder {
     const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
     const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
   
-    if (fieldOperator === 'contains') {
+    if (fieldOperator === 'contains' && translatedSearchFields.includes(fieldName)) {
       const langs =  this.langs && this.langs.length > 0 ? this.langs : langsWithTranslation
       return [{
         name: fieldName,

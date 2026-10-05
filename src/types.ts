@@ -1,8 +1,23 @@
 import type { z } from 'zod'
 import type { Shot } from './utils/shotlist.js'
 import type { AfpDocumentClassSchema } from './utils/parseDocument.js'
+import type { DATE_FIELDS, FACET_FIELDS, TEXT_FIELDS } from './searchFields.js'
 
 type StringOrNumber = string | number
+
+/** Union ouverte : propose les valeurs connues à l'autocomplétion sans refuser les autres. */
+type OrString<T extends string> = T | (string & {})
+
+/** Champs facettables (catalogue de la doc) : filtres par valeur, `list(facet)`. */
+export type FacetField = typeof FACET_FIELDS[number]
+/** Champs texte (catalogue de la doc) : recherche avec `contains`. */
+export type TextField = typeof TEXT_FIELDS[number]
+/** Champs date (catalogue de la doc) : `dateField`, `range`. */
+export type DateField = typeof DATE_FIELDS[number]
+/** Champs de tri acceptés par l'API (enum OpenAPI, plus `uno` utilisé dans les exemples de la doc). */
+export type SortField = 'published' | 'introduced' | 'contentModified' | 'created' | 'sent' | 'versionModified' | 'contentCreated' | 'timestamp' | 'uno'
+/** Langues des documents AFP. */
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'pt' | 'ar' | 'zh-cn' | 'zh-tw'
 
 /** Intervalle de l'opérateur `range` : bornes incluses par défaut, l'une des deux peut manquer. */
 export type SearchRange = {
@@ -32,7 +47,7 @@ export type SearchQuerySortOrder = 'asc' | 'desc'
 
 export type FacetConfig = { size: number; minDocCount: number }
 export type WantedFacets = { empty?: boolean; [facetName: string]: FacetConfig | boolean | undefined }
-export type SortEntry = { sortField: string; sortOrder: SearchQuerySortOrder }
+export type SortEntry = { sortField: OrString<SortField>; sortOrder: SearchQuerySortOrder }
 
 /**
  * A single value returned by `list()` for a given facet, with its document count.
@@ -83,7 +98,7 @@ export type AdditionalParamValue =
   }
 
 /** Filtres par champ : `{ country: 'fra', urgency: [1, 2], class: { exclude: ['picture'] } }`. */
-export type SearchFilters = Record<string, AdditionalParamValue>
+export type SearchFilters = { [field in FacetField | TextField]?: AdditionalParamValue } & Record<string, AdditionalParamValue>
 
 /**
  * Options de recherche. Les filtres par champ se passent dans `filters`.
@@ -91,12 +106,12 @@ export type SearchFilters = Record<string, AdditionalParamValue>
  */
 export type SearchQueryParams = Partial<{
   sortOrder: SearchQuerySortOrder
-  sortField: string
+  sortField: OrString<SortField>
   query: string
   dateTo: string
   dateFrom: string
   size: number
-  langs: string[]
+  langs: OrString<Lang>[]
   startAt: number
   tz: string
   dateGap: string
@@ -106,7 +121,7 @@ export type SearchQueryParams = Partial<{
   /** `true` : total exact ; `false` : pas de total (requête plus légère) ; nombre : total borné à cette valeur */
   exactNumFound: boolean | number
   /** Champ de date auquel s'appliquent `dateFrom`/`dateTo` (`dateRange.targetField`) ; `published` par défaut côté API */
-  dateField: string
+  dateField: OrString<DateField>
   filters: SearchFilters
   /** @deprecated Passer les filtres dans `filters`. */
   [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | SearchFilters

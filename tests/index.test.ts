@@ -31,7 +31,8 @@ describe('index exports', () => {
   })
 
   it('should export fullTextSearchFields', () => {
-    expect(fullTextSearchFields).toEqual(['all', 'title', 'news'])
+    expect(fullTextSearchFields).toEqual(expect.arrayContaining(['all', 'title', 'news', 'caption', 'headline', 'summary']))
+    expect(fullTextSearchFields).not.toContain('country')
   })
 
   it('should export langsWithTranslation', () => {

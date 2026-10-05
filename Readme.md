@@ -158,6 +158,8 @@ An object can use several operators; each one becomes a separate condition:
 | `range` | interval, bounds included unless `fromExcluded` / `toExcluded` | `{ wordCount: { range: { from: 300, to: 800 } } }` |
 | `exists` | field present (`true`) or absent (`false`) | `{ genre: { exists: false } }` |
 
+Field names autocomplete in `filters`, `sortField`, `dateField` and `langs`: the lists come from the AFP documentation's metadata catalogue and are exported as `FACET_FIELDS`, `TEXT_FIELDS` and `DATE_FIELDS` (types `FacetField`, `TextField`, `DateField`, `SortField`, `Lang`). Other names are still accepted.
+
 Two options are related: `dateField` picks the date field `dateFrom` / `dateTo` apply to (`published` by default), and `exactNumFound` controls the total count (`true`: exact; `false`: none, lighter request; a number: bounded, with `relation: 'gt'` in the result when the total exceeds it).
 
 ```js

@@ -562,16 +562,22 @@ describe('QueryBuilder', () => {
       expect(flat).toContain('jean-luc')
     })
 
-    it('should handle full-text search fields with translation', () => {
+    it('should add translated fields only where they exist (all, news)', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
-      const result = qb.parseQueryString('title:Macron')
 
-      expect(result).toBeDefined()
-      // Full-text fields (title) should generate translated fields
-      const flat = JSON.stringify(result)
-      expect(flat).toContain('translated.fr.title')
-      expect(flat).toContain('translated.en.title')
+      const news = JSON.stringify(qb.parseQueryString('news:Macron'))
+      expect(news).toContain('translated.fr.news')
+      expect(news).toContain('translated.en.news')
+
+      // `title` est un champ texte (contains) mais n'a pas d'équivalent translated.{lang}.title
+      expect(qb.parseQueryString('title:Macron')).toEqual({ or: [{ name: 'title', contains: ['macron'] }] })
+    })
+
+    it('should search every text field of the catalogue with contains, not as an exact value', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('caption:Macron')).toEqual({ or: [{ name: 'caption', contains: ['macron'] }] })
+      expect(qb.parseQueryString('country:fra')).toEqual({ or: [{ name: 'country', in: ['fra'] }] })
     })
 
     it('should not generate translations for non-full-text fields', () => {
