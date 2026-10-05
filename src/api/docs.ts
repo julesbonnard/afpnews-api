@@ -82,7 +82,8 @@ const mappingResponse = z.object({
       facet: z.boolean(),
       analyzer: z.string().optional(),
       term_vector: z.string().optional(),
-      store: z.boolean().optional()
+      store: z.boolean().optional(),
+      description: z.string().optional()
     }))
   })
 })
@@ -400,8 +401,8 @@ export class Docs extends Auth {
   }
 
   /**
-   * Get the API field mapping
-   * @param lang - The language for the mapping
+   * Get the API field mapping with translated descriptions
+   * @param lang - The language of the field descriptions
    * @returns The mapping, keyed by field name
    */
   public async mapping (lang: string): Promise<AfpFieldMapping> {

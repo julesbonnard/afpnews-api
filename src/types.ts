@@ -81,6 +81,8 @@ export type AfpFieldMapping = Record<string, {
   analyzer?: string
   term_vector?: string
   store?: boolean
+  /** Description du champ, dans la langue demandée (`lang`) */
+  description?: string
 }>
 
 export type AdditionalParamValue =
