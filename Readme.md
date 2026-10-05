@@ -209,6 +209,10 @@ The `query` parameter supports a boolean query DSL:
 | Field group | `title:(Macron OR Merkel)` (same as `title:Macron OR title:Merkel`) |
 | Quoted phrase | `title:"climate change"` |
 | Implicit AND | `Macron France` (space-separated terms) |
+| Interval | `wordCount:[300 TO 800]`, `wordCount:[600 TO *]`, `published:["2026-09-01T00:00:00Z" TO now]` |
+| Field present / absent | `_exists_:genre`, `NOT _exists_:genre` |
+
+Text fields of the AFP catalogue (`news`, `title`, `caption`, `headline`, `summary`…) are searched as text (`contains`); other fields match exact values. Quote an interval bound that contains `:` (a time). `NOT` is not supported on an interval.
 
 ## Retrieving a Single Document
 

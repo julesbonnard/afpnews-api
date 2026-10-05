@@ -25,6 +25,10 @@ function toConditions (name: string, value: AdditionalParamValue): SearchQuery[]
   return conditions
 }
 
+// Borne d'intervalle du langage de requête : nombre si elle en a la forme (`300`), sinon chaîne (`now-7d`).
+const toBound = (bound?: string): string | number | undefined =>
+  bound !== undefined && /^-?\d+(\.\d+)?$/.test(bound) ? Number(bound) : bound
+
 const quote = (value: string) => {
   return `"${value}"`
 }
@@ -222,9 +226,21 @@ export class QueryBuilder {
     return request
   }
 
-  private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
+  private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken): SearchQuery[] => {
+    if (expression.type === 'RangeExpression') {
+      if (!field) throw new Error('an interval [from TO to] needs a field, e.g. wordCount:[300 TO 800]')
+      if (exclude) throw new Error(`NOT is not supported on an interval ("${field.name}:[…]")`)
+      const from = toBound(expression.from)
+      const to = toBound(expression.to)
+      return [{ name: field.name, range: { ...(from !== undefined && { from }), ...(to !== undefined && { to }) } }]
+    }
     if (expression.type !== 'LiteralExpression') {
       throw new Error(`missing value after "${field?.name ?? ''}:"`)
+    }
+    // `_exists_:genre` : champ présent ; sous NOT, champ absent.
+    if (field?.name === '_exists_') {
+      const name = String(expression.value)
+      return [exclude ? { missing: name } : { having: name }]
     }
   
     const fieldName = field?.name || 'all'

@@ -562,6 +562,44 @@ describe('QueryBuilder', () => {
       expect(flat).toContain('jean-luc')
     })
 
+    it('should parse an interval field:[from TO to], with numbers, open bounds and quoted dates', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('wordCount:[300 TO 800]')).toEqual({ or: [{ name: 'wordCount', range: { from: 300, to: 800 } }] })
+      expect(qb.parseQueryString('wordCount:[600 TO *]')).toEqual({ or: [{ name: 'wordCount', range: { from: 600 } }] })
+      expect(qb.parseQueryString('contentCreated:[now-7d to now]')).toEqual({ or: [{ name: 'contentCreated', range: { from: 'now-7d', to: 'now' } }] })
+      expect(qb.parseQueryString('published:["2026-09-01T00:00:00Z" TO "2026-09-02T00:00:00Z"]'))
+        .toEqual({ or: [{ name: 'published', range: { from: '2026-09-01T00:00:00Z', to: '2026-09-02T00:00:00Z' } }] })
+    })
+
+    it('should combine an interval with other terms', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('climat AND wordCount:[600 TO *]')).toEqual({
+        and: [
+          { or: expect.arrayContaining([{ name: 'all', contains: ['climat'] }]) as unknown },
+          { or: [{ name: 'wordCount', range: { from: 600 } }] }
+        ]
+      })
+    })
+
+    it('should reject NOT on an interval and a malformed interval', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('NOT wordCount:[300 TO 800]')).toThrow('NOT is not supported on an interval')
+      expect(() => qb.parseQueryString('wordCount:[300 AND 800]')).toThrow()
+    })
+
+    it('should keep "to" searchable as a plain word, and brackets inside quotes', () => {
+      const qb = new QueryBuilder()
+      expect(JSON.stringify(qb.parseQueryString('road to Paris'))).toContain('"to"')
+      expect(JSON.stringify(qb.parseQueryString('"[EN DIRECT]"'))).toContain('[EN DIRECT]')
+    })
+
+    it('should turn _exists_:field into having, and NOT _exists_ into missing', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('_exists_:genre')).toEqual({ or: [{ having: 'genre' }] })
+      expect(qb.parseQueryString('NOT _exists_:genre')).toEqual({ or: [{ missing: 'genre' }] })
+      expect(qb.parseQueryString('-_exists_:embargoed')).toEqual({ or: [{ missing: 'embargoed' }] })
+    })
+
     it('should add translated fields only where they exist (all, news)', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
