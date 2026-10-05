@@ -214,6 +214,10 @@ export class Docs extends Auth {
 
     const pageParams: SearchQueryParams = { ...params }
     if (cursorOnDate) pageParams.dateField = sortField
+    if (cursorOnDate && !params.sort && sortField !== 'timestamp') {
+      const sortOrder = params.sortOrder ?? defaultSearchParams.sortOrder
+      pageParams.sort = [{ sortField, sortOrder }, { sortField: 'timestamp', sortOrder }]
+    }
 
     let pageFields = this.withMandatorySocle(fields, options?.parse)
     if (pageFields.length > 0) pageFields = [...new Set([...pageFields, sortField, 'uno'])]

@@ -640,6 +640,30 @@ describe('Docs', () => {
       expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated')).toBe(true)
     })
 
+    it('should add timestamp as a secondary sort so documents of the same date keep a stable order', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      for await (const _ of docs.searchAll({ size: 10, sortOrder: 'asc' })) { /* consume */ }
+
+      expect(searchSpy.mock.calls[0]?.[0]?.sort).toEqual([
+        { sortField: 'published', sortOrder: 'asc' },
+        { sortField: 'timestamp', sortOrder: 'asc' }
+      ])
+    })
+
+    it('should keep a sort given by the caller, and add none for a non-date sort field', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+      const sort = [{ sortField: 'published', sortOrder: 'desc' as const }]
+
+      for await (const _ of docs.searchAll({ size: 10, sort })) { /* consume */ }
+      for await (const _ of docs.searchAll({ size: 10, sortField: 'uno' })) { /* consume */ }
+
+      expect(searchSpy.mock.calls[0]?.[0]?.sort).toEqual(sort)
+      expect(searchSpy.mock.calls[1]?.[0]?.sort).toBeUndefined()
+    })
+
     it('should paginate with startAt when sorting on a non-date field', async () => {
       const docs = createAuthenticatedDocs()
       const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
