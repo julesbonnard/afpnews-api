@@ -16,7 +16,7 @@ describe('Auth', () => {
   describe('constructor', () => {
     it('should use default base URL when none provided', () => {
       const auth = new Auth()
-      expect(auth.authUrl).toBe('https://afp-apicore-prod-v2-external.app.afp.com/oauth/token')
+      expect(auth.authUrl).toBe('https://afp-apicore-prod.afp.com/oauth/token')
     })
 
     it('should use custom base URL', () => {
@@ -177,6 +177,88 @@ describe('Auth', () => {
     })
   })
 
+  describe('token renewal', () => {
+    const ME = { user: { username: 'u', clientId: ['c'] } }
+
+    // /oauth/token renvoie un jeton différent à chaque appel ; /v1/user/me n'accepte que le dernier émis.
+    function mockTokenServer () {
+      let issued = 0
+      const fetchMock = vi.fn<typeof fetch>((input, init) => {
+        const url = input as string
+        const body = url.includes('/oauth/token')
+          ? { access_token: `token-${++issued}`, refresh_token: 'refresh', expires_in: 3600 }
+          : new Headers(init?.headers).get('Authorization') === `Bearer token-${issued}`
+            ? ME
+            : { error: { code: 401, message: 'Invalid token', type: 'invalid_token' } }
+        const status = 'error' in body ? 401 : 200
+        return Promise.resolve({ status, statusText: '', text: () => Promise.resolve(JSON.stringify(body)) } as Response)
+      })
+      globalThis.fetch = fetchMock
+      const tokenCalls = () => fetchMock.mock.calls.filter(([input]) => (input as string).includes('/oauth/token')).length
+      return { tokenCalls }
+    }
+
+    it('should renew an expired token only once for concurrent calls', async () => {
+      const { tokenCalls } = mockTokenServer()
+      const auth = new Auth({ apiKey: 'key' })
+      auth.token = { accessToken: 'expired', refreshToken: 'refresh', tokenExpires: Date.now() - 1000, authType: 'credentials' }
+
+      await Promise.all([auth.getUserInfo(), auth.getUserInfo(), auth.getUserInfo()])
+
+      expect(tokenCalls()).toBe(1)
+    })
+
+    it('should treat a token expiring within 30 s as expired', () => {
+      const auth = new Auth({ apiKey: 'key' })
+      auth.token = { accessToken: 'almost', refreshToken: 'refresh', tokenExpires: Date.now() + 10_000, authType: 'credentials' }
+      expect(auth.isTokenValid).toBe(false)
+
+      auth.token.tokenExpires = Date.now() + 60_000
+      expect(auth.isTokenValid).toBe(true)
+    })
+
+    it('should renew only once when concurrent calls get a 401 for the same token', async () => {
+      const { tokenCalls } = mockTokenServer()
+      const auth = new Auth({ apiKey: 'key' })
+      // Jeton encore « valide » côté client, mais déjà invalidé côté serveur.
+      auth.token = { accessToken: 'revoked', refreshToken: 'refresh', tokenExpires: Date.now() + 3_600_000, authType: 'credentials' }
+
+      const results = await Promise.all([auth.getUserInfo(), auth.getUserInfo(), auth.getUserInfo()])
+
+      expect(results.every(r => r.user.username === 'u')).toBe(true)
+      expect(tokenCalls()).toBe(1)
+    })
+  })
+
+  describe('login during a refresh', () => {
+    it('should keep the login token even if the refresh answers after the login started', async () => {
+      let releaseRefresh!: () => void
+      const respond = (accessToken: string) =>
+        ({ status: 200, statusText: '', text: () => Promise.resolve(JSON.stringify({ access_token: accessToken, refresh_token: 'r', expires_in: 3600 })) }) as Response
+      const order: string[] = []
+      globalThis.fetch = vi.fn<typeof fetch>((_input, init) => {
+        const grant = (init!.body as URLSearchParams).get('grant_type')
+        order.push(grant ?? '')
+        if (grant === 'refresh_token') return new Promise(resolve => { releaseRefresh = () => resolve(respond('refresh-token')) })
+        return Promise.resolve(respond('login-token'))
+      })
+
+      const auth = new Auth({ apiKey: 'key' })
+      auth.token = { accessToken: 'expired', refreshToken: 'r', tokenExpires: Date.now() - 1000, authType: 'credentials' }
+
+      const refreshing = auth.authenticate()
+      const login = auth.authenticate({ username: 'u', password: 'p' })
+      const duringLogin = auth.authenticate()
+      releaseRefresh()
+
+      await expect(refreshing).resolves.toMatchObject({ accessToken: 'refresh-token' })
+      await expect(login).resolves.toMatchObject({ accessToken: 'login-token' })
+      await expect(duringLogin).resolves.toMatchObject({ accessToken: 'login-token' })
+      expect(auth.token.accessToken).toBe('login-token')
+      expect(order).toEqual(['refresh_token', 'password'])
+    })
+  })
+
   describe('resetToken', () => {
     it('should clear the token', () => {
       const auth = new Auth()
@@ -261,11 +343,31 @@ describe('Auth', () => {
 
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
-      expect(result.user.additionalProperties.infosLdap.mail).toBe('test@example.com')
-      expect(result.user.additionalProperties.infosLdap.uid).toBe('TESTUSER')
+      expect(result.user.additionalProperties?.infosLdap?.mail).toBe('test@example.com')
+      expect(result.user.additionalProperties?.infosLdap?.uid).toBe('TESTUSER')
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
+    })
+
+    it('should accept a client account without infosLdap (documented shape)', async () => {
+      mockFetch({
+        user: {
+          username: 'client-user',
+          email: 'client@example.com',
+          enabled: true,
+          clientId: ['client1'],
+          authorities: ['ROLE_USER'],
+          filters: []
+        }
+      })
+
+      const auth = new Auth()
+      auth.token = { accessToken: 'my-token', refreshToken: 'refresh', tokenExpires: Date.now() + 60000, authType: 'credentials' }
+
+      const result = await auth.getUserInfo()
+      expect(result.user.email).toBe('client@example.com')
+      expect(result.user.additionalProperties).toBeUndefined()
     })
 
     it('should retry once on 401 by refreshing the token', async () => {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia } from '../types.js'
+import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
 import { parseShotList } from './shotlist.js'
 
 const EventSchema = z.object({
@@ -9,6 +9,25 @@ const EventSchema = z.object({
 
 const SignalEnum = z.enum(['correction', 'update', 'cwarn'])
 const SignalInput = z.union([SignalEnum, z.array(SignalEnum)])
+
+const STATUSES = ['Usable', 'Canceled', 'Embargoed', 'WithHeld'] as const
+const StatusInput = z.string()
+  .transform(value => value.trim() === '' ? 'Usable' : STATUSES.find(status => status.toLowerCase() === value.toLowerCase()) ?? value)
+  .pipe(z.enum(STATUSES))
+
+const tolerant = <T extends z.ZodType>(schema: T) => schema.optional().catch(undefined)
+const StringList = z.union([z.string(), z.string().array()]).transform(v => Array.isArray(v) ? v : [v])
+
+const UsageRightSchema = z.object({ phrase: z.string(), name: z.string().optional() })
+const ExclusionSchema = z.object({ name: z.string(), type: z.string().optional(), untilDate: z.coerce.date().optional() })
+const ExcludeAudienceSchema = z.object({ qcode: z.string(), text: z.string().optional() })
+const RatingSchema = z.object({
+  ratingtype: z.string(),
+  value: z.coerce.number(),
+  scalemin: z.coerce.number().optional(),
+  scalemax: z.coerce.number().optional(),
+  scaleunit: z.string().optional()
+})
 
 const HopHistorySchema = z.object({
   hop: z.array(z.object({
@@ -30,13 +49,15 @@ export const AfpDocumentClassSchema = z.enum([
   'webstory'
 ])
 
-const MediaRenditionSchema = z.object({
+const MediaComponentSchema = z.object({
   role: z.string(),
-  width: z.number(),
-  height: z.number(),
+  type: z.string(),
   href: z.url(),
-  type: z.enum(['Photo', 'Video', 'Graphic']),
-  sizeInBytes: z.number().optional()
+  width: z.number().optional(),
+  height: z.number().optional(),
+  sizeInBytes: z.number().optional(),
+  rendition: z.string().optional(),
+  duration: z.number().optional()
 })
 
 function makeFilteredArraySchema<T extends z.ZodType> (schema: T) {
@@ -45,13 +66,18 @@ function makeFilteredArraySchema<T extends z.ZodType> (schema: T) {
   )
 }
 
+type MediaComponent = z.infer<typeof MediaComponentSchema>
+
+const isRendition = (component: MediaComponent): component is AfpMediaRendition =>
+  ['Photo', 'Video', 'Graphic'].includes(component.type) && component.width !== undefined && component.height !== undefined
+
 const BagItemSchema = z.object({
   uno: z.string(),
   creator: z.string().optional(),
   provider: z.object({ name: z.string() }).optional(),
   caption: z.string().optional(),
   newslines: z.object({ dateline: z.string().default('') }).optional(),
-  medias: makeFilteredArraySchema(MediaRenditionSchema).default([])
+  medias: makeFilteredArraySchema(MediaComponentSchema).default([])
 })
 
 export const DocumentSourceSchema = z.object({
@@ -67,10 +93,7 @@ export const DocumentSourceSchema = z.object({
   caption: z.string().array().optional(),
   urgency: z.number(),
   wordCount: z.number().optional(),
-  genre: z.union([
-    z.string().array().nonempty().transform(d => d[0]),
-    z.string()
-  ]).optional(),
+  genre: tolerant(StringList),
   topic: z.string().array().optional(),
   href: z.string().optional(),
   created: z.coerce.date(),
@@ -88,10 +111,28 @@ export const DocumentSourceSchema = z.object({
   advisory: z.string().optional(),
   provider: z.string(),
   creator: z.string().optional(),
-  status: z.enum(['Usable', 'Canceled', 'Embargoed', 'WithHeld']),
+  status: StatusInput,
   signal: SignalInput.optional(),
   hopHistory: HopHistorySchema.optional(),
-  bagItem: z.array(BagItemSchema).default([])
+  bagItem: z.array(BagItemSchema).default([]),
+  copyright: tolerant(z.string()),
+  rules: tolerant(StringList),
+  usageRight: tolerant(UsageRightSchema.array()),
+  exclusion: tolerant(ExclusionSchema.array()),
+  country_out: tolerant(StringList),
+  country_only: tolerant(StringList),
+  expires: tolerant(z.coerce.date()),
+  initialStatus: tolerant(z.string()),
+  excludeAudiences: tolerant(ExcludeAudienceSchema.array()),
+  genreid: tolerant(StringList),
+  summary: tolerant(StringList),
+  subheadline: tolerant(z.string().transform(v => v.trim())),
+  captionContext: tolerant(z.string()),
+  channel: tolerant(StringList),
+  mediatopic: tolerant(StringList),
+  script: tolerant(StringList),
+  associatedWith: tolerant(StringList),
+  rating: tolerant(RatingSchema.array())
 })
 
 type DocumentSource = z.infer<typeof DocumentSourceSchema>
@@ -132,7 +173,8 @@ function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
     provider: bagItem.provider?.name,
     caption: bagItem.caption,
     dateline: bagItem.newslines?.dateline ?? '',
-    renditions: bagItem.medias
+    renditions: bagItem.medias.filter(isRendition),
+    components: bagItem.medias
   }
 }
 
@@ -179,7 +221,13 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     city: doc.city,
     creator: doc.creator,
     provider: doc.provider,
-    genre: doc.genre,
+    genre: doc.genre?.[0],
+    genres: doc.genre,
+    genreIds: doc.genreid,
+    editorialTypes: doc.genreid?.filter(id => id.startsWith('afpedtype:')),
+    editorialAttribute: doc.genreid?.find(id => id.startsWith('afpattribute:')),
+    ratings: doc.rating?.map(({ ratingtype, value, scalemin, scalemax, scaleunit }) =>
+      ({ type: ratingtype, value, scaleMin: scalemin, scaleMax: scalemax, unit: scaleunit })),
     urgency: doc.urgency,
     wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
@@ -195,8 +243,26 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     signal: extractSignal(doc.signal),
     title: doc.title,
     creditLine: doc.creditLine,
-    aspectRatios: doc.aspectRatios
+    aspectRatios: doc.aspectRatios,
+    copyright: doc.copyright,
+    rules: doc.rules,
+    usageRights: doc.usageRight,
+    exclusions: doc.exclusion,
+    countriesOut: doc.country_out,
+    countriesOnly: doc.country_only,
+    expires: doc.expires,
+    initialStatus: doc.initialStatus,
+    contentWarnings: doc.excludeAudiences?.map(({ qcode, text }) => ({ code: qcode, label: text })),
+    summary: doc.summary,
+    subheadline: doc.subheadline || undefined,
+    captionContext: doc.captionContext,
+    channels: doc.channel,
+    mediatopics: doc.mediatopic
   }
+}
+
+function isTopshot (doc: DocumentSource): boolean {
+  return doc.rating?.some(rating => rating.ratingtype === 'afpratingtype:afpforum' && rating.value === 60) ?? false
 }
 
 /**
@@ -216,7 +282,7 @@ export function parseDocument (raw: unknown): AfpDocument {
         class: doc.class,
         headline,
         paragraphs,
-        medias: [],
+        medias: doc.bagItem.map(extractMedia),
         hasBeenAlerted: extractHasBeenAlerted(doc)
       }
     }
@@ -240,10 +306,8 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
-        // Comme pour video, `caption` brut est normalement un champ document (vérifié en conditions
-        // réelles) — repli sur bagItem[].caption pour les docs (partenaires, anciens) qui ne l'ont pas.
         caption: doc.caption?.[0] ?? doc.bagItem[0]?.caption,
-        topshot: doc.urgency === 1
+        topshot: isTopshot(doc)
       }
     case 'video':
     case 'videography':
@@ -253,8 +317,10 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
-        caption: doc.caption?.[0] ?? '',
-        shots: extractShots(doc.news)
+        caption: doc.captionContext ?? doc.caption?.[0] ?? '',
+        shots: extractShots(doc.news),
+        script: doc.script,
+        associatedWith: doc.associatedWith
       }
     case 'webstory':
       return {

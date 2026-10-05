@@ -1,24 +1,53 @@
 import type { z } from 'zod'
 import type { Shot } from './utils/shotlist.js'
 import type { AfpDocumentClassSchema } from './utils/parseDocument.js'
+import type { DATE_FIELDS, FACET_FIELDS, TEXT_FIELDS } from './searchFields.js'
 
 type StringOrNumber = string | number
 
+/** Union ouverte : propose les valeurs connues à l'autocomplétion sans refuser les autres. */
+type OrString<T extends string> = T | (string & {})
+
+/** Champs facettables (catalogue de la doc) : filtres par valeur, `list(facet)`. */
+export type FacetField = typeof FACET_FIELDS[number]
+/** Champs texte (catalogue de la doc) : recherche avec `contains`. */
+export type TextField = typeof TEXT_FIELDS[number]
+/** Champs date (catalogue de la doc) : `dateField`, `range`. */
+export type DateField = typeof DATE_FIELDS[number]
+/** Champs de tri acceptés par l'API (enum OpenAPI, plus `uno` utilisé dans les exemples de la doc). */
+export type SortField = 'published' | 'introduced' | 'contentModified' | 'created' | 'sent' | 'versionModified' | 'contentCreated' | 'timestamp' | 'uno'
+/** Langues des documents AFP. */
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'pt' | 'ar' | 'zh-cn' | 'zh-tw'
+
+/** Intervalle de l'opérateur `range` : bornes incluses par défaut, l'une des deux peut manquer. */
+export type SearchRange = {
+  from?: StringOrNumber
+  to?: StringOrNumber
+  fromExcluded?: boolean
+  toExcluded?: boolean
+}
+
 export type SearchQuery = {
-  and?: SearchQuery[]
+  /** Sans `name` : conditions à combiner. Avec `name` : valeurs que le document doit toutes porter. */
+  and?: SearchQuery[] | StringOrNumber[]
   or?: SearchQuery[]
   name?: string
   in?: StringOrNumber[]
-  contains?: string[]
+  contains?: string | string[]
   fullText?: boolean
   exclude?: StringOrNumber[]
+  range?: SearchRange
+  /** Nom d'un champ qui doit être présent */
+  having?: string
+  /** Nom d'un champ qui doit être absent */
+  missing?: string
 }
 
 export type SearchQuerySortOrder = 'asc' | 'desc'
 
 export type FacetConfig = { size: number; minDocCount: number }
 export type WantedFacets = { empty?: boolean; [facetName: string]: FacetConfig | boolean | undefined }
-export type SortEntry = { sortField: string; sortOrder: SearchQuerySortOrder }
+export type SortEntry = { sortField: OrString<SortField>; sortOrder: SearchQuerySortOrder }
 
 /**
  * A single value returned by `list()` for a given facet, with its document count.
@@ -29,6 +58,33 @@ export type AfpFacetValue = {
   count: number
 }
 
+/**
+ * Filtre sur un champ. Une valeur ou une liste vaut `in`. Un objet combine des opérateurs, chacun
+ * donnant une condition (toutes combinées en ET) :
+ * - `in` : au moins une des valeurs ; `exclude` : aucune ; `and` : toutes les valeurs ;
+ * - `contains` : recherche textuelle (`'"expression exacte"'` entre guillemets) ;
+ * - `range` : intervalle ; `exists` : champ présent (`true`) ou absent (`false`).
+ */
+/**
+ * Informations renvoyées par `search()` en plus des documents : facettes demandées via `wantedFacets`,
+ * et `relation` (`eq` : total exact ; `gt` : total supérieur à la borne demandée via `exactNumFound`).
+ */
+export type SearchMeta = {
+  facets?: Record<string, AfpFacetValue[]>
+  relation?: 'eq' | 'gt'
+}
+
+/** Résultat de `mapping()` : chaque champ indexé, par nom. */
+export type AfpFieldMapping = Record<string, {
+  type: string
+  facet: boolean
+  analyzer?: string
+  term_vector?: string
+  store?: boolean
+  /** Description du champ, dans la langue demandée (`lang`) */
+  description?: string
+}>
+
 export type AdditionalParamValue =
   string |
   number |
@@ -37,23 +93,40 @@ export type AdditionalParamValue =
   {
     in?: StringOrNumber[]
     exclude?: StringOrNumber[]
+    and?: StringOrNumber[]
+    contains?: string
+    range?: SearchRange
+    exists?: boolean
   }
 
+/** Filtres par champ : `{ country: 'fra', urgency: [1, 2], class: { exclude: ['picture'] } }`. */
+export type SearchFilters = { [field in FacetField | TextField]?: AdditionalParamValue } & Record<string, AdditionalParamValue>
+
+/**
+ * Options de recherche. Les filtres par champ se passent dans `filters`.
+ * Les clés à plat (`{ country: 'fra' }`) sont encore lues comme filtres mais dépréciées : retrait en 4.0.
+ */
 export type SearchQueryParams = Partial<{
   sortOrder: SearchQuerySortOrder
-  sortField: string
+  sortField: OrString<SortField>
   query: string
   dateTo: string
   dateFrom: string
   size: number
-  langs: string[]
+  langs: OrString<Lang>[]
   startAt: number
   tz: string
   dateGap: string
   wantCluster: boolean
   wantedFacets: WantedFacets
   sort: SortEntry[]
-  [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[]
+  /** `true` : total exact ; `false` : pas de total (requête plus légère) ; nombre : total borné à cette valeur */
+  exactNumFound: boolean | number
+  /** Champ de date auquel s'appliquent `dateFrom`/`dateTo` (`dateRange.targetField`) ; `published` par défaut côté API */
+  dateField: OrString<DateField>
+  filters: SearchFilters
+  /** @deprecated Passer les filtres dans `filters`. */
+  [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | SearchFilters
 }>
 
 export type AuthType = 'anonymous' | 'credentials'
@@ -80,7 +153,9 @@ export type SearchRequest = {
   dateRange: {
     from: string
     to: string
+    targetField?: string
   }
+  exactNumFound?: boolean | number
   query?: SearchQuery
   uno?: string
   fields?: string[]
@@ -140,7 +215,31 @@ export type AfpMediaRendition = {
   height: number
   href: string
   sizeInBytes?: number
+  rendition?: string
+  /** Durée en secondes (vidéo) */
+  duration?: number
 }
+
+/**
+ * N'importe quel composant d'un média, y compris ceux qui ne sont pas des images ou vidéos dimensionnées :
+ * Zip, ZipVideoSet et Preview `CompressedContent` d'une webstory, sa Mpeg4 (sans width/height).
+ */
+export type AfpMediaComponent = Omit<AfpMediaRendition, 'type' | 'width' | 'height'> & {
+  /** `Photo`, `Video`, `Graphic`, `CompressedContent`… */
+  type: string
+  width?: number
+  height?: number
+}
+
+/** Notation (`rating`) : TOPSHOT = `{ type: 'afpratingtype:afpforum', value: 60 }`, ESSENTIALS = `afpratingtype:producer` 3 */
+export type AfpRating = { type: string; value: number; scaleMin?: number; scaleMax?: number; unit?: string }
+
+/** Règle d'usage (`usageRight`) : `{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }` */
+export type AfpUsageRight = { phrase: string; name?: string }
+/** Exclusion (`exclusion`) : usage ou zone géographique interdits, éventuellement jusqu'à une date */
+export type AfpExclusion = { name: string; type?: string; untilDate?: Date }
+/** Alerte de contenu (`excludeAudiences`) : `{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }` */
+export type AfpContentWarning = { code: string; label?: string }
 
 export type AfpMedia = {
   uno: string
@@ -148,7 +247,10 @@ export type AfpMedia = {
   provider?: string
   caption?: string
   dateline: string
+  /** Images et vidéos dimensionnées */
   renditions: AfpMediaRendition[]
+  /** Tous les composants, dont ceux sans dimensions (Zip d'une webstory…) */
+  components: AfpMediaComponent[]
 }
 
 /**
@@ -192,6 +294,41 @@ export type AfpDocumentCommon = {
   title?: string
   creditLine?: string
   aspectRatios?: string[]
+  /** Copyright, à afficher aux utilisateurs finaux */
+  copyright?: string
+  /** Règles explicites, ex. `['GERMANY OUT']` */
+  rules?: string[]
+  usageRights?: AfpUsageRight[]
+  exclusions?: AfpExclusion[]
+  /** Pays où le document ne doit pas être diffusé (`country_out`) */
+  countriesOut?: string[]
+  /** Pays où il peut l'être (`country_only`, souvent `['ALL']`) */
+  countriesOnly?: string[]
+  /** Le document ne doit plus être utilisé après cette date */
+  expires?: Date
+  /** Statut de la première révision (`Usable`…) */
+  initialStatus?: string
+  contentWarnings?: AfpContentWarning[]
+  /** Tous les libellés `genre` (dans la langue du document) ; `genre` ne garde que le premier */
+  genres?: string[]
+  /** Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer */
+  genreIds?: string[]
+  /** Types éditoriaux (`afpedtype:*`), cumulables : ex. `['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast']` */
+  editorialTypes?: string[]
+  /** Attribut éditorial (`afpattribute:*`), au plus un par document : ex. `'afpattribute:Article'` */
+  editorialAttribute?: string
+  ratings?: AfpRating[]
+  summary?: string[]
+  subheadline?: string
+  /** Contexte éditorial isolé (vidéo, photo), à préférer à `caption` pour une vidéo d'après la doc */
+  captionContext?: string
+  channels?: string[]
+  /** Codes IPTC Media Topic */
+  mediatopics?: string[]
+  /** Vidéo : texte de narration */
+  script?: string[]
+  /** Vidéo : guid des dépêches de contexte */
+  associatedWith?: string[]
 }
 
 export type AfpTextDocument = AfpDocumentCommon & {

@@ -76,7 +76,7 @@ src/
 - **Auth via inheritance**: `Docs extends Auth extends EventEmitter`. Methods on `Docs` call `this.authenticate()` before making API requests.
 - **Context binding**: `Story` and `NotificationCenter` are functions invoked with `.call(this, ...)` to bind to the `Docs` instance.
 - **Zod validation**: All API responses are validated at runtime with Zod schemas defined inline in each module.
-- **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets.
+- **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets: date cursor on the sort field (`dateField` aligned to it), with `startAt` to skip documents already returned at the boundary date (no duplicates, no infinite loop on ties) and a `uno` dedup safety net; plain `startAt` paging for non-date sort fields; never mutates the caller's `params`.
 - **Query DSL**: Complex boolean query strings are parsed via Nearley/Moo into an AST, then converted to nested `SearchQuery` objects by `QueryBuilder`.
 - **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll`/`mlt`/`latest`/`searchWithFilter` return raw `unknown` documents by default; passing `{ parse: true }` (a trailing argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `list` doesn't fit this pattern (it returns facet values, not documents, so there is no raw/parsed choice) but is still typed: its `keywords` are `AfpFacetValue[]`, a named type matching the existing zod-validated shape (no behavior change, just an explicit exported type). `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
 
@@ -119,6 +119,7 @@ dist/
 
 ### Generated Files - Do Not Edit
 - `src/grammar/index.ts` - Generated from `src/grammar/index.ne` by `npm run build:parser`. Edit the `.ne` file instead.
+- `src/searchFields.ts` - `FACET_FIELDS` / `TEXT_FIELDS` / `DATE_FIELDS`, generated from the AFP doc's metadata catalogue export by `bun run tools/gen-search-fields.ts` (committed; re-run when the doc adds fields). They feed the `FacetField` / `TextField` / `DateField` types, `SearchFilters` autocompletion and `fullTextSearchFields` (which fields the query DSL searches with `contains`). `translatedSearchFields` (config) lists the text fields that also have a `translated.{lang}.*` counterpart in the prod mapping — wider than the doc, which only names `all` and `news`.
 - Everything in `dist/` - Build artifacts, gitignored.
 
 ### Build Order Matters
@@ -129,7 +130,7 @@ The full build (`npm run build`) runs in a specific sequence:
 
 ### Environment Variables (for testing/examples)
 ```
-AFPNEWS_BASE_URL        # API base URL (default: https://afp-apicore-prod.afp.com)
+AFPNEWS_BASE_URL        # API base URL (default: https://afp-apicore-prod.afp.com, see src/config.ts)
 AFPNEWS_API_KEY         # API key for anonymous auth
 AFPNEWS_CLIENT_ID       # OAuth client ID
 AFPNEWS_CLIENT_SECRET   # OAuth client secret
@@ -159,14 +160,16 @@ tests/
 ```
 
 ### Error Handling
-- Custom `ApiError` class in `src/utils/request.ts` with `code` and `message` fields
-- API errors are parsed from JSON response bodies using Zod
-- HTTP status codes used as fallback when JSON parsing fails
+- Custom `ApiError` class in `src/utils/request.ts` (exported from the package) with `code`, `message`, `status`, `type`, `subcode` and `expireAt`
+- Bodies are read as text then parsed: an error payload is detected even with HTTP 200, and a non-JSON body yields an `ApiError` (never a `SyntaxError`)
+- Shapes observed in production: `{ error: { code, message, type } }` (no `subcode`), `{ expireAt }` for 429, `{ error: "…" }` (string) for the credits API
+- One retry on 429 (only if `expireAt` is within 10 s) and 502/503/504 (short jittered backoff), for reads only: `get` retries by default (`retry: false` for GETs that write, e.g. filter delete), `post` only with `retry: true` (search, list), `del` and `postForm` (`/oauth/token`) never
+- Token renewal is single-flight (`pendingToken` / `trackPendingToken` in `Auth`), 30 s before expiry; a login waits for an in-flight refresh; `withAuth` only expires the token it actually used before replaying a call that got a 401
 
 ### Authentication Flows
 1. **Anonymous**: `GET /oauth/token?grant_type=anonymous` with Basic auth (apiKey or clientId:clientSecret)
-2. **Credentials**: `POST /oauth/token` with form data `grant_type=password` + username/password
-3. **Refresh**: `POST /oauth/token` with form data `grant_type=refresh_token` + stored refresh token
+2. **Credentials**: `POST /oauth/token` with an `application/x-www-form-urlencoded` body `grant_type=password` + username/password
+3. **Refresh**: `POST /oauth/token` with an `application/x-www-form-urlencoded` body `grant_type=refresh_token` + stored refresh token
 - Tokens emit `tokenChanged` events via EventEmitter
 
 ### Publish Lifecycle

@@ -16,6 +16,7 @@ const tokenSchema = z.object({
 const userSchema = z.object({
   user: z.object({
     additionalProperties: z.object({
+      access: z.record(z.string(), z.boolean()).optional(),
       infosLdap: z.object({
         uid: z.string().describe('Unique id uppercase'),
         mail: z.string().describe('Email'),
@@ -27,18 +28,24 @@ const userSchema = z.object({
         preferredLanguage: z.string().describe('Preferred language in two letters'),
         ctr: z.string().describe('Service abbreviation'),
         description: z.string().describe('Service name'),
-      })
-    }),
+      }).optional()
+    }).optional(),
     username: z.string(),
+    email: z.string().optional(),
     enabled: z.boolean().optional(),
     clientId: z.string().array(),
+    authorities: z.unknown().array().optional(),
+    filters: z.unknown().array().optional(),
   })
 })
+
+const TOKEN_EXPIRY_MARGIN_MS = 30_000
 
 export class Auth extends EventEmitter {
   public token?: AuthToken
   protected baseUrl
   private apiKey
+  private pendingToken?: Promise<AuthToken>
 
   constructor (
     {
@@ -63,7 +70,7 @@ export class Auth extends EventEmitter {
   }
 
   get isTokenValid () {
-    return this.token ? this.token.tokenExpires > +new Date() : false
+    return this.token ? this.token.tokenExpires - TOKEN_EXPIRY_MARGIN_MS > +new Date() : false
   }
 
   get authorizationBearerHeaders (): AuthorizationHeaders {
@@ -80,15 +87,26 @@ export class Auth extends EventEmitter {
   public async authenticate (credentials?: AuthUserCredentials) {
     if (credentials) {
       if (!this.apiKey) throw new Error('Missing API Key to make authenticated requests')
-      return this.requestAuthenticatedToken(credentials)
+      const previous = this.pendingToken?.catch(() => undefined)
+      return this.trackPendingToken(previous
+        ? previous.then(() => this.requestAuthenticatedToken(credentials))
+        : this.requestAuthenticatedToken(credentials))
     }
-    if (this.token) {
-      if (this.isTokenValid) return this.token
-      if (this.token.authType === 'anonymous') return this.requestAnonymousToken()
-      if (!this.apiKey) throw new Error('Invalid token')
-      return this.requestRefreshToken()
-    }
-    return this.requestAnonymousToken()
+    if (this.token && this.isTokenValid) return this.token
+    if (this.pendingToken) return this.pendingToken
+
+    const refresh = this.token !== undefined && this.token.authType !== 'anonymous'
+    if (refresh && !this.apiKey) throw new Error('Invalid token')
+
+    return this.trackPendingToken(refresh ? this.requestRefreshToken() : this.requestAnonymousToken())
+  }
+
+  private trackPendingToken (request: Promise<AuthToken>) {
+    const pending: Promise<AuthToken> = request.finally(() => {
+      if (this.pendingToken === pending) this.pendingToken = undefined
+    })
+    this.pendingToken = pending
+    return pending
   }
 
   /**
@@ -116,16 +134,14 @@ export class Auth extends EventEmitter {
    * by refreshing the token before the second attempt.
    */
   protected async withAuth<T> (fn: () => Promise<T>): Promise<T> {
-    await this.authenticate()
+    const { accessToken } = await this.authenticate()
     try {
       return await fn()
     } catch (error) {
-      if (error instanceof ApiError && error.code === 401 && this.token) {
-        this.token.tokenExpires = 0
-        await this.authenticate()
-        return await fn()
-      }
-      throw error
+      if (!(error instanceof ApiError) || error.code !== 401 || !this.token) throw error
+      if (this.token.accessToken === accessToken) this.token.tokenExpires = 0
+      await this.authenticate()
+      return await fn()
     }
   }
 

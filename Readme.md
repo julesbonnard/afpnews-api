@@ -68,6 +68,31 @@ afp.on('tokenChanged', (token) => {
 // Token is automatically refreshed when expired
 ```
 
+The token is renewed 30 seconds before it expires, and only once even when several calls need it at the same time (the API invalidates the current access token on refresh, so concurrent refreshes would cancel each other). A call that gets a `401` renews the token and is replayed once. Logging in while a refresh is in flight waits for it, so the refresh cannot overwrite the login token.
+
+## Error Handling
+
+Every API failure is thrown as an `ApiError`:
+
+```js
+import { ApiError } from 'afpnews-api'
+
+try {
+  await afp.search({ query: 'Macron' })
+} catch (error) {
+  if (error instanceof ApiError) {
+    error.code     // AFP error code, or the HTTP status (401, 404, 429…)
+    error.status   // HTTP status of the response
+    error.type     // AFP error type: 'invalid_token', 'invalid_user', 'invalid_client', 'SearchServerException'…
+    error.expireAt // for a 429: Date when the block ends
+  }
+}
+```
+
+- An error payload is detected even when the API sends it with an HTTP `200`.
+- A non-JSON body (an HTML error page, for instance) gives an `ApiError`, not a `SyntaxError`.
+- Read requests (`search`, `list`, `get`, `mlt`, `latest`…) are retried once on `429`, `502`, `503` and `504`: after a short random delay for a `5xx`, or at `expireAt` for a `429` when the block ends within 10 seconds. A longer `429` is thrown right away with its `expireAt`. Writes (saved filters, notifications) and token requests are never retried, since a `504` can hide a request the server already applied.
+
 ## Latest Documents
 
 Get the most recent documents:
@@ -106,27 +131,47 @@ const { count, documents } = await afp.search({
 })
 ```
 
-### Additional Filtering Parameters
+### Field Filters
 
-Any extra key-value pair is passed as an additional query filter:
+Pass field filters in `filters`. A value or a list becomes an `in` condition; an object can combine `in` and `exclude`. All filters are combined with AND, together with `query`:
 
 ```js
 const { documents } = await afp.search({
   query: 'climate',
-  country: 'fra',
-  urgency: 3,
-  slug: ['politics', 'economy']
+  filters: {
+    country: 'fra',
+    urgency: 3,
+    slug: ['politics', 'economy'],
+    product: { exclude: ['photo'] }
+  }
 })
 ```
 
-You can also use include/exclude syntax:
+An object can use several operators; each one becomes a separate condition:
+
+| Operator | Meaning | Example |
+|---|---|---|
+| `in` | at least one of the values | `{ class: { in: ['text', 'picture'] } }` |
+| `exclude` | none of the values | `{ genreid: { exclude: ['afpedtype:docrobot'] } }` |
+| `and` | all of the values | `{ topic: { and: ['alc-fr', 'base-illimitee-afpnews-fr'] } }` |
+| `contains` | full-text search in a text field (quote for an exact phrase) | `{ news: { contains: '"Jean-Vincent Placé"' } }` |
+| `range` | interval, bounds included unless `fromExcluded` / `toExcluded` | `{ wordCount: { range: { from: 300, to: 800 } } }` |
+| `exists` | field present (`true`) or absent (`false`) | `{ genre: { exists: false } }` |
+
+Field names autocomplete in `filters`, `sortField`, `dateField` and `langs`: the lists come from the AFP documentation's metadata catalogue and are exported as `FACET_FIELDS`, `TEXT_FIELDS` and `DATE_FIELDS` (types `FacetField`, `TextField`, `DateField`, `SortField`, `Lang`). Other names are still accepted.
+
+Two options are related: `dateField` picks the date field `dateFrom` / `dateTo` apply to (`published` by default), and `exactNumFound` controls the total count (`true`: exact; `false`: none, lighter request; a number: bounded, with `relation: 'gt'` in the result when the total exceeds it).
 
 ```js
-const { documents } = await afp.search({
-  country: { in: ['fra', 'deu'] },
-  product: { exclude: ['photo'] }
+const { documents, relation } = await afp.search({
+  dateField: 'contentCreated',
+  dateFrom: 'now-7d',
+  exactNumFound: 1000,
+  filters: { class: 'text', wordCount: { range: { from: 600 } } }
 })
 ```
+
+> Deprecated: filters passed as flat keys (`afp.search({ country: 'fra' })`) still work but will be removed in 4.0. Move them into `filters`.
 
 ### Specify Response Fields
 
@@ -146,6 +191,8 @@ for await (const doc of afp.searchAll({ size: 5000, query: 'climate' })) {
 }
 ```
 
+`size` is the total number of documents to return; they are fetched in pages of 1000. When the sort field is a date (`published` by default), pages follow that field (`dateField` is set to it) and resume right after the last document returned, so no document is returned twice, even when many documents share the same date. With a non-date sort field, pages use `startAt`. The `params` object you pass is left untouched.
+
 ## Query Syntax
 
 The `query` parameter supports a boolean query DSL:
@@ -162,6 +209,10 @@ The `query` parameter supports a boolean query DSL:
 | Field group | `title:(Macron OR Merkel)` (same as `title:Macron OR title:Merkel`) |
 | Quoted phrase | `title:"climate change"` |
 | Implicit AND | `Macron France` (space-separated terms) |
+| Interval | `wordCount:[300 TO 800]`, `wordCount:[600 TO *]`, `published:["2026-09-01T00:00:00Z" TO now]` |
+| Field present / absent | `_exists_:genre`, `NOT _exists_:genre` |
+
+Text fields of the AFP catalogue (`news`, `title`, `caption`, `headline`, `summary`…) are searched as text (`contains`); other fields match exact values. Quote an interval bound that contains `:` (a time). `NOT` is not supported on an interval.
 
 ## Retrieving a Single Document
 
@@ -190,7 +241,18 @@ for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true }))
 const doc = parseDocument(raw)
 ```
 
-`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`, `script`, `associatedWith`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+
+It also exposes what you need to display or apply before publishing a document, when the API provides it:
+
+- **Rights and mentions**: `copyright` (to display to end users), `creditLine`, `disclaimer`, `rules` (e.g. `['GERMANY OUT']`), `usageRights`, `exclusions`, `countriesOut`, `countriesOnly`, `expires` (do not use the document after this date).
+- **Lifecycle**: `status`, `initialStatus`, `signal`, `contentWarnings` (e.g. `{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }`), `embargoed`.
+- **Classification**: `genres` and `genreIds` (language-independent, prefer them to filter), split into `editorialTypes` (`afpedtype:*`, several per document) and `editorialAttribute` (`afpattribute:*`, at most one), `ratings`, `channels`, `mediatopics` (IPTC), `summary`, `subheadline`, `captionContext`.
+- `topshot` is `true` for AFP Forum TOPSHOT selections (`rating` 60), not for `urgency` 1 (Flash).
+- For a video, `caption` is `captionContext` when present (the same caption without the trailing marker such as `STOCKSHOTS`).
+- Each media has `renditions` (images and videos with dimensions, now with `rendition` and `duration`) and `components`: every component, including those without dimensions such as a webstory's Zip, ZipVideoSet and Mpeg4.
+
+These fields never make `parseDocument()` fail: a value with an unexpected shape is left `undefined`.
 
 This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values, not documents, so `AfpDocument` parsing doesn't apply to it — but its `keywords` are still a named, zod-validated type: `AfpFacetValue` (`{ name?: string | null; count: number }`).
 
@@ -316,7 +378,7 @@ const html = afp.getStoryHtml(doc)
 | `langs` | `string[]` | — | Filter by language codes |
 | `dateFrom` | `string` | `'1980-01-01'` | Start date (ISO date or relative like `'now-7d'`) |
 | `dateTo` | `string` | `'now'` | End date |
-| `size` | `number` | `10` | Number of results (max 1000 per request) |
+| `size` | `number` | `10` | Number of results (max 10000 per request) |
 | `sortField` | `string` | `'published'` | Field to sort by |
 | `sortOrder` | `'asc' \| 'desc'` | `'desc'` | Sort direction |
 | `startAt` | `number` | — | Offset for pagination |
@@ -324,8 +386,11 @@ const html = afp.getStoryHtml(doc)
 | `dateGap` | `string` | — | Date gap for facet ranges (e.g. `'+1HOUR'`, `'+1DAY'`) |
 | `wantedFacets` | `WantedFacets` | — | Facets configuration `{ facetName: { size, minDocCount }, empty?: boolean }` |
 | `sort` | `SortEntry[]` | — | Multi-field sort `[{ sortField, sortOrder }]` |
+| `filters` | `SearchFilters` | — | Field filters `{ field: value \| value[] \| { in, exclude, and, contains, range, exists } }` (see Field Filters) |
+| `dateField` | `string` | `'published'` (API) | Date field `dateFrom` / `dateTo` apply to (`dateRange.targetField`) |
+| `exactNumFound` | `boolean \| number` | — | Total count: exact, none, or bounded |
 
-Any additional key-value pairs are treated as field filters.
+Any other key-value pair is still read as a field filter, but this is deprecated (removed in 4.0): use `filters`.
 
 ## Development
 

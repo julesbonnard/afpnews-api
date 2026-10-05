@@ -31,7 +31,7 @@ describe('Story (via Docs.getStoryHtml)', () => {
             uno: 'story-123',
             href: '/v1/webstory/abc'
           }),
-          text: () => Promise.resolve('')
+          text: () => Promise.resolve(JSON.stringify({ uno: 'story-123', href: '/v1/webstory/abc' }))
         })
       }
       // Second call: fetch the actual HTML

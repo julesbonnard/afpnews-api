@@ -1,6 +1,8 @@
 export { Docs as ApiCore } from './api/docs.js'
 export type * from './types.js'
 export * from './config.js'
+export { FACET_FIELDS, TEXT_FIELDS, DATE_FIELDS } from './searchFields.js'
+export { ApiError } from './utils/request.js'
 export { parseShotList, timeToSeconds } from './utils/shotlist.js'
 export type { Shot, Citation } from './utils/shotlist.js'
 export { parseDocument, safeParseDocument, DocumentSourceSchema } from './utils/parseDocument.js'

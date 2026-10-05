@@ -34,18 +34,24 @@ describe('QueryBuilder', () => {
 
     it('should throw when maxRows is not provided', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.setMaxRows(0)).toThrow('maxRows is required')
+      expect(() => qb.setMaxRows(undefined)).toThrow('maxRows is required')
+      expect(() => qb.setMaxRows(-1)).toThrow('maxRows is required')
     })
 
-    it('should throw when maxRows exceeds 1000', () => {
-      const qb = new QueryBuilder()
-      expect(() => qb.setMaxRows(1001)).toThrow('maxRows cannot be greater than 1000')
+    it('should accept maxRows of 0 (facets only)', () => {
+      const result = new QueryBuilder().setMaxRows(0).build()
+      expect(result.maxRows).toBe(0)
     })
 
-    it('should accept maxRows of exactly 1000', () => {
+    it('should throw when maxRows exceeds 10000', () => {
       const qb = new QueryBuilder()
-      qb.setMaxRows(1000)
-      expect(qb.maxRows).toBe(1000)
+      expect(() => qb.setMaxRows(10001)).toThrow('maxRows cannot be greater than 10000')
+    })
+
+    it('should accept maxRows of exactly 10000', () => {
+      const qb = new QueryBuilder()
+      qb.setMaxRows(10000)
+      expect(qb.maxRows).toBe(10000)
     })
   })
 
@@ -104,10 +110,10 @@ describe('QueryBuilder', () => {
     })
   })
 
-  describe('addAdditionalParams', () => {
+  describe('addFilters', () => {
     it('should return this when params is undefined', () => {
       const qb = new QueryBuilder()
-      expect(qb.addAdditionalParams(undefined)).toBe(qb)
+      expect(qb.addFilters(undefined)).toBe(qb)
     })
   })
 
@@ -150,7 +156,7 @@ describe('QueryBuilder', () => {
     it('should include additional params in query', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: 'fra' })
+        .addFilters({ country: 'fra' })
         .build()
 
       expect(result.query).toBeDefined()
@@ -165,7 +171,7 @@ describe('QueryBuilder', () => {
     it('should handle array additional params', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: ['fra', 'usa'] })
+        .addFilters({ country: ['fra', 'usa'] })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -178,7 +184,7 @@ describe('QueryBuilder', () => {
     it('should handle object with in property', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: { in: ['fra', 'usa'] } })
+        .addFilters({ country: { in: ['fra', 'usa'] } })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -191,7 +197,7 @@ describe('QueryBuilder', () => {
     it('should handle object with exclude property', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: { exclude: ['usa'] } })
+        .addFilters({ country: { exclude: ['usa'] } })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -204,7 +210,7 @@ describe('QueryBuilder', () => {
     it('should handle numeric additional param', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ urgency: 3 })
+        .addFilters({ urgency: 3 })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -214,10 +220,64 @@ describe('QueryBuilder', () => {
       )
     })
 
+    it('should keep both in and exclude on the same field as two conditions', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ country: { in: ['fra'], exclude: ['usa'] } })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'country', in: ['fra'] },
+        { name: 'country', exclude: ['usa'] }
+      ])
+    })
+
+    it('should keep a numeric additional param equal to 0', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ revision: 0 })
+        .build()
+
+      expect(result.query!.and).toEqual([{ name: 'revision', in: [0] }])
+    })
+
+    it('should turn each filter operator into its own condition', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({
+          topic: { and: ['alc-fr', 'base-illimitee-afpnews-fr'] },
+          news: { contains: '"Jean-Vincent Placé"' },
+          wordCount: { range: { from: 300, to: 800, toExcluded: true } },
+          genre: { exists: true },
+          embargoed: { exists: false }
+        })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'topic', and: ['alc-fr', 'base-illimitee-afpnews-fr'] },
+        { name: 'news', contains: '"Jean-Vincent Placé"' },
+        { name: 'wordCount', range: { from: 300, to: 800, toExcluded: true } },
+        { having: 'genre' },
+        { missing: 'embargoed' }
+      ])
+    })
+
+    it('should combine several operators on the same field', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ topic: { in: ['ONLINE-NEWS-EN'], exclude: ['ONLINE-NEWS-EN_MIDDLE-EAST'] } })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'topic', in: ['ONLINE-NEWS-EN'] },
+        { name: 'topic', exclude: ['ONLINE-NEWS-EN_MIDDLE-EAST'] }
+      ])
+    })
+
     it('should skip empty array additional params', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: [] })
+        .addFilters({ country: [] })
         .build()
 
       expect(result.query).toBeUndefined()
@@ -502,16 +562,63 @@ describe('QueryBuilder', () => {
       expect(flat).toContain('jean-luc')
     })
 
-    it('should handle full-text search fields with translation', () => {
+    it('should parse an interval field:[from TO to], with numbers, open bounds and quoted dates', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('wordCount:[300 TO 800]')).toEqual({ or: [{ name: 'wordCount', range: { from: 300, to: 800 } }] })
+      expect(qb.parseQueryString('wordCount:[600 TO *]')).toEqual({ or: [{ name: 'wordCount', range: { from: 600 } }] })
+      expect(qb.parseQueryString('contentCreated:[now-7d to now]')).toEqual({ or: [{ name: 'contentCreated', range: { from: 'now-7d', to: 'now' } }] })
+      expect(qb.parseQueryString('published:["2026-09-01T00:00:00Z" TO "2026-09-02T00:00:00Z"]'))
+        .toEqual({ or: [{ name: 'published', range: { from: '2026-09-01T00:00:00Z', to: '2026-09-02T00:00:00Z' } }] })
+    })
+
+    it('should combine an interval with other terms', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('climat AND wordCount:[600 TO *]')).toEqual({
+        and: [
+          { or: expect.arrayContaining([{ name: 'all', contains: ['climat'] }]) as unknown },
+          { or: [{ name: 'wordCount', range: { from: 600 } }] }
+        ]
+      })
+    })
+
+    it('should reject NOT on an interval and a malformed interval', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('NOT wordCount:[300 TO 800]')).toThrow('NOT is not supported on an interval')
+      expect(() => qb.parseQueryString('wordCount:[300 AND 800]')).toThrow()
+    })
+
+    it('should keep "to" searchable as a plain word, and brackets inside quotes', () => {
+      const qb = new QueryBuilder()
+      expect(JSON.stringify(qb.parseQueryString('road to Paris'))).toContain('"to"')
+      expect(JSON.stringify(qb.parseQueryString('"[EN DIRECT]"'))).toContain('[EN DIRECT]')
+    })
+
+    it('should turn _exists_:field into having, and NOT _exists_ into missing', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('_exists_:genre')).toEqual({ or: [{ having: 'genre' }] })
+      expect(qb.parseQueryString('NOT _exists_:genre')).toEqual({ or: [{ missing: 'genre' }] })
+      expect(qb.parseQueryString('-_exists_:embargoed')).toEqual({ or: [{ missing: 'embargoed' }] })
+    })
+
+    it('should add translated fields only where they exist in the prod mapping', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
-      const result = qb.parseQueryString('title:Macron')
 
-      expect(result).toBeDefined()
-      // Full-text fields (title) should generate translated fields
-      const flat = JSON.stringify(result)
-      expect(flat).toContain('translated.fr.title')
-      expect(flat).toContain('translated.en.title')
+      for (const field of ['news', 'title', 'caption']) {
+        const flat = JSON.stringify(qb.parseQueryString(`${field}:Macron`))
+        expect(flat).toContain(`translated.fr.${field}`)
+        expect(flat).toContain(`translated.en.${field}`)
+      }
+
+      // `summary` est un champ texte (contains) sans équivalent translated.{lang}.summary
+      expect(qb.parseQueryString('summary:Macron')).toEqual({ or: [{ name: 'summary', contains: ['macron'] }] })
+    })
+
+    it('should search every text field of the catalogue with contains, not as an exact value', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('summary:Macron')).toEqual({ or: [{ name: 'summary', contains: ['macron'] }] })
+      expect(qb.parseQueryString('caption:Macron')?.or?.[0]).toEqual({ name: 'caption', contains: ['macron'] })
+      expect(qb.parseQueryString('country:fra')).toEqual({ or: [{ name: 'country', in: ['fra'] }] })
     })
 
     it('should not generate translations for non-full-text fields', () => {
@@ -571,6 +678,22 @@ describe('QueryBuilder', () => {
       const result = qb.parseQueryString('NOT (a OR (b AND c))')
       expect(result!.and).toBeDefined()
       expect(result!.and![1].or).toBeDefined()
+    })
+  })
+
+  describe('setExactNumFound / setDateField', () => {
+    it('should send exactNumFound (boolean or bound) and dateRange.targetField', () => {
+      expect(new QueryBuilder().setExactNumFound(false).build().exactNumFound).toBe(false)
+      expect(new QueryBuilder().setExactNumFound(1000).build().exactNumFound).toBe(1000)
+
+      const result = new QueryBuilder().setDateRange('now-7d', 'now').setDateField('contentCreated').build()
+      expect(result.dateRange).toEqual({ targetField: 'contentCreated', from: 'now-7d', to: 'now' })
+    })
+
+    it('should leave both out when not set', () => {
+      const result = new QueryBuilder().build()
+      expect(result).not.toHaveProperty('exactNumFound')
+      expect(result.dateRange).not.toHaveProperty('targetField')
     })
   })
 
@@ -645,7 +768,7 @@ describe('QueryBuilder', () => {
       ['setSort', qb => qb.setSort('published', 'desc')],
       ['setLangs', qb => qb.setLangs(['fr'])],
       ['setQuery', qb => qb.setQuery('test')],
-      ['addAdditionalParams', qb => qb.addAdditionalParams({ country: 'fra' })],
+      ['addFilters', qb => qb.addFilters({ country: 'fra' })],
       ['setStartAt', qb => qb.setStartAt(0)],
       ['setTz', qb => qb.setTz('UTC')],
       ['setDateGap', qb => qb.setDateGap('+1DAY')],
@@ -754,7 +877,7 @@ describe('QueryBuilder', () => {
         .setSort('published', 'asc')
         .setLangs(['fr'])
         .setQuery('Macron')
-        .addAdditionalParams({ country: 'fra' })
+        .addFilters({ country: 'fra' })
         .build()
 
       expect(result.maxRows).toBe(50)

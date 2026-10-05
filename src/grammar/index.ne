@@ -16,6 +16,8 @@
     space: { match: /\s/, lineBreaks: true },
     lparen: '(',
     rparen: ')',
+    lbracket: '[',
+    rbracket: ']',
     dquote: '"',
     backslash: '\\',
     is: ':',
@@ -65,6 +67,8 @@ dqchar ->
   | %space {% (data) => data[0].text || data[0].value %}
   | %lparen {% () => '(' %}
   | %rparen {% () => ')' %}
+  | %lbracket {% () => '[' %}
+  | %rbracket {% () => ']' %}
   | %is {% () => ':' %}
   | %and {% (data) => data[0].text %}
   | %or {% (data) => data[0].text %}
@@ -129,6 +133,18 @@ tag_expression ->
       const { field, negated } = buildField(data[0])
       return negate(negated, applyFieldToGroup(field, data[4]))
     } %}
+  # Intervalle `field:[from TO to]` ; `*` = borne ouverte. `TO` n'est pas un mot-clé du lexer (le mot
+  # « to » reste cherchable en texte libre) : il n'est reconnu qu'ici, entre crochets.
+  | field comparison_operator %lbracket _ range_bound __ %word __ range_bound _ %rbracket {% (data, _location, reject) => {
+      if (data[6].text.toUpperCase() !== 'TO') return reject
+      const { field, negated } = buildField(data[0])
+      return negate(negated, {
+        type: 'Tag',
+        field,
+        operator: data[1],
+        expression: { type: 'RangeExpression', from: data[4], to: data[8] }
+      })
+    } %}
   | field comparison_operator expression {% data => {
       const { field, negated } = buildField(data[0])
       return negate(negated, {
@@ -173,3 +189,7 @@ expression ->
   | dqstring {% (data) => ({type: 'Tag', expression: {type: 'LiteralExpression', quoted: true, quotes: 'double', value: data.join('')}}) %}
 
 unquoted_value -> %word {% id %}
+
+range_bound ->
+    %word {% ([token]) => token.text === '*' ? undefined : token.text %}
+  | dqstring {% ([value]) => value %}

@@ -1,11 +1,32 @@
-import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
-import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
+import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, translatedSearchFields, langsWithTranslation } from '../config.js'
+import type { AdditionalParamValue, SearchFilters, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar/index.js'
 import { normalize } from './normalizer.js'
 import { z } from 'zod'
 
 const querySchema = z.string().default('')
+
+/**
+ * Convertit un filtre en conditions de requête : une valeur ou une liste devient `in` ; un objet donne
+ * une condition par opérateur renseigné (voir `AdditionalParamValue`). Valeur vide → aucune condition.
+ */
+function toConditions (name: string, value: AdditionalParamValue): SearchQuery[] {
+  if (typeof value === 'string' || typeof value === 'number') return value === '' ? [] : [{ name, in: [value] }]
+  if (Array.isArray(value)) return value.length > 0 ? [{ name, in: value }] : []
+
+  const conditions: SearchQuery[] = []
+  if (value.in?.length) conditions.push({ name, in: value.in })
+  if (value.exclude?.length) conditions.push({ name, exclude: value.exclude })
+  if (value.and?.length) conditions.push({ name, and: value.and })
+  if (value.contains) conditions.push({ name, contains: value.contains })
+  if (value.range) conditions.push({ name, range: value.range })
+  if (value.exists !== undefined) conditions.push(value.exists ? { having: name } : { missing: name })
+  return conditions
+}
+
+const toBound = (bound?: string): string | number | undefined =>
+  bound !== undefined && /^-?\d+(\.\d+)?$/.test(bound) ? Number(bound) : bound
 
 const quote = (value: string) => {
   return `"${value}"`
@@ -76,6 +97,8 @@ export class QueryBuilder {
   public wantCluster?: boolean
   public wantedFacets?: WantedFacets
   public multiSort?: SortEntry[]
+  public exactNumFound?: boolean | number
+  public dateField?: string
   private additionalParams: SearchQuery[] = []
 
   constructor (fields?: string[]) {
@@ -88,7 +111,7 @@ export class QueryBuilder {
   }
 
   public setMaxRows (maxRows?: number) {
-    if (!maxRows) throw new Error('maxRows is required')
+    if (maxRows === undefined || maxRows < 0) throw new Error('maxRows is required')
     if (maxRows > maxRowsByRequest) throw new Error(`maxRows cannot be greater than ${maxRowsByRequest}`)
     this.maxRows = maxRows
     return this
@@ -126,6 +149,16 @@ export class QueryBuilder {
     return this
   }
 
+  public setExactNumFound (exactNumFound?: boolean | number) {
+    if (exactNumFound !== undefined) this.exactNumFound = exactNumFound
+    return this
+  }
+
+  public setDateField (dateField?: string) {
+    if (dateField) this.dateField = dateField
+    return this
+  }
+
   public setDateGap (dateGap?: string) {
     if (dateGap) this.dateGap = dateGap
     return this
@@ -146,32 +179,11 @@ export class QueryBuilder {
     return this
   }
 
-  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | undefined }) {
-    if (!additionalParams) return this
-    for (const [key, value] of Object.entries(additionalParams)) {
-      if (!value || typeof value === 'boolean') continue
-      this.addAdditionalParam(key, value as AdditionalParamValue)
+  /** Ajoute des filtres par champ, combinés en ET avec la requête (voir `toConditions`). */
+  public addFilters (filters: SearchFilters = {}) {
+    for (const [name, value] of Object.entries(filters)) {
+      this.additionalParams.push(...toConditions(name, value))
     }
-    return this
-  }
-
-  private addAdditionalParam (name: string, value: AdditionalParamValue) {
-    if (!value) return
-    const param: SearchQuery = {
-      name
-    }
-
-    if (typeof value === 'number' || typeof value === 'string') {
-      param['in'] = [value]
-    } else if (Array.isArray(value)) {
-      if (value.length === 0) return
-      param['in'] = value
-    } else if (value.in) {
-      param['in'] = value.in
-    } else if (value.exclude) {
-      param['exclude'] = value.exclude
-    }
-    this.additionalParams.push(param)
     return this
   }
 
@@ -190,6 +202,7 @@ export class QueryBuilder {
   public build () {
     const request: SearchRequest = {
       dateRange: {
+        ...(this.dateField ? { targetField: this.dateField } : {}),
         from: this.dateFrom,
         to: this.dateTo
       },
@@ -207,20 +220,32 @@ export class QueryBuilder {
     if (this.wantCluster !== undefined) request.wantCluster = this.wantCluster
     if (this.wantedFacets) request.wantedFacets = this.wantedFacets
     if (this.multiSort) request.sort = this.multiSort
+    if (this.exactNumFound !== undefined) request.exactNumFound = this.exactNumFound
 
     return request
   }
 
-  private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken) => {
+  private serializeExpression = (expression: ExpressionToken, exclude = false, field?: FieldToken): SearchQuery[] => {
+    if (expression.type === 'RangeExpression') {
+      if (!field) throw new Error('an interval [from TO to] needs a field, e.g. wordCount:[300 TO 800]')
+      if (exclude) throw new Error(`NOT is not supported on an interval ("${field.name}:[…]")`)
+      const from = toBound(expression.from)
+      const to = toBound(expression.to)
+      return [{ name: field.name, range: { ...(from !== undefined && { from }), ...(to !== undefined && { to }) } }]
+    }
     if (expression.type !== 'LiteralExpression') {
       throw new Error(`missing value after "${field?.name ?? ''}:"`)
+    }
+    if (field?.name === '_exists_') {
+      const name = String(expression.value)
+      return [exclude ? { missing: name } : { having: name }]
     }
   
     const fieldName = field?.name || 'all'
     const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
     const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
   
-    if (fieldOperator === 'contains') {
+    if (fieldOperator === 'contains' && translatedSearchFields.includes(fieldName)) {
       const langs =  this.langs && this.langs.length > 0 ? this.langs : langsWithTranslation
       return [{
         name: fieldName,

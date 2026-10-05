@@ -166,8 +166,26 @@ describe('parseDocument', () => {
       expect(() => parseDocument({ ...TEXT_DOC, signal: 'other' })).toThrow()
     })
 
+    it('accepts several signals on the same document (prod: ["update", "cwarn"])', () => {
+      const doc = parseDocument({ ...TEXT_DOC, signal: ['update', 'cwarn'] })
+      expect(doc.signal).toBe('update')
+    })
+
+    it('normalises the status casing (facet values are lowercase)', () => {
+      expect(parseDocument({ ...TEXT_DOC, status: 'canceled' }).status).toBe('Canceled')
+      expect(parseDocument({ ...TEXT_DOC, status: 'withheld' }).status).toBe('WithHeld')
+    })
+
+    it('treats an empty status as Usable, as documented', () => {
+      expect(parseDocument({ ...TEXT_DOC, status: '' }).status).toBe('Usable')
+    })
+
+    it('throws for an unknown status', () => {
+      expect(() => parseDocument({ ...TEXT_DOC, status: 'Withdrawn' })).toThrow()
+    })
+
     it('normalises signal: cwarn alone yields undefined (not part of AfpDocumentSignal)', () => {
-      // A valid raw signal (accepted by SignalEnum), but AfpDocumentSignal only models
+      // A valid raw signal, but AfpDocumentSignal only models
       // 'correction' | 'update' — cwarn (content warning) is deliberately not surfaced here.
       const doc = parseDocument({ ...TEXT_DOC, signal: 'cwarn' })
       expect(doc.signal).toBeUndefined()
@@ -215,6 +233,13 @@ describe('parseDocument', () => {
     it('has no medias', () => {
       const doc = parseDocument(TEXT_DOC)
       expect(doc.medias).toEqual([])
+    })
+
+    it('extracts the medias of a factcheck from bagItem', () => {
+      const doc = parseDocument({ ...TEXT_DOC, class: 'factcheck', bagItem: PICTURE_DOC.bagItem })
+      expect(doc.medias).toHaveLength(1)
+      expect(doc.medias[0]?.uno).toBe('pic-uno')
+      expect(doc.medias[0]?.caption).toBe('Une photo')
     })
 
     it('reports hasBeenAlerted when the doc went through flash/alert/urgent', () => {
@@ -277,9 +302,14 @@ describe('parseDocument', () => {
       expect(doc.topshot).toBe(false)
     })
 
-    it('marks topshot true for urgency 1 pictures', () => {
-      const doc = parseDocument({ ...PICTURE_DOC, urgency: 1 })
-      expect(doc.topshot).toBe(true)
+    it('marks topshot from the AFP Forum rating (value 60), not from urgency', () => {
+      const topshot = { ratingtype: 'afpratingtype:afpforum', scalemax: 100, value: 60, scaleunit: 'rscaleunit:mscale', scalemin: 0 }
+      expect(parseDocument({ ...PICTURE_DOC, urgency: 5, rating: [topshot] }).topshot).toBe(true)
+      // urgency 1 = Flash : des milliers de photos par semaine, pas des TOPSHOTS
+      expect(parseDocument({ ...PICTURE_DOC, urgency: 1 }).topshot).toBe(false)
+      // sélection ESSENTIALS (producer, 3 étoiles) : pas un TOPSHOT
+      const essentials = { ratingtype: 'afpratingtype:producer', scalemax: 5, value: 3, scaleunit: 'rscaleunit:star', scalemin: 0 }
+      expect(parseDocument({ ...PICTURE_DOC, rating: [essentials] }).topshot).toBe(false)
     })
 
     it('parses a graphic class the same way as picture', () => {
@@ -309,10 +339,115 @@ describe('parseDocument', () => {
     })
   })
 
+  describe('rights, lifecycle and classification (shapes observed in prod)', () => {
+    const ENRICHED = {
+      ...PICTURE_DOC,
+      copyright: '2026 Getty Images',
+      rules: ['GERMANY OUT'],
+      usageRight: [{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }],
+      exclusion: [{ scheme: 'http://www.afp.com/format/internal/exclusion', name: 'Japan', type: 'http://cv.iptc.org/newscodes/cpnature/geoArea', uri: 'http://ref.afp.com/location/x', untilDate: '2026-12-31T00:00:00Z' }],
+      country_out: ['GERMANY'],
+      country_only: ['ALL'],
+      expires: '2028-10-05T13:01:14Z',
+      initialStatus: 'Usable',
+      excludeAudiences: [{ qcode: 'cwarn:death', text: 'ViolentGraphicLanguage' }],
+      genre: ['Actualité', 'Reportage'],
+      genreid: ['afpedtype:Raw', 'afpedtype:SinglePage'],
+      summary: ['TOKYO, JAPAN - OCTOBER 05: …'],
+      subheadline: 'Foto vorhanden\n',
+      captionContext: 'The US Supreme Court hears a climate case',
+      channel: ['/wires/AFP-FORUM', '/wires/public/PARTNER-PHOTO'],
+      mediatopic: ['20001065', '15000000']
+    }
+
+    it('exposes rights and mandatory mentions', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.copyright).toBe('2026 Getty Images')
+      expect(doc.rules).toEqual(['GERMANY OUT'])
+      expect(doc.usageRights).toEqual([{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }])
+      expect(doc.exclusions).toEqual([{ name: 'Japan', type: 'http://cv.iptc.org/newscodes/cpnature/geoArea', untilDate: new Date('2026-12-31T00:00:00Z') }])
+      expect(doc.countriesOut).toEqual(['GERMANY'])
+      expect(doc.countriesOnly).toEqual(['ALL'])
+      expect(doc.expires).toEqual(new Date('2028-10-05T13:01:14Z'))
+    })
+
+    it('exposes lifecycle and content warnings', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.initialStatus).toBe('Usable')
+      expect(doc.contentWarnings).toEqual([{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }])
+    })
+
+    it('splits genreid into cumulative editorial types (afpedtype) and a single attribute (afpattribute)', () => {
+      const video = parseDocument({ ...VIDEO_DOC, genreid: ['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast', 'afpedtype:Images', 'afpattribute:Report'] })
+      expect(video.editorialTypes).toEqual(['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast', 'afpedtype:Images'])
+      expect(video.editorialAttribute).toBe('afpattribute:Report')
+
+      const text = parseDocument({ ...TEXT_DOC, genreid: 'afpedtype:Lead' })
+      expect(text.editorialTypes).toEqual(['afpedtype:Lead'])
+      expect(text.editorialAttribute).toBeUndefined()
+    })
+
+    it('exposes ratings', () => {
+      const doc = parseDocument({ ...PICTURE_DOC, rating: [{ ratingtype: 'afpratingtype:producer', scalemax: 5, value: 3, scaleunit: 'rscaleunit:star', scalemin: 0 }] })
+      expect(doc.ratings).toEqual([{ type: 'afpratingtype:producer', value: 3, scaleMin: 0, scaleMax: 5, unit: 'rscaleunit:star' }])
+    })
+
+    it('keeps every genre and genreid, a string or a list depending on the class', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.genre).toBe('Actualité')
+      expect(doc.genres).toEqual(['Actualité', 'Reportage'])
+      expect(doc.genreIds).toEqual(['afpedtype:Raw', 'afpedtype:SinglePage'])
+      expect(parseDocument({ ...TEXT_DOC, genre: 'Lead', genreid: 'afpedtype:Lead' }).genreIds).toEqual(['afpedtype:Lead'])
+    })
+
+    it('exposes classification and context fields', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.summary).toEqual(['TOKYO, JAPAN - OCTOBER 05: …'])
+      expect(doc.subheadline).toBe('Foto vorhanden')
+      expect(doc.captionContext).toBe('The US Supreme Court hears a climate case')
+      expect(doc.channels).toEqual(['/wires/AFP-FORUM', '/wires/public/PARTNER-PHOTO'])
+      expect(doc.mediatopics).toEqual(['20001065', '15000000'])
+    })
+
+    it('never rejects a document because of a malformed enriched field', () => {
+      const doc = parseDocument({ ...PICTURE_DOC, rules: 42, usageRight: 'JAPAN OUT', exclusion: [{ type: 'no name' }], expires: 'not a date', rating: 'x', excludeAudiences: {} })
+      expect(doc.rules).toBeUndefined()
+      expect(doc.usageRights).toBeUndefined()
+      expect(doc.exclusions).toBeUndefined()
+      expect(doc.expires).toBeUndefined()
+      expect(doc.contentWarnings).toBeUndefined()
+      expect(doc.topshot).toBe(false)
+    })
+
+    it('leaves the new fields undefined when absent', () => {
+      const doc = parseDocument(PICTURE_DOC)
+      expect(doc.copyright).toBeUndefined()
+      expect(doc.contentWarnings).toBeUndefined()
+      expect(doc.genres).toBeUndefined()
+    })
+  })
+
   describe('video / videography', () => {
     it('parses the caption (first line)', () => {
       const doc = parseDocument({ ...VIDEO_DOC, caption: ['Premiere ligne', 'Seconde ligne'] })
       expect(doc.caption).toBe('Premiere ligne')
+    })
+
+    it('prefers captionContext (same caption without the trailing STOCKSHOTS marker)', () => {
+      const doc = parseDocument({
+        ...VIDEO_DOC,
+        caption: ['STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh. STOCKSHOTS'],
+        captionContext: 'STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh.'
+      })
+      expect(doc.caption).toBe('STOCKSHOTS of the international terminals at King Khalid International Airport in Riyadh.')
+    })
+
+    it('keeps duration and rendition on video components', () => {
+      const doc = parseDocument({
+        ...VIDEO_DOC,
+        bagItem: [{ uno: 'v', medias: [{ duration: 55, role: 'Mpeg4-640x360_W', sizeInBytes: 7255427, rendition: 'afpveprnd:VID_MP4_H264_640x360p25_W', width: 640, type: 'Video', height: 360, href: 'https://example.com/v.mp4' }] }]
+      })
+      expect(doc.medias[0]?.renditions[0]).toMatchObject({ duration: 55, rendition: 'afpveprnd:VID_MP4_H264_640x360p25_W' })
     })
 
     it('falls back to an empty caption when caption is absent', () => {
@@ -356,6 +491,12 @@ describe('parseDocument', () => {
       vi.restoreAllMocks()
     })
 
+    it('exposes script and associatedWith for a video', () => {
+      const doc = parseDocument({ ...VIDEO_DOC, script: ['El Nobel de Medicina premió el lunes…'], associatedWith: ['http://doc.afp.com/D2763T7'] })
+      expect(doc.script).toEqual(['El Nobel de Medicina premió el lunes…'])
+      expect(doc.associatedWith).toEqual(['http://doc.afp.com/D2763T7'])
+    })
+
     it('parses the shot list from news', () => {
       const doc = parseDocument({
         ...VIDEO_DOC,
@@ -397,6 +538,30 @@ describe('parseDocument', () => {
       expect(doc.href).toBe('https://example.com/webstory')
       expect(doc.medias).toHaveLength(1)
       expect(doc.paragraphs).toEqual([])
+    })
+
+    it('exposes every component in components, dimensionless ones included (Zip, ZipVideoSet, Mpeg4)', () => {
+      const href = 'https://example.com/objects/x'
+      const doc = parseDocument({
+        ...WEBSTORY_DOC,
+        bagItem: [{
+          uno: 'ws-uno',
+          medias: [
+            { role: 'Zip', sizeInBytes: 8154286, rendition: 'application/zip', type: 'CompressedContent', href },
+            { role: 'Preview', sizeInBytes: 8154286, rendition: 'rnd:preview', type: 'CompressedContent', href },
+            { role: 'ZipVideoSet', sizeInBytes: 94343724, rendition: 'afprnd:videoset', type: 'CompressedContent', href },
+            { role: 'Mpeg4', sizeInBytes: 94732183, rendition: 'afprnd:video', type: 'Video', href },
+            { role: 'Thumbnail', sizeInBytes: 24134, rendition: 'rnd:thumbnail', width: 240, type: 'Photo', height: 320, href }
+          ]
+        }]
+      })
+      const media = doc.medias[0]
+      // components : tout, dont les composants sans dimensions
+      expect(media?.components.map(c => c.role)).toEqual(['Zip', 'Preview', 'ZipVideoSet', 'Mpeg4', 'Thumbnail'])
+      expect(media?.components[0]).toEqual({ role: 'Zip', sizeInBytes: 8154286, rendition: 'application/zip', type: 'CompressedContent', href })
+      // renditions : contrat inchangé, images et vidéos dimensionnées seulement
+      expect(media?.renditions.map(r => r.role)).toEqual(['Thumbnail'])
+      expect(media?.renditions[0]?.width).toBe(240)
     })
   })
 })

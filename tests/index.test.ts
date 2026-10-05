@@ -23,15 +23,16 @@ describe('index exports', () => {
   })
 
   it('should export defaultBaseUrl', () => {
-    expect(defaultBaseUrl).toBe('https://afp-apicore-prod-v2-external.app.afp.com')
+    expect(defaultBaseUrl).toBe('https://afp-apicore-prod.afp.com')
   })
 
   it('should export maxRowsByRequest', () => {
-    expect(maxRowsByRequest).toBe(1000)
+    expect(maxRowsByRequest).toBe(10000)
   })
 
   it('should export fullTextSearchFields', () => {
-    expect(fullTextSearchFields).toEqual(['all', 'title', 'news'])
+    expect(fullTextSearchFields).toEqual(expect.arrayContaining(['all', 'title', 'news', 'caption', 'headline', 'summary']))
+    expect(fullTextSearchFields).not.toContain('country')
   })
 
   it('should export langsWithTranslation', () => {
