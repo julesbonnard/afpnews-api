@@ -34,18 +34,24 @@ describe('QueryBuilder', () => {
 
     it('should throw when maxRows is not provided', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.setMaxRows(0)).toThrow('maxRows is required')
+      expect(() => qb.setMaxRows(undefined)).toThrow('maxRows is required')
+      expect(() => qb.setMaxRows(-1)).toThrow('maxRows is required')
     })
 
-    it('should throw when maxRows exceeds 1000', () => {
-      const qb = new QueryBuilder()
-      expect(() => qb.setMaxRows(1001)).toThrow('maxRows cannot be greater than 1000')
+    it('should accept maxRows of 0 (facets only)', () => {
+      const result = new QueryBuilder().setMaxRows(0).build()
+      expect(result.maxRows).toBe(0)
     })
 
-    it('should accept maxRows of exactly 1000', () => {
+    it('should throw when maxRows exceeds 10000', () => {
       const qb = new QueryBuilder()
-      qb.setMaxRows(1000)
-      expect(qb.maxRows).toBe(1000)
+      expect(() => qb.setMaxRows(10001)).toThrow('maxRows cannot be greater than 10000')
+    })
+
+    it('should accept maxRows of exactly 10000', () => {
+      const qb = new QueryBuilder()
+      qb.setMaxRows(10000)
+      expect(qb.maxRows).toBe(10000)
     })
   })
 
@@ -104,10 +110,10 @@ describe('QueryBuilder', () => {
     })
   })
 
-  describe('addAdditionalParams', () => {
+  describe('addFilters', () => {
     it('should return this when params is undefined', () => {
       const qb = new QueryBuilder()
-      expect(qb.addAdditionalParams(undefined)).toBe(qb)
+      expect(qb.addFilters(undefined)).toBe(qb)
     })
   })
 
@@ -150,7 +156,7 @@ describe('QueryBuilder', () => {
     it('should include additional params in query', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: 'fra' })
+        .addFilters({ country: 'fra' })
         .build()
 
       expect(result.query).toBeDefined()
@@ -165,7 +171,7 @@ describe('QueryBuilder', () => {
     it('should handle array additional params', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: ['fra', 'usa'] })
+        .addFilters({ country: ['fra', 'usa'] })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -178,7 +184,7 @@ describe('QueryBuilder', () => {
     it('should handle object with in property', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: { in: ['fra', 'usa'] } })
+        .addFilters({ country: { in: ['fra', 'usa'] } })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -191,7 +197,7 @@ describe('QueryBuilder', () => {
     it('should handle object with exclude property', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: { exclude: ['usa'] } })
+        .addFilters({ country: { exclude: ['usa'] } })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -204,7 +210,7 @@ describe('QueryBuilder', () => {
     it('should handle numeric additional param', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ urgency: 3 })
+        .addFilters({ urgency: 3 })
         .build()
 
       expect(result.query!.and).toEqual(
@@ -214,10 +220,31 @@ describe('QueryBuilder', () => {
       )
     })
 
+    it('should keep both in and exclude on the same field as two conditions', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ country: { in: ['fra'], exclude: ['usa'] } })
+        .build()
+
+      expect(result.query!.and).toEqual([
+        { name: 'country', in: ['fra'] },
+        { name: 'country', exclude: ['usa'] }
+      ])
+    })
+
+    it('should keep a numeric additional param equal to 0', () => {
+      const result = new QueryBuilder()
+        .setMaxRows(10)
+        .addFilters({ revision: 0 })
+        .build()
+
+      expect(result.query!.and).toEqual([{ name: 'revision', in: [0] }])
+    })
+
     it('should skip empty array additional params', () => {
       const result = new QueryBuilder()
         .setMaxRows(10)
-        .addAdditionalParams({ country: [] })
+        .addFilters({ country: [] })
         .build()
 
       expect(result.query).toBeUndefined()
@@ -645,7 +672,7 @@ describe('QueryBuilder', () => {
       ['setSort', qb => qb.setSort('published', 'desc')],
       ['setLangs', qb => qb.setLangs(['fr'])],
       ['setQuery', qb => qb.setQuery('test')],
-      ['addAdditionalParams', qb => qb.addAdditionalParams({ country: 'fra' })],
+      ['addFilters', qb => qb.addFilters({ country: 'fra' })],
       ['setStartAt', qb => qb.setStartAt(0)],
       ['setTz', qb => qb.setTz('UTC')],
       ['setDateGap', qb => qb.setDateGap('+1DAY')],
@@ -754,7 +781,7 @@ describe('QueryBuilder', () => {
         .setSort('published', 'asc')
         .setLangs(['fr'])
         .setQuery('Macron')
-        .addAdditionalParams({ country: 'fra' })
+        .addFilters({ country: 'fra' })
         .build()
 
       expect(result.maxRows).toBe(50)

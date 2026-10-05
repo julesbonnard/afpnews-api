@@ -68,6 +68,33 @@ describe('Docs', () => {
       expect(result.documents[0]).toEqual({ uno: 'doc1', title: 'Test' })
     })
 
+    it('should return facets normalised to AfpFacetValue (prod shape: value / occurence)', async () => {
+      mockFetch({
+        response: {
+          docs: [],
+          numFound: 207389,
+          relation: 'eq',
+          facets: { status: [{ occurence: 207300, value: 'Usable' }, { occurence: 7, value: 'Canceled' }] }
+        }
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({ size: 0, wantedFacets: { status: { minDocCount: 1, size: 20 } } })
+
+      expect(result.facets).toEqual({ status: [{ name: 'Usable', count: 207300 }, { name: 'Canceled', count: 7 }] })
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).maxRows).toBe(0)
+    })
+
+    it('should not add a facets key when the API returns none', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search()
+
+      expect(result).not.toHaveProperty('facets')
+    })
+
     it('should use existing valid token', async () => {
       const searchResponse = {
         response: { docs: [], numFound: 0 }
@@ -81,6 +108,36 @@ describe('Docs', () => {
       expect(result.documents).toHaveLength(0)
       // Only one fetch call (search), no auth call
       expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should turn params.filters into query conditions', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({ filters: { class: 'text', genreid: { exclude: ['afpedtype:docrobot'] } } })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).query).toEqual({
+        and: [
+          { name: 'class', in: ['text'] },
+          { name: 'genreid', exclude: ['afpedtype:docrobot'] }
+        ]
+      })
+    })
+
+    it('should still read deprecated flat filters, and ignore entries that are not filters', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({ country: 'fra', exactNumFound: true, empty: '', facets: { topic: { size: 5 } }, filters: { class: 'text' } })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).query).toEqual({
+        and: [
+          { name: 'country', in: ['fra'] },
+          { name: 'class', in: ['text'] }
+        ]
+      })
     })
 
     it('should pass search params to the API', async () => {
@@ -400,6 +457,26 @@ describe('Docs', () => {
       expect(result.count).toBe(2)
       expect(result.keywords).toHaveLength(2)
       expect(result.keywords[0]).toEqual({ count: 100 })
+    })
+
+    it('should send size as a query param (number of facet values), not as maxRows', async () => {
+      mockFetch({ response: { topics: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.list('topic', { size: 2000 })
+
+      const [calledUrl, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect(calledUrl).toContain('size=2000')
+      expect((JSON.parse(init!.body as string) as SearchRequest).maxRows).toBe(10)
+    })
+
+    it('should request 100 facet values by default (API default)', async () => {
+      mockFetch({ response: { topics: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.list('topic')
+
+      expect((fetch as Mock<typeof fetch>).mock.calls[0][0]).toContain('size=100')
     })
 
     it('should pass custom minDocCount', async () => {

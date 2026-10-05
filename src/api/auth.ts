@@ -16,6 +16,7 @@ const tokenSchema = z.object({
 const userSchema = z.object({
   user: z.object({
     additionalProperties: z.object({
+      access: z.record(z.string(), z.boolean()).optional(),
       infosLdap: z.object({
         uid: z.string().describe('Unique id uppercase'),
         mail: z.string().describe('Email'),
@@ -27,11 +28,14 @@ const userSchema = z.object({
         preferredLanguage: z.string().describe('Preferred language in two letters'),
         ctr: z.string().describe('Service abbreviation'),
         description: z.string().describe('Service name'),
-      })
-    }),
+      }).optional()
+    }).optional(),
     username: z.string(),
+    email: z.string().optional(),
     enabled: z.boolean().optional(),
     clientId: z.string().array(),
+    authorities: z.unknown().array().optional(),
+    filters: z.unknown().array().optional(),
   })
 })
 

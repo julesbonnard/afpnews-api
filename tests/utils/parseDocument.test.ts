@@ -166,8 +166,26 @@ describe('parseDocument', () => {
       expect(() => parseDocument({ ...TEXT_DOC, signal: 'other' })).toThrow()
     })
 
+    it('accepts several signals on the same document (prod: ["update", "cwarn"])', () => {
+      const doc = parseDocument({ ...TEXT_DOC, signal: ['update', 'cwarn'] })
+      expect(doc.signal).toBe('update')
+    })
+
+    it('normalises the status casing (facet values are lowercase)', () => {
+      expect(parseDocument({ ...TEXT_DOC, status: 'canceled' }).status).toBe('Canceled')
+      expect(parseDocument({ ...TEXT_DOC, status: 'withheld' }).status).toBe('WithHeld')
+    })
+
+    it('treats an empty status as Usable, as documented', () => {
+      expect(parseDocument({ ...TEXT_DOC, status: '' }).status).toBe('Usable')
+    })
+
+    it('throws for an unknown status', () => {
+      expect(() => parseDocument({ ...TEXT_DOC, status: 'Withdrawn' })).toThrow()
+    })
+
     it('normalises signal: cwarn alone yields undefined (not part of AfpDocumentSignal)', () => {
-      // A valid raw signal (accepted by SignalEnum), but AfpDocumentSignal only models
+      // A valid raw signal, but AfpDocumentSignal only models
       // 'correction' | 'update' — cwarn (content warning) is deliberately not surfaced here.
       const doc = parseDocument({ ...TEXT_DOC, signal: 'cwarn' })
       expect(doc.signal).toBeUndefined()
@@ -215,6 +233,13 @@ describe('parseDocument', () => {
     it('has no medias', () => {
       const doc = parseDocument(TEXT_DOC)
       expect(doc.medias).toEqual([])
+    })
+
+    it('extracts the medias of a factcheck from bagItem', () => {
+      const doc = parseDocument({ ...TEXT_DOC, class: 'factcheck', bagItem: PICTURE_DOC.bagItem })
+      expect(doc.medias).toHaveLength(1)
+      expect(doc.medias[0]?.uno).toBe('pic-uno')
+      expect(doc.medias[0]?.caption).toBe('Une photo')
     })
 
     it('reports hasBeenAlerted when the doc went through flash/alert/urgent', () => {

@@ -106,27 +106,23 @@ const { count, documents } = await afp.search({
 })
 ```
 
-### Additional Filtering Parameters
+### Field Filters
 
-Any extra key-value pair is passed as an additional query filter:
+Pass field filters in `filters`. A value or a list becomes an `in` condition; an object can combine `in` and `exclude`. All filters are combined with AND, together with `query`:
 
 ```js
 const { documents } = await afp.search({
   query: 'climate',
-  country: 'fra',
-  urgency: 3,
-  slug: ['politics', 'economy']
+  filters: {
+    country: 'fra',
+    urgency: 3,
+    slug: ['politics', 'economy'],
+    product: { exclude: ['photo'] }
+  }
 })
 ```
 
-You can also use include/exclude syntax:
-
-```js
-const { documents } = await afp.search({
-  country: { in: ['fra', 'deu'] },
-  product: { exclude: ['photo'] }
-})
-```
+> Deprecated: filters passed as flat keys (`afp.search({ country: 'fra' })`) still work but will be removed in 4.0. Move them into `filters`.
 
 ### Specify Response Fields
 
@@ -316,7 +312,7 @@ const html = afp.getStoryHtml(doc)
 | `langs` | `string[]` | — | Filter by language codes |
 | `dateFrom` | `string` | `'1980-01-01'` | Start date (ISO date or relative like `'now-7d'`) |
 | `dateTo` | `string` | `'now'` | End date |
-| `size` | `number` | `10` | Number of results (max 1000 per request) |
+| `size` | `number` | `10` | Number of results (max 10000 per request) |
 | `sortField` | `string` | `'published'` | Field to sort by |
 | `sortOrder` | `'asc' \| 'desc'` | `'desc'` | Sort direction |
 | `startAt` | `number` | — | Offset for pagination |
@@ -324,8 +320,9 @@ const html = afp.getStoryHtml(doc)
 | `dateGap` | `string` | — | Date gap for facet ranges (e.g. `'+1HOUR'`, `'+1DAY'`) |
 | `wantedFacets` | `WantedFacets` | — | Facets configuration `{ facetName: { size, minDocCount }, empty?: boolean }` |
 | `sort` | `SortEntry[]` | — | Multi-field sort `[{ sortField, sortOrder }]` |
+| `filters` | `SearchFilters` | — | Field filters `{ field: value \| value[] \| { in, exclude } }` (see Field Filters) |
 
-Any additional key-value pairs are treated as field filters.
+Any other key-value pair is still read as a field filter, but this is deprecated (removed in 4.0): use `filters`.
 
 ## Development
 

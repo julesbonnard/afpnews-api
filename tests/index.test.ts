@@ -27,7 +27,7 @@ describe('index exports', () => {
   })
 
   it('should export maxRowsByRequest', () => {
-    expect(maxRowsByRequest).toBe(1000)
+    expect(maxRowsByRequest).toBe(10000)
   })
 
   it('should export fullTextSearchFields', () => {

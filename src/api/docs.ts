@@ -1,5 +1,5 @@
 import { defaultSearchParams } from '../config.js'
-import type { SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
+import type { AdditionalParamValue, SearchFilters, SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -9,6 +9,22 @@ import { Auth } from './auth.js'
 import { Story } from './story.js'
 import { NotificationCenter } from './notification.js'
 import { FilterCenter } from './filter.js'
+
+/**
+ * @deprecated Clés à plat de `SearchQueryParams` lues comme filtres (`{ country: 'fra' }`) : à supprimer en 4.0,
+ * au profit de `params.filters`. Garde les entrées qui ont la forme d'un filtre et ignore les autres
+ * (booléens, valeurs absentes, objets d'options).
+ */
+function legacyFilters (rest: Record<string, unknown>): SearchFilters {
+  const isFilterValue = (value: unknown): value is AdditionalParamValue =>
+    typeof value === 'string' || typeof value === 'number' || Array.isArray(value) ||
+    (typeof value === 'object' && value !== null && ('in' in value || 'exclude' in value))
+  const filters: SearchFilters = {}
+  for (const [name, value] of Object.entries(rest)) {
+    if (isFilterValue(value)) filters[name] = value
+  }
+  return filters
+}
 
 function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: number } {
   const documents = docs.flatMap(doc => {
@@ -36,10 +52,14 @@ const docParser = z.object({
   published: z.string()
 })
 
+const facetBuckets = z.object({ value: z.string(), occurence: z.number() }).array()
+  .transform(buckets => buckets.map(({ value, occurence }) => ({ name: value, count: occurence })))
+
 const searchResponse = z.object({
   response: z.object({
     docs: z.unknown().array().default([]),
-    numFound: z.number().default(0)
+    numFound: z.number().default(0),
+    facets: z.record(z.string(), facetBuckets).optional()
   })
 })
 
@@ -83,6 +103,7 @@ export class Docs extends Auth {
       wantCluster,
       wantedFacets,
       sort,
+      filters,
       ...rest
     } = Object.assign({}, defaultSearchParams, params)
 
@@ -98,7 +119,8 @@ export class Docs extends Auth {
       .setWantCluster(wantCluster)
       .setWantedFacets(wantedFacets)
       .setMultiSort(sort)
-      .addAdditionalParams(rest)
+      .addFilters(legacyFilters(rest))
+      .addFilters(filters)
       .build()
   }
 
@@ -108,7 +130,7 @@ export class Docs extends Auth {
    * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[] }>
+  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[]; facets?: Record<string, AfpFacetValue[]> }>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model
    * @param params - An object containing the search parameters
@@ -116,7 +138,7 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
    * @returns An object containing the parsed documents and their count
    */
-  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[]; facets?: Record<string, AfpFacetValue[]> }>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model, skipping any
    * document that fails to parse instead of failing the whole request
@@ -125,8 +147,8 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true, lenient: true }` to skip malformed documents
    * @returns An object containing the parsed documents, their count, and how many were skipped
    */
-  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
-  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
+  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number; facets?: Record<string, AfpFacetValue[]> }>
+  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number; facets?: Record<string, AfpFacetValue[]> }> {
     const body = this.prepareRequest(params, this.withMandatorySocle(fields, options?.parse))
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
@@ -134,9 +156,10 @@ export class Docs extends Auth {
       params: { wt: 'json' }
     }))
 
-    const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
+    const { response: { docs: documents, numFound: count, facets } } = searchResponse.parse(data)
 
-    return applyParseOption(count, documents, options)
+    const result = applyParseOption(count, documents, options)
+    return facets ? { ...result, facets } : result
   }
 
   /**
@@ -273,12 +296,15 @@ export class Docs extends Auth {
    * @returns An object containing the keywords (typed, zod-validated `AfpFacetValue[]`) and their count
    */
   public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1): Promise<{ count: number; keywords: AfpFacetValue[] }> {
-    const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
+    // `size` = nombre de valeurs de facette, en query ; 100 est le défaut constaté côté API.
+    const { size = 100, ...searchParams } = params
+    const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, searchParams), [])
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
       headers: this.authorizationBearerHeaders,
       params: {
         minDocCount,
+        size,
         wt: 'json'
       }
     }))

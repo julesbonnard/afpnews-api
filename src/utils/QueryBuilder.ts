@@ -1,11 +1,25 @@
 import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, langsWithTranslation } from '../config.js'
-import type { AdditionalParamValue, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
+import type { AdditionalParamValue, SearchFilters, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar/index.js'
 import { normalize } from './normalizer.js'
 import { z } from 'zod'
 
 const querySchema = z.string().default('')
+
+/**
+ * Convertit un filtre en conditions de requête : une valeur ou une liste devient `in` ; un objet donne
+ * une condition par opérateur renseigné (deux si `in` et `exclude` le sont). Valeur vide → aucune condition.
+ */
+function toConditions (name: string, value: AdditionalParamValue): SearchQuery[] {
+  if (typeof value === 'string' || typeof value === 'number') return value === '' ? [] : [{ name, in: [value] }]
+  if (Array.isArray(value)) return value.length > 0 ? [{ name, in: value }] : []
+
+  const conditions: SearchQuery[] = []
+  if (value.in?.length) conditions.push({ name, in: value.in })
+  if (value.exclude?.length) conditions.push({ name, exclude: value.exclude })
+  return conditions
+}
 
 const quote = (value: string) => {
   return `"${value}"`
@@ -88,7 +102,7 @@ export class QueryBuilder {
   }
 
   public setMaxRows (maxRows?: number) {
-    if (!maxRows) throw new Error('maxRows is required')
+    if (maxRows === undefined || maxRows < 0) throw new Error('maxRows is required')
     if (maxRows > maxRowsByRequest) throw new Error(`maxRows cannot be greater than ${maxRowsByRequest}`)
     this.maxRows = maxRows
     return this
@@ -146,32 +160,11 @@ export class QueryBuilder {
     return this
   }
 
-  public addAdditionalParams (additionalParams?: { [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | undefined }) {
-    if (!additionalParams) return this
-    for (const [key, value] of Object.entries(additionalParams)) {
-      if (!value || typeof value === 'boolean') continue
-      this.addAdditionalParam(key, value as AdditionalParamValue)
+  /** Ajoute des filtres par champ, combinés en ET avec la requête (voir `toConditions`). */
+  public addFilters (filters: SearchFilters = {}) {
+    for (const [name, value] of Object.entries(filters)) {
+      this.additionalParams.push(...toConditions(name, value))
     }
-    return this
-  }
-
-  private addAdditionalParam (name: string, value: AdditionalParamValue) {
-    if (!value) return
-    const param: SearchQuery = {
-      name
-    }
-
-    if (typeof value === 'number' || typeof value === 'string') {
-      param['in'] = [value]
-    } else if (Array.isArray(value)) {
-      if (value.length === 0) return
-      param['in'] = value
-    } else if (value.in) {
-      param['in'] = value.in
-    } else if (value.exclude) {
-      param['exclude'] = value.exclude
-    }
-    this.additionalParams.push(param)
     return this
   }
 

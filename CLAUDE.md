@@ -129,7 +129,7 @@ The full build (`npm run build`) runs in a specific sequence:
 
 ### Environment Variables (for testing/examples)
 ```
-AFPNEWS_BASE_URL        # API base URL (default: https://afp-apicore-prod.afp.com)
+AFPNEWS_BASE_URL        # API base URL (default: https://afp-apicore-prod-v2-external.app.afp.com, see src/config.ts)
 AFPNEWS_API_KEY         # API key for anonymous auth
 AFPNEWS_CLIENT_ID       # OAuth client ID
 AFPNEWS_CLIENT_SECRET   # OAuth client secret

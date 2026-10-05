@@ -39,6 +39,13 @@ export type AdditionalParamValue =
     exclude?: StringOrNumber[]
   }
 
+/** Filtres par champ : `{ country: 'fra', urgency: [1, 2], class: { exclude: ['picture'] } }`. */
+export type SearchFilters = Record<string, AdditionalParamValue>
+
+/**
+ * Options de recherche. Les filtres par champ se passent dans `filters`.
+ * Les clés à plat (`{ country: 'fra' }`) sont encore lues comme filtres mais dépréciées : retrait en 4.0.
+ */
 export type SearchQueryParams = Partial<{
   sortOrder: SearchQuerySortOrder
   sortField: string
@@ -53,7 +60,9 @@ export type SearchQueryParams = Partial<{
   wantCluster: boolean
   wantedFacets: WantedFacets
   sort: SortEntry[]
-  [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[]
+  filters: SearchFilters
+  /** @deprecated Passer les filtres dans `filters`. */
+  [key: string]: AdditionalParamValue | boolean | WantedFacets | SortEntry[] | SearchFilters
 }>
 
 export type AuthType = 'anonymous' | 'credentials'

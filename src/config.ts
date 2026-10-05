@@ -8,7 +8,7 @@ export const defaultSearchParams = {
 
 export const defaultBaseUrl = 'https://afp-apicore-prod-v2-external.app.afp.com'
 
-export const maxRowsByRequest = 1000
+export const maxRowsByRequest = 10000
 
 export const fullTextSearchFields = ['all', 'title', 'news']
 

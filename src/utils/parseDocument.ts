@@ -7,8 +7,17 @@ const EventSchema = z.object({
   keyword: z.string()
 })
 
+// Valeurs vérifiées en prod sur un an (facette signal, octobre 2026) : update, correction, cwarn.
+// Un document peut en porter plusieurs (ex. ["update", "cwarn"]).
 const SignalEnum = z.enum(['correction', 'update', 'cwarn'])
 const SignalInput = z.union([SignalEnum, z.array(SignalEnum)])
+
+// La facette status renvoie usable/withheld/canceled en minuscules, les documents "Usable"/"Canceled" :
+// on normalise la casse vers l'enum. Une valeur vide vaut usable (doc rights-restrictions#status).
+const STATUSES = ['Usable', 'Canceled', 'Embargoed', 'WithHeld'] as const
+const StatusInput = z.string()
+  .transform(value => value.trim() === '' ? 'Usable' : STATUSES.find(status => status.toLowerCase() === value.toLowerCase()) ?? value)
+  .pipe(z.enum(STATUSES))
 
 const HopHistorySchema = z.object({
   hop: z.array(z.object({
@@ -88,7 +97,7 @@ export const DocumentSourceSchema = z.object({
   advisory: z.string().optional(),
   provider: z.string(),
   creator: z.string().optional(),
-  status: z.enum(['Usable', 'Canceled', 'Embargoed', 'WithHeld']),
+  status: StatusInput,
   signal: SignalInput.optional(),
   hopHistory: HopHistorySchema.optional(),
   bagItem: z.array(BagItemSchema).default([])
@@ -216,7 +225,7 @@ export function parseDocument (raw: unknown): AfpDocument {
         class: doc.class,
         headline,
         paragraphs,
-        medias: [],
+        medias: doc.bagItem.map(extractMedia),
         hasBeenAlerted: extractHasBeenAlerted(doc)
       }
     }
@@ -240,8 +249,6 @@ export function parseDocument (raw: unknown): AfpDocument {
         headline: doc.headline,
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
-        // Comme pour video, `caption` brut est normalement un champ document (vérifié en conditions
-        // réelles) — repli sur bagItem[].caption pour les docs (partenaires, anciens) qui ne l'ont pas.
         caption: doc.caption?.[0] ?? doc.bagItem[0]?.caption,
         topshot: doc.urgency === 1
       }

@@ -261,11 +261,31 @@ describe('Auth', () => {
 
       const result = await auth.getUserInfo()
       expect(result.user.username).toBe('testuser')
-      expect(result.user.additionalProperties.infosLdap.mail).toBe('test@example.com')
-      expect(result.user.additionalProperties.infosLdap.uid).toBe('TESTUSER')
+      expect(result.user.additionalProperties?.infosLdap?.mail).toBe('test@example.com')
+      expect(result.user.additionalProperties?.infosLdap?.uid).toBe('TESTUSER')
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/user/me')
+    })
+
+    it('should accept a client account without infosLdap (documented shape)', async () => {
+      mockFetch({
+        user: {
+          username: 'client-user',
+          email: 'client@example.com',
+          enabled: true,
+          clientId: ['client1'],
+          authorities: ['ROLE_USER'],
+          filters: []
+        }
+      })
+
+      const auth = new Auth()
+      auth.token = { accessToken: 'my-token', refreshToken: 'refresh', tokenExpires: Date.now() + 60000, authType: 'credentials' }
+
+      const result = await auth.getUserInfo()
+      expect(result.user.email).toBe('client@example.com')
+      expect(result.user.additionalProperties).toBeUndefined()
     })
 
     it('should retry once on 401 by refreshing the token', async () => {
