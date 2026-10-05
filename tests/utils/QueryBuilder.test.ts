@@ -600,21 +600,24 @@ describe('QueryBuilder', () => {
       expect(qb.parseQueryString('-_exists_:embargoed')).toEqual({ or: [{ missing: 'embargoed' }] })
     })
 
-    it('should add translated fields only where they exist (all, news)', () => {
+    it('should add translated fields only where they exist in the prod mapping', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
 
-      const news = JSON.stringify(qb.parseQueryString('news:Macron'))
-      expect(news).toContain('translated.fr.news')
-      expect(news).toContain('translated.en.news')
+      for (const field of ['news', 'title', 'caption']) {
+        const flat = JSON.stringify(qb.parseQueryString(`${field}:Macron`))
+        expect(flat).toContain(`translated.fr.${field}`)
+        expect(flat).toContain(`translated.en.${field}`)
+      }
 
-      // `title` est un champ texte (contains) mais n'a pas d'équivalent translated.{lang}.title
-      expect(qb.parseQueryString('title:Macron')).toEqual({ or: [{ name: 'title', contains: ['macron'] }] })
+      // `summary` est un champ texte (contains) sans équivalent translated.{lang}.summary
+      expect(qb.parseQueryString('summary:Macron')).toEqual({ or: [{ name: 'summary', contains: ['macron'] }] })
     })
 
     it('should search every text field of the catalogue with contains, not as an exact value', () => {
       const qb = new QueryBuilder()
-      expect(qb.parseQueryString('caption:Macron')).toEqual({ or: [{ name: 'caption', contains: ['macron'] }] })
+      expect(qb.parseQueryString('summary:Macron')).toEqual({ or: [{ name: 'summary', contains: ['macron'] }] })
+      expect(qb.parseQueryString('caption:Macron')?.or?.[0]).toEqual({ name: 'caption', contains: ['macron'] })
       expect(qb.parseQueryString('country:fra')).toEqual({ or: [{ name: 'country', in: ['fra'] }] })
     })
 

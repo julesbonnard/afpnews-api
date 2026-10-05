@@ -119,7 +119,7 @@ dist/
 
 ### Generated Files - Do Not Edit
 - `src/grammar/index.ts` - Generated from `src/grammar/index.ne` by `npm run build:parser`. Edit the `.ne` file instead.
-- `src/searchFields.ts` - `FACET_FIELDS` / `TEXT_FIELDS` / `DATE_FIELDS`, generated from the AFP doc's metadata catalogue export by `bun run tools/gen-search-fields.ts` (committed; re-run when the doc adds fields). They feed the `FacetField` / `TextField` / `DateField` types, `SearchFilters` autocompletion and `fullTextSearchFields` (which fields the query DSL searches with `contains`).
+- `src/searchFields.ts` - `FACET_FIELDS` / `TEXT_FIELDS` / `DATE_FIELDS`, generated from the AFP doc's metadata catalogue export by `bun run tools/gen-search-fields.ts` (committed; re-run when the doc adds fields). They feed the `FacetField` / `TextField` / `DateField` types, `SearchFilters` autocompletion and `fullTextSearchFields` (which fields the query DSL searches with `contains`). `translatedSearchFields` (config) lists the text fields that also have a `translated.{lang}.*` counterpart in the prod mapping — wider than the doc, which only names `all` and `news`.
 - Everything in `dist/` - Build artifacts, gitignored.
 
 ### Build Order Matters
