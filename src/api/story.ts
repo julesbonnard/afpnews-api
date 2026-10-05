@@ -14,9 +14,9 @@ const storySchema = z.object({
 
 export async function Story (this: ApiCore, doc: unknown) {
   const docHref = docStorySchema.parse(doc).href
-  const data = await get(docHref, {
+  const data = await this.withAuth(() => get(docHref, {
     headers: this.authorizationBearerHeaders
-  })
+  }))
 
   const { href } = storySchema.parse(data)
 
@@ -26,7 +26,7 @@ export async function Story (this: ApiCore, doc: unknown) {
 
   const head = '<head>'
 
-  const content = await get(link, {}, 'text') as string
+  const content = await this.withAuth(() => get(link, { headers: this.authorizationBearerHeaders }, 'text')) as string
   const pos = content.indexOf(head) + head.length
 
   return content.slice(0, pos) + docbase + content.slice(pos)

@@ -153,6 +153,7 @@ export class Docs extends Auth {
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders,
+      retry: true,
       params: { wt: 'json' }
     }))
 
@@ -302,6 +303,7 @@ export class Docs extends Auth {
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
       headers: this.authorizationBearerHeaders,
+      retry: true,
       params: {
         minDocCount,
         size,

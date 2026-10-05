@@ -159,14 +159,16 @@ tests/
 ```
 
 ### Error Handling
-- Custom `ApiError` class in `src/utils/request.ts` with `code` and `message` fields
-- API errors are parsed from JSON response bodies using Zod
-- HTTP status codes used as fallback when JSON parsing fails
+- Custom `ApiError` class in `src/utils/request.ts` (exported from the package) with `code`, `message`, `status`, `type`, `subcode` and `expireAt`
+- Bodies are read as text then parsed: an error payload is detected even with HTTP 200, and a non-JSON body yields an `ApiError` (never a `SyntaxError`)
+- Shapes observed in production: `{ error: { code, message, type } }` (no `subcode`), `{ expireAt }` for 429, `{ error: "…" }` (string) for the credits API
+- One retry on 429 (only if `expireAt` is within 10 s) and 502/503/504 (short jittered backoff), for reads only: `get` retries by default (`retry: false` for GETs that write, e.g. filter delete), `post` only with `retry: true` (search, list), `del` and `postForm` (`/oauth/token`) never
+- Token renewal is single-flight (`pendingToken` / `trackPendingToken` in `Auth`), 30 s before expiry; a login waits for an in-flight refresh; `withAuth` only expires the token it actually used before replaying a call that got a 401
 
 ### Authentication Flows
 1. **Anonymous**: `GET /oauth/token?grant_type=anonymous` with Basic auth (apiKey or clientId:clientSecret)
-2. **Credentials**: `POST /oauth/token` with form data `grant_type=password` + username/password
-3. **Refresh**: `POST /oauth/token` with form data `grant_type=refresh_token` + stored refresh token
+2. **Credentials**: `POST /oauth/token` with an `application/x-www-form-urlencoded` body `grant_type=password` + username/password
+3. **Refresh**: `POST /oauth/token` with an `application/x-www-form-urlencoded` body `grant_type=refresh_token` + stored refresh token
 - Tokens emit `tokenChanged` events via EventEmitter
 
 ### Publish Lifecycle

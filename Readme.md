@@ -68,6 +68,31 @@ afp.on('tokenChanged', (token) => {
 // Token is automatically refreshed when expired
 ```
 
+The token is renewed 30 seconds before it expires, and only once even when several calls need it at the same time (the API invalidates the current access token on refresh, so concurrent refreshes would cancel each other). A call that gets a `401` renews the token and is replayed once. Logging in while a refresh is in flight waits for it, so the refresh cannot overwrite the login token.
+
+## Error Handling
+
+Every API failure is thrown as an `ApiError`:
+
+```js
+import { ApiError } from 'afpnews-api'
+
+try {
+  await afp.search({ query: 'Macron' })
+} catch (error) {
+  if (error instanceof ApiError) {
+    error.code     // AFP error code, or the HTTP status (401, 404, 429…)
+    error.status   // HTTP status of the response
+    error.type     // AFP error type: 'invalid_token', 'invalid_user', 'invalid_client', 'SearchServerException'…
+    error.expireAt // for a 429: Date when the block ends
+  }
+}
+```
+
+- An error payload is detected even when the API sends it with an HTTP `200`.
+- A non-JSON body (an HTML error page, for instance) gives an `ApiError`, not a `SyntaxError`.
+- Read requests (`search`, `list`, `get`, `mlt`, `latest`…) are retried once on `429`, `502`, `503` and `504`: after a short random delay for a `5xx`, or at `expireAt` for a `429` when the block ends within 10 seconds. A longer `429` is thrown right away with its `expireAt`. Writes (saved filters, notifications) and token requests are never retried, since a `504` can hide a request the server already applied.
+
 ## Latest Documents
 
 Get the most recent documents:
