@@ -191,6 +191,8 @@ for await (const doc of afp.searchAll({ size: 5000, query: 'climate' })) {
 }
 ```
 
+`size` is the total number of documents to return; they are fetched in pages of 1000. When the sort field is a date (`published` by default), pages follow that field (`dateField` is set to it) and resume right after the last document returned, so no document is returned twice, even when many documents share the same date. With a non-date sort field, pages use `startAt`. The `params` object you pass is left untouched.
+
 ## Query Syntax
 
 The `query` parameter supports a boolean query DSL:

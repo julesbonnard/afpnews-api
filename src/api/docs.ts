@@ -1,4 +1,5 @@
 import { defaultSearchParams } from '../config.js'
+import { DATE_FIELDS } from '../searchFields.js'
 import type { AdditionalParamValue, AfpFieldMapping, SearchFilters, SearchMeta, SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
@@ -50,9 +51,9 @@ function applyParseOption (
   return { count, documents: documents.map(doc => parseDocument(doc)) }
 }
 
-const docParser = z.object({
-  published: z.string()
-})
+// Taille d'une page de searchAll (une recherche peut aller jusqu'à maxRowsByRequest, mais des pages
+// plus petites gardent des réponses légères).
+const SEARCH_ALL_PAGE_SIZE = 1000
 
 const facetBuckets = z.object({ value: z.string(), occurence: z.number() }).array()
   .transform(buckets => buckets.map(({ value, occurence }) => ({ name: value, count: occurence })))
@@ -207,30 +208,62 @@ export class Docs extends Auth {
    */
   public searchAll (params: SearchQueryParams, fields: string[], options: LenientParseOption): AsyncGenerator<AfpDocument>
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): AsyncGenerator<unknown> {
-    const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
-    const maxRequestSize = 1000
-    const maxSize = params.size || defaultSearchParams.size
-    const effectiveFields = this.withMandatorySocle(fields, options?.parse)
-    let i = 0
-    while (i < maxSize) {
-      params.size = Math.min(maxSize - i, maxRequestSize)
-      const { count, documents } = await this.search(params, effectiveFields)
-      if (!documents.length) return
+    const maxSize = params.size ?? defaultSearchParams.size
+    const sortField = params.sortField ?? defaultSearchParams.sortField
+    // Pagination par curseur sur le champ de tri quand c'est une date (la fenêtre doit alors porter sur ce
+    // champ, d'où dateField) ; sinon simple pagination par startAt.
+    const cursorOnDate = (DATE_FIELDS as readonly string[]).includes(sortField)
+    const bound = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    const pageParams: SearchQueryParams = { ...params, ...(cursorOnDate && { dateField: sortField }) }
+    // fields: [] = toutes les colonnes ; sinon le curseur a besoin du champ de tri et de uno.
+    const pageFields = fields.length > 0 ? [...new Set([...this.withMandatorySocle(fields, options?.parse), sortField, 'uno'])] : fields
+
+    let yielded = 0
+    let startAt = params.startAt ?? 0
+    let boundary: unknown
+    // Documents déjà renvoyés qui portent la valeur de borne : la page suivante, bornée de façon inclusive,
+    // commence par eux. On les saute avec startAt (pas de doublon, pas de boucle si toute une page partage
+    // la même date) ; la déduplication par uno reste un filet de sécurité.
+    // ponytail: suppose un ordre stable entre documents de même date ; sinon l'un d'eux peut être sauté.
+    // Si ça se produit, ajouter un second tri sur `timestamp` (recette « flux temps réel » de la doc).
+    let unosAtBoundary = new Set<string>()
+
+    while (yielded < maxSize) {
+      const size = Math.min(maxSize - yielded, SEARCH_ALL_PAGE_SIZE)
+      const { documents } = await this.search({ ...pageParams, size, startAt }, pageFields)
+      const yieldedBefore = yielded
+
       for (const doc of documents) {
-        i++
-        if (!options?.parse) {
-          yield doc
-          continue
-        }
-        if (options.lenient) {
+        const { uno, [sortField]: value } = doc as Record<string, unknown>
+        if (typeof uno === 'string' && value === boundary && unosAtBoundary.has(uno)) continue
+        yielded++
+        if (!options?.parse) yield doc
+        else if (!options.lenient) yield parseDocument(doc)
+        else {
           const parsed = safeParseDocument(doc)
           if (parsed) yield parsed
-          continue
         }
-        yield parseDocument(doc)
       }
-      if (documents.length < params.size || count <= documents.length) return
-      params[direction] = docParser.parse(documents.pop()).published
+
+      // Page incomplète : fin des résultats. Page sans aucun nouveau document : on n'avance plus, on s'arrête.
+      if (documents.length < size || yielded === yieldedBefore) return
+
+      if (!cursorOnDate) {
+        startAt += documents.length
+        continue
+      }
+
+      const last = documents[documents.length - 1] as Record<string, unknown>
+      const lastValue = last[sortField]
+      if (typeof lastValue !== 'string') throw new Error(`searchAll: document without "${sortField}", cannot paginate`)
+      const atLast = documents
+        .map(doc => doc as Record<string, unknown>)
+        .filter(doc => doc[sortField] === lastValue)
+        .map(doc => String(doc.uno))
+      unosAtBoundary = lastValue === boundary ? new Set([...unosAtBoundary, ...atLast]) : new Set(atLast)
+      boundary = lastValue
+      pageParams[bound] = lastValue
+      startAt = unosAtBoundary.size
     }
   }
 

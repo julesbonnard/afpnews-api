@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-import type { SearchRequest, AfpFacetValue } from '../../src/types'
+import type { SearchRequest, AfpFacetValue, SearchQueryParams } from '../../src/types'
 import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
@@ -593,6 +593,75 @@ describe('Docs', () => {
       expect(searchSpy).toHaveBeenCalledTimes(2)
     })
 
+    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), le tri, startAt et size comme l'API.
+    function mockIndex (docs: SearchAllDoc[], dateKey: 'published' | 'contentCreated' = 'published') {
+      return (params: SearchQueryParams = {}) => {
+        const field = (params.dateField ?? 'published') as typeof dateKey
+        const sortField = (params.sortField ?? 'published') as keyof SearchAllDoc
+        const asc = params.sortOrder === 'asc'
+        const matching = docs
+          .filter(d => (!params.dateTo || params.dateTo === 'now' || d[field] <= params.dateTo) &&
+            (!params.dateFrom || params.dateFrom === '1980-01-01' || d[field] >= params.dateFrom))
+          .sort((a, b) => (asc ? 1 : -1) * String(a[sortField]).localeCompare(String(b[sortField])))
+        const start = params.startAt ?? 0
+        return Promise.resolve({ count: 0, documents: matching.slice(start, start + (params.size ?? 10)) })
+      }
+    }
+    type SearchAllDoc = { uno: string; published: string; contentCreated: string }
+
+    // 2500 documents dont 1200 partagent la même date (plus d'une page de 1000)
+    const INDEX: SearchAllDoc[] = Array.from({ length: 2500 }, (_, i) => {
+      const date = i < 400 ? `2026-10-0${1 + (i % 3)}T00:00:${String(i % 60).padStart(2, '0')}Z`
+        : i < 1600 ? '2026-09-30T12:00:00Z'
+          : `2026-09-${String(10 + (i % 19)).padStart(2, '0')}T00:00:00Z`
+      return { uno: `doc-${String(i).padStart(4, '0')}`, published: date, contentCreated: date }
+    })
+
+    it('should return every document exactly once across pages, even when more than a page share the same date', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, exactNumFound: false })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(unos).toHaveLength(2500)
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.length).toBeGreaterThan(2)
+    })
+
+    it('should paginate on the sort field (dateField aligned) and in ascending order', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX, 'contentCreated'))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, sortField: 'contentCreated', sortOrder: 'asc' })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated')).toBe(true)
+    })
+
+    it('should paginate with startAt when sorting on a non-date field', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 2200, sortField: 'uno' })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(2200)
+      expect(searchSpy.mock.calls.map(([p]) => p?.startAt)).toEqual([0, 1000, 2000])
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined)).toBe(true)
+    })
+
+    it('should not mutate the params passed by the caller', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+      const params = { size: 1500, query: 'climat' }
+
+      for await (const _ of docs.searchAll(params)) { /* consume */ }
+
+      expect(params).toEqual({ size: 1500, query: 'climat' })
+    })
+
     it('should stop when no documents returned', async () => {
       mockFetch({ response: { docs: [], numFound: 0 } })
 
@@ -636,7 +705,7 @@ describe('Docs', () => {
       expect(collected).toHaveLength(1)
     })
 
-    it('should stop when count <= documents.length', async () => {
+    it('should stop on a page smaller than requested', async () => {
       const docs = createAuthenticatedDocs()
       vi.spyOn(docs, 'search').mockResolvedValue({
         count: 2,
