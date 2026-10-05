@@ -241,7 +241,16 @@ for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true }))
 const doc = parseDocument(raw)
 ```
 
-`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`, `script`, `associatedWith`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+
+It also exposes what you need to display or apply before publishing a document, when the API provides it:
+
+- **Rights and mentions**: `copyright` (to display to end users), `creditLine`, `disclaimer`, `rules` (e.g. `['GERMANY OUT']`), `usageRights`, `exclusions`, `countriesOut`, `countriesOnly`, `expires` (do not use the document after this date).
+- **Lifecycle**: `status`, `initialStatus`, `signal`, `contentWarnings` (e.g. `{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }`), `embargoed`.
+- **Classification**: `genres` and `genreIds` (language-independent, prefer them to filter), `channels`, `mediatopics` (IPTC), `summary`, `subheadline`, `captionContext`.
+- `topshot` is `true` for AFP Forum TOPSHOT selections (`rating` 60), not for `urgency` 1 (Flash).
+
+These fields never make `parseDocument()` fail: a value with an unexpected shape is left `undefined`.
 
 This is an additive, opt-in change. `mlt`, `latest` and `searchWithFilter` support the same `{ parse: true }` option (see their respective sections below). `list` returns facet values, not documents, so `AfpDocument` parsing doesn't apply to it — but its `keywords` are still a named, zod-validated type: `AfpFacetValue` (`{ name?: string | null; count: number }`).
 

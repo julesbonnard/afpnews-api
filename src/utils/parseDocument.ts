@@ -19,6 +19,17 @@ const StatusInput = z.string()
   .transform(value => value.trim() === '' ? 'Usable' : STATUSES.find(status => status.toLowerCase() === value.toLowerCase()) ?? value)
   .pipe(z.enum(STATUSES))
 
+// Champs enrichis (droits, cycle de vie, classification) : jamais bloquants. Une forme inattendue donne
+// `undefined` au lieu de rejeter le document — un rejet le ferait disparaître en mode lenient.
+const tolerant = <T extends z.ZodType>(schema: T) => schema.optional().catch(undefined)
+// Une chaîne ou une liste de chaînes, selon la classe (ex. genreid : chaîne pour un texte, liste pour une vidéo).
+const StringList = z.union([z.string(), z.string().array()]).transform(v => Array.isArray(v) ? v : [v])
+
+const UsageRightSchema = z.object({ phrase: z.string(), name: z.string().optional() })
+const ExclusionSchema = z.object({ name: z.string(), type: z.string().optional(), untilDate: z.coerce.date().optional() })
+const ExcludeAudienceSchema = z.object({ qcode: z.string(), text: z.string().optional() })
+const RatingSchema = z.object({ ratingtype: z.string(), value: z.coerce.number() })
+
 const HopHistorySchema = z.object({
   hop: z.array(z.object({
     action: z.array(z.object({
@@ -76,10 +87,7 @@ export const DocumentSourceSchema = z.object({
   caption: z.string().array().optional(),
   urgency: z.number(),
   wordCount: z.number().optional(),
-  genre: z.union([
-    z.string().array().nonempty().transform(d => d[0]),
-    z.string()
-  ]).optional(),
+  genre: tolerant(StringList),
   topic: z.string().array().optional(),
   href: z.string().optional(),
   created: z.coerce.date(),
@@ -100,7 +108,25 @@ export const DocumentSourceSchema = z.object({
   status: StatusInput,
   signal: SignalInput.optional(),
   hopHistory: HopHistorySchema.optional(),
-  bagItem: z.array(BagItemSchema).default([])
+  bagItem: z.array(BagItemSchema).default([]),
+  copyright: tolerant(z.string()),
+  rules: tolerant(StringList),
+  usageRight: tolerant(UsageRightSchema.array()),
+  exclusion: tolerant(ExclusionSchema.array()),
+  country_out: tolerant(StringList),
+  country_only: tolerant(StringList),
+  expires: tolerant(z.coerce.date()),
+  initialStatus: tolerant(z.string()),
+  excludeAudiences: tolerant(ExcludeAudienceSchema.array()),
+  genreid: tolerant(StringList),
+  summary: tolerant(StringList),
+  subheadline: tolerant(z.string().transform(v => v.trim())),
+  captionContext: tolerant(z.string()),
+  channel: tolerant(StringList),
+  mediatopic: tolerant(StringList),
+  script: tolerant(StringList),
+  associatedWith: tolerant(StringList),
+  rating: tolerant(RatingSchema.array())
 })
 
 type DocumentSource = z.infer<typeof DocumentSourceSchema>
@@ -188,7 +214,9 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     city: doc.city,
     creator: doc.creator,
     provider: doc.provider,
-    genre: doc.genre,
+    genre: doc.genre?.[0],
+    genres: doc.genre,
+    genreIds: doc.genreid,
     urgency: doc.urgency,
     wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
@@ -204,8 +232,28 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     signal: extractSignal(doc.signal),
     title: doc.title,
     creditLine: doc.creditLine,
-    aspectRatios: doc.aspectRatios
+    aspectRatios: doc.aspectRatios,
+    copyright: doc.copyright,
+    rules: doc.rules,
+    usageRights: doc.usageRight,
+    exclusions: doc.exclusion,
+    countriesOut: doc.country_out,
+    countriesOnly: doc.country_only,
+    expires: doc.expires,
+    initialStatus: doc.initialStatus,
+    contentWarnings: doc.excludeAudiences?.map(({ qcode, text }) => ({ code: qcode, label: text })),
+    summary: doc.summary,
+    subheadline: doc.subheadline || undefined,
+    captionContext: doc.captionContext,
+    channels: doc.channel,
+    mediatopics: doc.mediatopic
   }
+}
+
+// TOPSHOT = sélection photo AFP Forum (doc, guide photo) ; ce n'est pas urgency 1 (Flash), qui concerne
+// des milliers de photos par semaine contre quelques centaines de TOPSHOTS (constaté en prod, oct. 2026).
+function isTopshot (doc: DocumentSource): boolean {
+  return doc.rating?.some(rating => rating.ratingtype === 'afpratingtype:afpforum' && rating.value === 60) ?? false
 }
 
 /**
@@ -250,7 +298,7 @@ export function parseDocument (raw: unknown): AfpDocument {
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
         caption: doc.caption?.[0] ?? doc.bagItem[0]?.caption,
-        topshot: doc.urgency === 1
+        topshot: isTopshot(doc)
       }
     case 'video':
     case 'videography':
@@ -261,7 +309,9 @@ export function parseDocument (raw: unknown): AfpDocument {
         paragraphs: [],
         medias: doc.bagItem.map(extractMedia),
         caption: doc.caption?.[0] ?? '',
-        shots: extractShots(doc.news)
+        shots: extractShots(doc.news),
+        script: doc.script,
+        associatedWith: doc.associatedWith
       }
     case 'webstory':
       return {

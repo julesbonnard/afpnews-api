@@ -302,9 +302,14 @@ describe('parseDocument', () => {
       expect(doc.topshot).toBe(false)
     })
 
-    it('marks topshot true for urgency 1 pictures', () => {
-      const doc = parseDocument({ ...PICTURE_DOC, urgency: 1 })
-      expect(doc.topshot).toBe(true)
+    it('marks topshot from the AFP Forum rating (value 60), not from urgency', () => {
+      const topshot = { ratingtype: 'afpratingtype:afpforum', scalemax: 100, value: 60, scaleunit: 'rscaleunit:mscale', scalemin: 0 }
+      expect(parseDocument({ ...PICTURE_DOC, urgency: 5, rating: [topshot] }).topshot).toBe(true)
+      // urgency 1 = Flash : des milliers de photos par semaine, pas des TOPSHOTS
+      expect(parseDocument({ ...PICTURE_DOC, urgency: 1 }).topshot).toBe(false)
+      // sélection ESSENTIALS (producer, 3 étoiles) : pas un TOPSHOT
+      const essentials = { ratingtype: 'afpratingtype:producer', scalemax: 5, value: 3, scaleunit: 'rscaleunit:star', scalemin: 0 }
+      expect(parseDocument({ ...PICTURE_DOC, rating: [essentials] }).topshot).toBe(false)
     })
 
     it('parses a graphic class the same way as picture', () => {
@@ -331,6 +336,79 @@ describe('parseDocument', () => {
         bagItem: [{ ...docWithoutCaption.bagItem[0], caption: undefined }]
       })
       expect(doc.caption).toBeUndefined()
+    })
+  })
+
+  describe('rights, lifecycle and classification (shapes observed in prod)', () => {
+    const ENRICHED = {
+      ...PICTURE_DOC,
+      copyright: '2026 Getty Images',
+      rules: ['GERMANY OUT'],
+      usageRight: [{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }],
+      exclusion: [{ scheme: 'http://www.afp.com/format/internal/exclusion', name: 'Japan', type: 'http://cv.iptc.org/newscodes/cpnature/geoArea', uri: 'http://ref.afp.com/location/x', untilDate: '2026-12-31T00:00:00Z' }],
+      country_out: ['GERMANY'],
+      country_only: ['ALL'],
+      expires: '2028-10-05T13:01:14Z',
+      initialStatus: 'Usable',
+      excludeAudiences: [{ qcode: 'cwarn:death', text: 'ViolentGraphicLanguage' }],
+      genre: ['Actualité', 'Reportage'],
+      genreid: ['afpedtype:Raw', 'afpedtype:SinglePage'],
+      summary: ['TOKYO, JAPAN - OCTOBER 05: …'],
+      subheadline: 'Foto vorhanden\n',
+      captionContext: 'The US Supreme Court hears a climate case',
+      channel: ['/wires/AFP-FORUM', '/wires/public/PARTNER-PHOTO'],
+      mediatopic: ['20001065', '15000000']
+    }
+
+    it('exposes rights and mandatory mentions', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.copyright).toBe('2026 Getty Images')
+      expect(doc.rules).toEqual(['GERMANY OUT'])
+      expect(doc.usageRights).toEqual([{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }])
+      expect(doc.exclusions).toEqual([{ name: 'Japan', type: 'http://cv.iptc.org/newscodes/cpnature/geoArea', untilDate: new Date('2026-12-31T00:00:00Z') }])
+      expect(doc.countriesOut).toEqual(['GERMANY'])
+      expect(doc.countriesOnly).toEqual(['ALL'])
+      expect(doc.expires).toEqual(new Date('2028-10-05T13:01:14Z'))
+    })
+
+    it('exposes lifecycle and content warnings', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.initialStatus).toBe('Usable')
+      expect(doc.contentWarnings).toEqual([{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }])
+    })
+
+    it('keeps every genre and genreid, a string or a list depending on the class', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.genre).toBe('Actualité')
+      expect(doc.genres).toEqual(['Actualité', 'Reportage'])
+      expect(doc.genreIds).toEqual(['afpedtype:Raw', 'afpedtype:SinglePage'])
+      expect(parseDocument({ ...TEXT_DOC, genre: 'Lead', genreid: 'afpedtype:Lead' }).genreIds).toEqual(['afpedtype:Lead'])
+    })
+
+    it('exposes classification and context fields', () => {
+      const doc = parseDocument(ENRICHED)
+      expect(doc.summary).toEqual(['TOKYO, JAPAN - OCTOBER 05: …'])
+      expect(doc.subheadline).toBe('Foto vorhanden')
+      expect(doc.captionContext).toBe('The US Supreme Court hears a climate case')
+      expect(doc.channels).toEqual(['/wires/AFP-FORUM', '/wires/public/PARTNER-PHOTO'])
+      expect(doc.mediatopics).toEqual(['20001065', '15000000'])
+    })
+
+    it('never rejects a document because of a malformed enriched field', () => {
+      const doc = parseDocument({ ...PICTURE_DOC, rules: 42, usageRight: 'JAPAN OUT', exclusion: [{ type: 'no name' }], expires: 'not a date', rating: 'x', excludeAudiences: {} })
+      expect(doc.rules).toBeUndefined()
+      expect(doc.usageRights).toBeUndefined()
+      expect(doc.exclusions).toBeUndefined()
+      expect(doc.expires).toBeUndefined()
+      expect(doc.contentWarnings).toBeUndefined()
+      expect(doc.topshot).toBe(false)
+    })
+
+    it('leaves the new fields undefined when absent', () => {
+      const doc = parseDocument(PICTURE_DOC)
+      expect(doc.copyright).toBeUndefined()
+      expect(doc.contentWarnings).toBeUndefined()
+      expect(doc.genres).toBeUndefined()
     })
   })
 
@@ -379,6 +457,12 @@ describe('parseDocument', () => {
       const doc = parseDocument({ ...VIDEO_DOC, news: ['whatever'] })
       expect(doc.shots).toEqual([])
       vi.restoreAllMocks()
+    })
+
+    it('exposes script and associatedWith for a video', () => {
+      const doc = parseDocument({ ...VIDEO_DOC, script: ['El Nobel de Medicina premió el lunes…'], associatedWith: ['http://doc.afp.com/D2763T7'] })
+      expect(doc.script).toEqual(['El Nobel de Medicina premió el lunes…'])
+      expect(doc.associatedWith).toEqual(['http://doc.afp.com/D2763T7'])
     })
 
     it('parses the shot list from news', () => {

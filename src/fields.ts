@@ -41,14 +41,32 @@ export const FIELD_SOURCES = {
   hasBeenAlerted: ['hopHistory', 'urgency'],
   medias: ['bagItem'],
   topics: ['topic'],
-  topshot: ['urgency'],
+  topshot: ['rating'],
   // Repli sur bagItem[0].caption pour picture/graphic (voir parseDocument).
   caption: ['caption', 'bagItem'],
   shots: ['news'],
   href: ['href'],
   title: ['title'],
   creditLine: ['creditLine'],
-  aspectRatios: ['aspectRatios']
+  aspectRatios: ['aspectRatios'],
+  copyright: ['copyright'],
+  rules: ['rules'],
+  usageRights: ['usageRight'],
+  exclusions: ['exclusion'],
+  countriesOut: ['country_out'],
+  countriesOnly: ['country_only'],
+  expires: ['expires'],
+  initialStatus: ['initialStatus'],
+  contentWarnings: ['excludeAudiences'],
+  genres: ['genre'],
+  genreIds: ['genreid'],
+  summary: ['summary'],
+  subheadline: ['subheadline'],
+  captionContext: ['captionContext'],
+  channels: ['channel'],
+  mediatopics: ['mediatopic'],
+  script: ['script'],
+  associatedWith: ['associatedWith']
 } as const satisfies Record<keyof AfpDocument, readonly AfpRawField[]>
 
 export type AfpField = keyof typeof FIELD_SOURCES

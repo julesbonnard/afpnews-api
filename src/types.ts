@@ -215,6 +215,13 @@ export type AfpMediaRendition = {
   sizeInBytes?: number
 }
 
+/** Règle d'usage (`usageRight`) : `{ phrase: 'JAPAN OUT', name: 'JAPAN_OUT' }` */
+export type AfpUsageRight = { phrase: string; name?: string }
+/** Exclusion (`exclusion`) : usage ou zone géographique interdits, éventuellement jusqu'à une date */
+export type AfpExclusion = { name: string; type?: string; untilDate?: Date }
+/** Alerte de contenu (`excludeAudiences`) : `{ code: 'cwarn:death', label: 'ViolentGraphicLanguage' }` */
+export type AfpContentWarning = { code: string; label?: string }
+
 export type AfpMedia = {
   uno: string
   creator?: string
@@ -265,6 +272,39 @@ export type AfpDocumentCommon = {
   title?: string
   creditLine?: string
   aspectRatios?: string[]
+  // Droits et mentions : à afficher ou à appliquer avant toute diffusion (doc « Droits, restrictions »)
+  /** Copyright, à afficher aux utilisateurs finaux */
+  copyright?: string
+  /** Règles explicites, ex. `['GERMANY OUT']` */
+  rules?: string[]
+  usageRights?: AfpUsageRight[]
+  exclusions?: AfpExclusion[]
+  /** Pays où le document ne doit pas être diffusé (`country_out`) */
+  countriesOut?: string[]
+  /** Pays où il peut l'être (`country_only`, souvent `['ALL']`) */
+  countriesOnly?: string[]
+  /** Le document ne doit plus être utilisé après cette date */
+  expires?: Date
+  // Cycle de vie
+  /** Statut de la première révision (`Usable`…) */
+  initialStatus?: string
+  contentWarnings?: AfpContentWarning[]
+  // Classification et contenu
+  /** Tous les libellés `genre` (dans la langue du document) ; `genre` ne garde que le premier */
+  genres?: string[]
+  /** Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer */
+  genreIds?: string[]
+  summary?: string[]
+  subheadline?: string
+  /** Contexte éditorial isolé (vidéo, photo), à préférer à `caption` pour une vidéo d'après la doc */
+  captionContext?: string
+  channels?: string[]
+  /** Codes IPTC Media Topic */
+  mediatopics?: string[]
+  /** Vidéo : texte de narration */
+  script?: string[]
+  /** Vidéo : guid des dépêches de contexte */
+  associatedWith?: string[]
 }
 
 export type AfpTextDocument = AfpDocumentCommon & {
