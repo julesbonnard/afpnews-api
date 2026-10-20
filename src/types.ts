@@ -128,6 +128,11 @@ export type AfpCountry = {
   name?: string
 }
 
+export type AfpLocation = {
+  lat: number
+  lon: number
+}
+
 export type AfpParagraph = {
   index: number
   text: string
@@ -166,6 +171,8 @@ export type AfpDocumentCommon = {
   lang: string
   country: AfpCountry
   city?: string
+  /** Coordonnées de la dateline (lieu de rédaction), pas du sujet */
+  location?: AfpLocation
   creator?: string
   provider: string
   genre?: string
