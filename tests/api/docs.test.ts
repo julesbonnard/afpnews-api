@@ -1,12 +1,25 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-import type { SearchRequest } from '../../src/types'
+import type { SearchRequest, AfpFacetValue } from '../../src/types'
 import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
   access_token: 'test-access-token',
   refresh_token: 'test-refresh-token',
   expires_in: 3600
+}
+
+const RAW_TEXT_DOC = {
+  uno: 'newsml.afp.com.20240315T143000Z.doc-abc12',
+  class: 'text',
+  news: ['Titre du document', 'Premier paragraphe'],
+  urgency: 3,
+  created: '2024-03-15T14:30:00Z',
+  published: '2024-03-15T14:30:00Z',
+  lang: 'fr',
+  revision: 1,
+  provider: 'AFP',
+  status: 'Usable'
 }
 
 function createAuthenticatedDocs() {
@@ -111,6 +124,81 @@ describe('Docs', () => {
       expect(body.sortField).toBe('published')
       expect(body.sortOrder).toBe('desc')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+      expect(result.documents[0]?.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
+    })
+
+    it('should inject the mandatory socle when parse: true is passed with a partial field list', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(body.fields).toContain(f)
+      }
+      expect(body.fields).toContain('headline')
+    })
+
+    it('should not inject the socle without parse: true (fields stay as requested)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, ['uno', 'headline'])
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual(['uno', 'headline'])
+    })
+
+    it('should leave an empty field list empty even with parse: true (fields: [] means "no restriction")', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({}, [], { parse: true })
+
+      const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
+      const body = JSON.parse(calledOptions.body as string) as SearchRequest
+      expect(body.fields).toEqual([])
+    })
+
+    it('should throw on a malformed document with parse: true (strict, default)', async () => {
+      mockFetch({ response: { docs: [{ uno: 'bad-doc' }], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      await expect(docs.search({}, [], { parse: true })).rejects.toThrow()
+    })
+
+    it('should skip malformed documents and report how many with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({}, [], { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.skipped).toBe(1)
+      expect(result.count).toBe(2)
+    })
   })
 
   describe('get', () => {
@@ -129,6 +217,26 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
+    })
+
+    it('should return the raw document by default, even when it is parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123')
+
+      expect(result).toEqual(RAW_TEXT_DOC)
+    })
+
+    it('should return an AfpDocument when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.get('AFP-123', { parse: true })
+
+      expect(result.uno).toBe(RAW_TEXT_DOC.uno)
+      expect(result.headline).toBe('Titre du document')
+      expect(result.paragraphs).toEqual([{ index: 0, text: 'Premier paragraphe' }])
     })
   })
 
@@ -166,6 +274,66 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('size=10')
+    })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.mlt('AFP-123', 'fr', undefined, [], { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
+    })
+
+    it('does not send fl when no fields are requested', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).not.toContain('fl=')
+    })
+
+    it('sends the requested fields as fl (Solr convention, not `fields`)', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['uno', 'headline'])
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('fl=uno%2Cheadline')
+      expect(calledUrl).not.toContain('fields=')
+    })
+
+    it('injects the mandatory socle into fl when parse: true is used', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.mlt('AFP-123', 'fr', undefined, ['headline'], { parse: true })
+
+      const calledUrl = decodeURIComponent((fetch as Mock<typeof fetch>).mock.calls[0][0] as string)
+      expect(calledUrl).toContain('fl=headline,uno,class,urgency,created,published,lang,revision,provider,status')
     })
   })
 
@@ -245,6 +413,18 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('minDocCount=5')
+    })
+
+    it('should type keywords as the exported AfpFacetValue', async () => {
+      mockFetch({
+        response: { topics: [{ name: 'politics', count: 150 }], numFound: 1 }
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.list('slug')
+      const keywords: AfpFacetValue[] = result.keywords
+
+      expect(keywords).toEqual([{ name: 'politics', count: 150 }])
     })
   })
 
@@ -335,6 +515,36 @@ describe('Docs', () => {
       expect(collected).toHaveLength(0)
     })
 
+    it('should inject the mandatory socle into the field list when parse: true is passed', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockResolvedValue({ count: 0, documents: [] })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, ['uno', 'headline'], { parse: true })) {
+        collected.push(doc)
+      }
+
+      const [, fieldsArg] = searchSpy.mock.calls[0]
+      for (const f of ['class', 'urgency', 'created', 'published', 'revision', 'provider', 'status', 'lang']) {
+        expect(fieldsArg).toContain(f)
+      }
+    })
+
+    it('should skip malformed documents instead of throwing with parse: true, lenient: true', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockResolvedValue({
+        count: 2,
+        documents: [RAW_TEXT_DOC, { uno: 'bad-doc' }]
+      })
+
+      const collected: unknown[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true, lenient: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
+    })
+
     it('should stop when count <= documents.length', async () => {
       const docs = createAuthenticatedDocs()
       vi.spyOn(docs, 'search').mockResolvedValue({
@@ -367,6 +577,19 @@ describe('Docs', () => {
 
       expect(collected).toHaveLength(1)
       expect(searchSpy).toHaveBeenCalled()
+    })
+
+    it('should yield AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const collected: { headline?: string }[] = []
+      for await (const doc of docs.searchAll({}, [], { parse: true })) {
+        collected.push(doc)
+      }
+
+      expect(collected).toHaveLength(1)
+      expect(collected[0]?.headline).toBe('Titre du document')
     })
   })
 
@@ -494,6 +717,35 @@ describe('Docs', () => {
       expect(calledUrl).toContain('tz=Europe%2FParis')
       expect(calledUrl).toContain('tr=foo')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest()
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.latest({ lang: 'fr' }, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
+    })
   })
 
   describe('mapping', () => {
@@ -545,6 +797,39 @@ describe('Docs', () => {
       expect(calledUrl).toContain('startat=10')
       expect(calledUrl).toContain('size=20')
     })
+
+    it('should return raw documents by default, even when they are parseable', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter')
+
+      expect(result.documents).toEqual([RAW_TEXT_DOC])
+    })
+
+    it('should return AfpDocuments when parse: true is passed', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC], numFound: 1 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', { startat: 10, size: 20 }, { parse: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.documents[0]?.headline).toBe('Titre du document')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
+      expect(calledUrl).toContain('startat=10')
+      expect(calledUrl).toContain('size=20')
+    })
+
+    it('should skip malformed documents with parse: true, lenient: true', async () => {
+      mockFetch({ response: { docs: [RAW_TEXT_DOC, { uno: 'bad-doc' }], numFound: 2 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.searchWithFilter('my-filter', {}, { parse: true, lenient: true })
+
+      expect(result.documents).toHaveLength(1)
+      expect(result.skipped).toBe(1)
+    })
   })
 
   describe('feed', () => {
@@ -587,34 +872,7 @@ describe('Docs', () => {
     })
   })
 
-  describe('notificationCenter', () => {
-    it('should return a notification center object', () => {
-      const docs = createAuthenticatedDocs()
-      const nc = docs.notificationCenter
-
-      expect(nc).toBeDefined()
-      expect(typeof nc.registerService).toBe('function')
-      expect(typeof nc.listServices).toBe('function')
-      expect(typeof nc.deleteService).toBe('function')
-      expect(typeof nc.addSubscription).toBe('function')
-      expect(typeof nc.listSubscriptions).toBe('function')
-      expect(typeof nc.subscriptionsInService).toBe('function')
-      expect(typeof nc.deleteSubscription).toBe('function')
-      expect(typeof nc.removeSubscriptionsFromService).toBe('function')
-    })
-  })
-
-  describe('filterCenter', () => {
-    it('should return a filter center object', () => {
-      const docs = createAuthenticatedDocs()
-      const fc = docs.filterCenter
-
-      expect(fc).toBeDefined()
-      expect(typeof fc.add).toBe('function')
-      expect(typeof fc.update).toBe('function')
-      expect(typeof fc.get).toBe('function')
-      expect(typeof fc.delete).toBe('function')
-      expect(typeof fc.all).toBe('function')
-    })
-  })
+  // notificationCenter / filterCenter behavior (registerService, add, delete, ...) is already
+  // exercised in tests/api/notification.test.ts and tests/api/filter.test.ts — no need to
+  // re-assert their method presence here.
 })

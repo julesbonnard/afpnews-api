@@ -53,6 +53,12 @@ describe('request utilities', () => {
       expect(result).toBe('<html>content</html>')
     })
 
+    it('should throw ApiError on HTTP error when type is text', async () => {
+      globalThis.fetch = mockFetchResponse('<html>error page</html>', 500, 'Internal Server Error')
+
+      await expect(get('https://api.example.com/test', {}, 'text')).rejects.toThrow()
+    })
+
     it('should throw ApiError on HTTP error with error body', async () => {
       globalThis.fetch = mockFetchResponse({
         error: { code: 401, message: 'Invalid token; please re-authenticate' }

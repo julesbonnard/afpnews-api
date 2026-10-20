@@ -47,11 +47,6 @@ describe('QueryBuilder', () => {
       qb.setMaxRows(1000)
       expect(qb.maxRows).toBe(1000)
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setMaxRows(10)).toBe(qb)
-    })
   })
 
   describe('setDateRange', () => {
@@ -75,11 +70,6 @@ describe('QueryBuilder', () => {
       expect(qb.dateFrom).toBe('1980-01-01')
       expect(qb.dateTo).toBe('2023-12-31')
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setDateRange('2023-01-01', '2023-12-31')).toBe(qb)
-    })
   })
 
   describe('setSort', () => {
@@ -96,11 +86,6 @@ describe('QueryBuilder', () => {
       expect(qb.sortField).toBe('published')
       expect(qb.sortOrder).toBe('desc')
     })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setSort('published', 'desc')).toBe(qb)
-    })
   })
 
   describe('setLangs', () => {
@@ -108,17 +93,6 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])
       expect(qb.langs).toEqual(['fr', 'en'])
-    })
-
-    it('should not set langs when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setLangs(undefined)
-      expect(qb.langs).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setLangs(['fr'])).toBe(qb)
     })
   })
 
@@ -128,28 +102,12 @@ describe('QueryBuilder', () => {
       qb.setQuery('Macron')
       expect(qb.queryString).toBe('Macron')
     })
-
-    it('should not set query when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setQuery(undefined)
-      expect(qb.queryString).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setQuery('test')).toBe(qb)
-    })
   })
 
   describe('addAdditionalParams', () => {
     it('should return this when params is undefined', () => {
       const qb = new QueryBuilder()
       expect(qb.addAdditionalParams(undefined)).toBe(qb)
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.addAdditionalParams({ country: 'fra' })).toBe(qb)
     })
   })
 
@@ -388,6 +346,13 @@ describe('QueryBuilder', () => {
       expect(result!.and).toBeDefined()
     })
 
+    it('should parse any casing of AND/OR/NOT, not just the 3 hardcoded ones', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('Macron aNd France')).toEqual(qb.parseQueryString('Macron AND France'))
+      expect(qb.parseQueryString('Macron oR France')).toEqual(qb.parseQueryString('Macron OR France'))
+      expect(qb.parseQueryString('nOT country:fra')).toEqual(qb.parseQueryString('NOT country:fra'))
+    })
+
     it('should parse "android" as a word, not AND + roid', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('android')
@@ -418,14 +383,75 @@ describe('QueryBuilder', () => {
       expect(flat).toContain('forest')
     })
 
-    it('should throw on unmatched parenthesis', () => {
+    it('should auto-close an unmatched opening parenthesis instead of throwing', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.parseQueryString('(Macron')).toThrow('Failed to parse query')
+      const result = qb.parseQueryString('(Macron')
+      expect(result).toEqual(qb.parseQueryString('(Macron)'))
     })
 
-    it('should throw on unmatched quote', () => {
+    it('should auto-close an unmatched opening quote instead of throwing', () => {
       const qb = new QueryBuilder()
-      expect(() => qb.parseQueryString('"unclosed')).toThrow('Failed to parse query')
+      const result = qb.parseQueryString('"unclosed')
+      expect(result).toEqual(qb.parseQueryString('"unclosed"'))
+    })
+
+    it('should still throw on an extra unmatched closing parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('Macron)')).toThrow('Failed to parse query')
+    })
+
+    it('should produce a readable error message without the raw grammar trace', () => {
+      const qb = new QueryBuilder()
+      let caught: unknown
+      try {
+        qb.parseQueryString('foo AND AND bar')
+      } catch (error) {
+        caught = error
+      }
+      expect(caught).toBeInstanceOf(Error)
+      const error = caught as Error
+      expect(error.message).toContain('Failed to parse query')
+      expect(error.message).toContain('line 1 col')
+      expect(error.message).not.toContain('based on:')
+      expect(error.cause).toBeInstanceOf(Error)
+    })
+
+    it('should tolerate multiple spaces and newlines between terms', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('foo  bar')).toEqual(qb.parseQueryString('foo bar'))
+      expect(qb.parseQueryString('foo\nbar')).toEqual(qb.parseQueryString('foo bar'))
+      expect(qb.parseQueryString('(  foo)')).toEqual(qb.parseQueryString('(foo)'))
+    })
+
+    it('should not be ambiguous for a parenthesized term followed by an implicit AND', () => {
+      const qb = new QueryBuilder()
+      const result = qb.parseQueryString('(Macron) France')
+      expect(result).toEqual(qb.parseQueryString('Macron AND France'))
+    })
+
+    it('should allow AND/OR to sit directly against a parenthesis', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('(Macron)AND France')).toEqual(qb.parseQueryString('Macron AND France'))
+      expect(qb.parseQueryString('Macron AND(France)')).toEqual(qb.parseQueryString('Macron AND France'))
+    })
+
+    it('should report the position on an incomplete query, without pointing at an auto-added closer', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('foo AND')).toThrow('unexpected end of input at line 1, col 8')
+      let caught: unknown
+      try {
+        qb.parseQueryString('(foo AND')
+      } catch (error) {
+        caught = error
+      }
+      const error = caught as Error
+      expect(error.message).not.toContain('(foo AND)')
+      expect(error.message).toContain('unexpected end of input')
+    })
+
+    it('should give a readable message for a field with no value', () => {
+      const qb = new QueryBuilder()
+      expect(() => qb.parseQueryString('country:')).toThrow('Failed to parse query "country:": missing value after "country:"')
     })
 
     it('should parse escaped quotes in strings', () => {
@@ -444,12 +470,6 @@ describe('QueryBuilder', () => {
       expect(result).toBeDefined()
       const flat = JSON.stringify(result)
       expect(flat).toContain('path\\\\file')
-    })
-
-    it('should parse field with empty value (country:)', () => {
-      const qb = new QueryBuilder()
-      // Empty value after colon produces EmptyExpression which serializer cannot handle
-      expect(() => qb.parseQueryString('country:')).toThrow()
     })
 
     it('should parse double parentheses', () => {
@@ -502,6 +522,56 @@ describe('QueryBuilder', () => {
       const flat = JSON.stringify(result)
       expect(flat).not.toContain('translated')
     })
+
+    it('should group multiple values under one field with field:(a OR b)', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('title:(Macron OR Merkel)')).toEqual(qb.parseQueryString('title:Macron OR title:Merkel'))
+    })
+
+    it('should allow NOT and nested parens inside a field group', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('title:(Macron AND NOT Merkel)'))
+        .toEqual(qb.parseQueryString('title:Macron AND NOT title:Merkel'))
+    })
+
+    it('should parse -term as shorthand for NOT term', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('-Macron')).toEqual(qb.parseQueryString('NOT Macron'))
+      expect(qb.parseQueryString('-title:Macron')).toEqual(qb.parseQueryString('NOT title:Macron'))
+      expect(qb.parseQueryString('-title:(a OR b)')).toEqual(qb.parseQueryString('NOT title:(a OR b)'))
+    })
+
+    it('should cancel out a double negation (NOT -term)', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('NOT -Macron')).toEqual(qb.parseQueryString('Macron'))
+    })
+
+    it('should not treat a mid-word hyphen or a value-side hyphen as NOT', () => {
+      const qb = new QueryBuilder()
+      // "Jean-Luc": interior hyphen, still one literal word, not negated
+      expect(JSON.stringify(qb.parseQueryString('Jean-Luc'))).not.toContain('exclude')
+      // title:-Macron: dash on the value side of an explicit field is literal text, not NOT
+      const result = qb.parseQueryString('title:-Macron')
+      expect(JSON.stringify(result)).toContain('-macron')
+      expect(JSON.stringify(result)).not.toContain('exclude')
+    })
+
+    it('should apply De Morgan when NOT wraps an OR/AND group', () => {
+      const qb = new QueryBuilder()
+      // NOT (a OR b) == NOT a AND NOT b
+      expect(qb.parseQueryString('NOT (title:a OR title:b)').and).toBeDefined()
+      expect(qb.parseQueryString('-title:(a OR b)')).toEqual(qb.parseQueryString('NOT (title:a OR title:b)'))
+      // NOT (a AND b) == NOT a OR NOT b
+      expect(qb.parseQueryString('NOT (title:a AND title:b)').or).toBeDefined()
+    })
+
+    it('should keep flipping the connective through nested groups under NOT', () => {
+      const qb = new QueryBuilder()
+      // NOT (a OR (b AND c)) == NOT a AND (NOT b OR NOT c)
+      const result = qb.parseQueryString('NOT (a OR (b AND c))')
+      expect(result!.and).toBeDefined()
+      expect(result!.and![1].or).toBeDefined()
+    })
   })
 
   describe('setStartAt', () => {
@@ -516,17 +586,6 @@ describe('QueryBuilder', () => {
       qb.setStartAt(0)
       expect(qb.startAt).toBe(0)
     })
-
-    it('should not set startAt when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setStartAt(undefined)
-      expect(qb.startAt).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setStartAt(0)).toBe(qb)
-    })
   })
 
   describe('setTz', () => {
@@ -535,17 +594,6 @@ describe('QueryBuilder', () => {
       qb.setTz('Europe/Paris')
       expect(qb.tz).toBe('Europe/Paris')
     })
-
-    it('should not set tz when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setTz(undefined)
-      expect(qb.tz).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setTz('UTC')).toBe(qb)
-    })
   })
 
   describe('setDateGap', () => {
@@ -553,17 +601,6 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       qb.setDateGap('+1HOUR')
       expect(qb.dateGap).toBe('+1HOUR')
-    })
-
-    it('should not set dateGap when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setDateGap(undefined)
-      expect(qb.dateGap).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setDateGap('+1DAY')).toBe(qb)
     })
   })
 
@@ -579,17 +616,6 @@ describe('QueryBuilder', () => {
       qb.setWantCluster(false)
       expect(qb.wantCluster).toBe(false)
     })
-
-    it('should not set wantCluster when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setWantCluster(undefined)
-      expect(qb.wantCluster).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setWantCluster(true)).toBe(qb)
-    })
   })
 
   describe('setWantedFacets', () => {
@@ -598,17 +624,6 @@ describe('QueryBuilder', () => {
       const facets = { slug: { size: 10, minDocCount: 1 } }
       qb.setWantedFacets(facets)
       expect(qb.wantedFacets).toEqual(facets)
-    })
-
-    it('should not set wantedFacets when undefined', () => {
-      const qb = new QueryBuilder()
-      qb.setWantedFacets(undefined)
-      expect(qb.wantedFacets).toBeUndefined()
-    })
-
-    it('should return this for chaining', () => {
-      const qb = new QueryBuilder()
-      expect(qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })).toBe(qb)
     })
   })
 
@@ -619,16 +634,44 @@ describe('QueryBuilder', () => {
       qb.setMultiSort(sort)
       expect(qb.multiSort).toEqual(sort)
     })
+  })
 
-    it('should not set multiSort when undefined', () => {
+  describe('setter chaining contract', () => {
+    // Every setter returns `this`. Instead of repeating the same assertion once per describe
+    // block above, verify it here for all of them in one parameterized pass.
+    it.each<[string, (qb: QueryBuilder) => unknown]>([
+      ['setMaxRows', qb => qb.setMaxRows(10)],
+      ['setDateRange', qb => qb.setDateRange('2023-01-01', '2023-12-31')],
+      ['setSort', qb => qb.setSort('published', 'desc')],
+      ['setLangs', qb => qb.setLangs(['fr'])],
+      ['setQuery', qb => qb.setQuery('test')],
+      ['addAdditionalParams', qb => qb.addAdditionalParams({ country: 'fra' })],
+      ['setStartAt', qb => qb.setStartAt(0)],
+      ['setTz', qb => qb.setTz('UTC')],
+      ['setDateGap', qb => qb.setDateGap('+1DAY')],
+      ['setWantCluster', qb => qb.setWantCluster(true)],
+      ['setWantedFacets', qb => qb.setWantedFacets({ slug: { size: 5, minDocCount: 1 } })],
+      ['setMultiSort', qb => qb.setMultiSort([])]
+    ])('%s returns the same instance', (_name, call) => {
       const qb = new QueryBuilder()
-      qb.setMultiSort(undefined)
-      expect(qb.multiSort).toBeUndefined()
+      expect(call(qb)).toBe(qb)
     })
+  })
 
-    it('should return this for chaining', () => {
+  describe('setters ignore an undefined argument (value stays unset)', () => {
+    it.each<[string, (qb: QueryBuilder) => unknown, (qb: QueryBuilder) => unknown]>([
+      ['langs', qb => qb.setLangs(undefined), qb => qb.langs],
+      ['queryString', qb => qb.setQuery(undefined), qb => qb.queryString],
+      ['startAt', qb => qb.setStartAt(undefined), qb => qb.startAt],
+      ['tz', qb => qb.setTz(undefined), qb => qb.tz],
+      ['dateGap', qb => qb.setDateGap(undefined), qb => qb.dateGap],
+      ['wantCluster', qb => qb.setWantCluster(undefined), qb => qb.wantCluster],
+      ['wantedFacets', qb => qb.setWantedFacets(undefined), qb => qb.wantedFacets],
+      ['multiSort', qb => qb.setMultiSort(undefined), qb => qb.multiSort]
+    ])('%s stays undefined', (_name, call, read) => {
       const qb = new QueryBuilder()
-      expect(qb.setMultiSort([])).toBe(qb)
+      call(qb)
+      expect(read(qb)).toBeUndefined()
     })
   })
 

@@ -1,3 +1,7 @@
+import type { z } from 'zod'
+import type { Shot } from './utils/shotlist.js'
+import type { AfpDocumentClassSchema } from './utils/parseDocument.js'
+
 type StringOrNumber = string | number
 
 export type SearchQuery = {
@@ -15,6 +19,15 @@ export type SearchQuerySortOrder = 'asc' | 'desc'
 export type FacetConfig = { size: number; minDocCount: number }
 export type WantedFacets = { empty?: boolean; [facetName: string]: FacetConfig | boolean | undefined }
 export type SortEntry = { sortField: string; sortOrder: SearchQuerySortOrder }
+
+/**
+ * A single value returned by `list()` for a given facet, with its document count.
+ * `name` can be `null`/absent when the API has no label for that value.
+ */
+export type AfpFacetValue = {
+  name?: string | null
+  count: number
+}
 
 export type AdditionalParamValue =
   string |
@@ -98,3 +111,155 @@ export type AuthUserCredentials = {
   username: string
   password: string
 }
+
+export type AfpDocumentClass = z.infer<typeof AfpDocumentClassSchema>
+
+export type AfpDocumentStatus = 'Usable' | 'Canceled' | 'Embargoed' | 'WithHeld'
+
+export type AfpDocumentSignal = 'correction' | 'update'
+
+export type AfpEvent = {
+  id: string
+  name: string
+}
+
+export type AfpCountry = {
+  id?: string
+  name?: string
+}
+
+export type AfpLocation = {
+  lat: number
+  lon: number
+}
+
+export type AfpParagraph = {
+  index: number
+  text: string
+}
+
+export type AfpMediaRendition = {
+  role: string
+  type: 'Photo' | 'Video' | 'Graphic'
+  width: number
+  height: number
+  href: string
+  sizeInBytes?: number
+}
+
+export type AfpMedia = {
+  uno: string
+  creator?: string
+  provider?: string
+  caption?: string
+  dateline: string
+  renditions: AfpMediaRendition[]
+}
+
+/**
+ * Fields common to every `AfpDocument`, regardless of `class`. Fields specific to a subset of
+ * classes (`caption`, `shots`, `topshot`, `topics`, `href`, `hasBeenAlerted`) stay optional here
+ * so they remain accessible without narrowing — each per-class member below tightens the ones it
+ * guarantees to a required type, for callers that do switch/narrow on `class`.
+ */
+export type AfpDocumentCommon = {
+  uno: string
+  shortId?: string
+  source?: string
+  headline?: string
+  paragraphs: AfpParagraph[]
+  lang: string
+  country: AfpCountry
+  city?: string
+  /** Coordonnées de la dateline (lieu de rédaction), pas du sujet */
+  location?: AfpLocation
+  creator?: string
+  provider: string
+  genre?: string
+  urgency: number
+  wordCount?: number
+  events: AfpEvent[]
+  slugs?: string[]
+  keywords?: string[]
+  disclaimer?: string[]
+  advisory?: string
+  created: Date
+  published: Date
+  embargoed?: Date
+  revision: number
+  status: AfpDocumentStatus
+  signal?: AfpDocumentSignal
+  hasBeenAlerted?: boolean
+  medias: AfpMedia[]
+  topics?: string[]
+  topshot?: boolean
+  caption?: string
+  shots?: Shot[]
+  href?: string
+  title?: string
+  creditLine?: string
+  aspectRatios?: string[]
+}
+
+export type AfpTextDocument = AfpDocumentCommon & {
+  class: 'text' | 'factcheck'
+  hasBeenAlerted: boolean
+}
+
+export type AfpMultimediaDocument = AfpDocumentCommon & {
+  class: 'multimedia'
+  hasBeenAlerted: boolean
+}
+
+export type AfpPictureDocument = AfpDocumentCommon & {
+  class: 'picture' | 'graphic'
+  topshot: boolean
+}
+
+export type AfpVideoDocument = AfpDocumentCommon & {
+  class: 'video' | 'videography'
+  caption: string
+  shots: Shot[]
+}
+
+export type AfpWebStoryDocument = AfpDocumentCommon & {
+  class: 'webstory'
+}
+
+/**
+ * Canonical, presentation-agnostic representation of an AFP document.
+ * Returned by `parseDocument()` and by `get`/`search`/`searchAll` when called with `{ parse: true }`.
+ * A discriminated union on `class` — switch/narrow on it to get the fields a given class
+ * guarantees as required, or access any field directly (still optional-typed) without narrowing.
+ */
+export type AfpDocument =
+  | AfpTextDocument
+  | AfpMultimediaDocument
+  | AfpPictureDocument
+  | AfpVideoDocument
+  | AfpWebStoryDocument
+
+export type ParseOption = { parse: true; lenient?: false }
+// Saute les documents malformés au lieu de faire échouer tout le lot (voir `parseLeniently` dans docs.ts).
+export type LenientParseOption = { parse: true; lenient: true }
+
+/**
+ * Union des tuples d'arguments des 3 surcharges de `search()`, pour typer un wrapper de
+ * forwarding générique (ex. un `Proxy`) sans le piège `Parameters<typeof instance.search>`,
+ * qui ne résout qu'à la dernière surcharge et tronquerait `options`.
+ */
+export type SearchArgs =
+  | [params?: SearchQueryParams, fields?: string[]]
+  | [params: SearchQueryParams, fields: string[], options: ParseOption]
+  | [params: SearchQueryParams, fields: string[], options: LenientParseOption]
+
+/** Même besoin que `SearchArgs`, pour `mlt()`. */
+export type MltArgs =
+  | [uno: string, lang: string, size?: number, fields?: string[]]
+  | [uno: string, lang: string, size: number | undefined, fields: string[], options: ParseOption]
+  | [uno: string, lang: string, size: number | undefined, fields: string[], options: LenientParseOption]
+
+/** Même besoin que `SearchArgs`, pour `get()`. */
+export type GetArgs =
+  | [uno: string]
+  | [uno: string, options: ParseOption]

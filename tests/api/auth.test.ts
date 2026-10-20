@@ -24,14 +24,16 @@ describe('Auth', () => {
       expect(auth.authUrl).toBe('https://custom.api.com/oauth/token')
     })
 
-    it('should accept apiKey', () => {
+    it('exposes apiKey verbatim in the Basic auth header', () => {
       const auth = new Auth({ apiKey: 'my-api-key' })
-      expect(auth.authUrl).toContain('/oauth/token')
+      expect(auth.authorizationBasicHeaders).toEqual({ Authorization: 'Basic my-api-key' })
     })
 
-    it('should accept clientId and clientSecret', () => {
+    it('derives the Basic auth header from base64(clientId:clientSecret)', () => {
       const auth = new Auth({ clientId: 'myClient', clientSecret: 'mySecret' })
-      expect(auth.authUrl).toContain('/oauth/token')
+      expect(auth.authorizationBasicHeaders).toEqual({
+        Authorization: `Basic ${Buffer.from('myClient:mySecret').toString('base64')}`
+      })
     })
   })
 
@@ -152,6 +154,7 @@ describe('Auth', () => {
 
       const calledOptions = (fetch as Mock<typeof fetch>).mock.calls[0][1]!
       expect(calledOptions.method).toBe('POST')
+      expect((calledOptions.headers as Headers).get('Authorization')).toBe('Basic my-key')
     })
 
     it('should throw when credentials provided but no apiKey', async () => {

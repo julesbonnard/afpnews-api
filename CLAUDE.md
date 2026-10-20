@@ -19,6 +19,9 @@ npm run test:watch
 # Lint
 npm run lint
 
+# Typecheck (tsc --noEmit — tsdown doesn't type-check, only lint/build won't catch type errors)
+npm run typecheck
+
 # Full build (parser -> tsdown)
 npm run build
 
@@ -60,7 +63,9 @@ src/
 ├── utils/
 │   ├── request.ts        # HTTP helpers (get, post, postForm, del) using fetch
 │   ├── QueryBuilder.ts   # Query DSL parser -> API search request builder
-│   └── normalizer.ts     # Unicode text normalization
+│   ├── normalizer.ts     # Unicode text normalization
+│   ├── shotlist.ts       # parseShotList: video shot list parser (Shot[])
+│   └── parseDocument.ts  # parseDocument: raw doc -> canonical AfpDocument model
 └── grammar/
     ├── index.ne          # Nearley grammar definition for query DSL
     └── grammar.d.ts      # Type definitions for parser AST nodes
@@ -73,6 +78,7 @@ src/
 - **Zod validation**: All API responses are validated at runtime with Zod schemas defined inline in each module.
 - **Async generators**: `searchAll()` uses `async *` for paginated iteration over large result sets.
 - **Query DSL**: Complex boolean query strings are parsed via Nearley/Moo into an AST, then converted to nested `SearchQuery` objects by `QueryBuilder`.
+- **Opt-in parsing via TS overloads**: `get`/`search`/`searchAll`/`mlt`/`latest`/`searchWithFilter` return raw `unknown` documents by default; passing `{ parse: true }` (a trailing argument, never a runtime union type) switches the *inferred* return type to the canonical `AfpDocument` model via a dedicated overload signature — the unparsed overload's behavior and types are untouched. `list` doesn't fit this pattern (it returns facet values, not documents, so there is no raw/parsed choice) but is still typed: its `keywords` are `AfpFacetValue[]`, a named type matching the existing zod-validated shape (no behavior change, just an explicit exported type). `parseDocument(raw)` (in `utils/parseDocument.ts`) is also exported standalone and throws (via Zod) on malformed input.
 
 ### Build Output
 
@@ -164,7 +170,7 @@ tests/
 - Tokens emit `tokenChanged` events via EventEmitter
 
 ### Publish Lifecycle
-`npm run prepare` runs `lint` then `build` before publish, ensuring dist/ is always fresh.
+`npm run prepare` runs `lint`, `typecheck`, then `build` before publish, ensuring dist/ is always fresh.
 
 ### Node.js Compatibility
 Minimum Node.js version: 12.20.0 (declared in `engines` field).

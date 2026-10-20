@@ -49,6 +49,20 @@ describe('parseShotList', () => {
     })
   })
 
+  it('treats an unquoted line as a citation fallback when the SOUNDBITE description itself starts with "SOUNDBITE"', () => {
+    // Malformed input: the description captured after "SOUNDBITE 1 - " itself starts with the
+    // word SOUNDBITE, so the format-error fallback (shotlist.ts ~L88) kicks in for the next
+    // unquoted line instead of it being silently dropped.
+    const input = [
+      '1. 00:12-00:30 SOUNDBITE 1 - SOUNDBITE en anglais de Jean Dupont',
+      'Tout a commencé très vite'
+    ].join('\n')
+    const shots = parseShotList(input)
+    expect(shots).toHaveLength(1)
+    expect(shots[0]?.description).toBe('SOUNDBITE en anglais de Jean Dupont')
+    expect(shots[0]?.citations).toEqual([{ text: 'Tout a commencé très vite' }])
+  })
+
   it('parses a SONORE shot (case-insensitive)', () => {
     const shots = parseShotList('2. 00:30-00:45 sonore 2 - Marie Martin')
     expect(shots).toHaveLength(1)
