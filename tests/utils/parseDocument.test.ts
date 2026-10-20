@@ -144,6 +144,16 @@ describe('parseDocument', () => {
       expect(doc.aspectRatios).toEqual(['afparatio:horizontal'])
     })
 
+    it('passes through the dateline location', () => {
+      const doc = parseDocument({ ...TEXT_DOC, location: { lat: 48.85341, lon: 2.3488 } })
+      expect(doc.location).toEqual({ lat: 48.85341, lon: 2.3488 })
+    })
+
+    it('drops a malformed location without rejecting the document', () => {
+      expect(parseDocument(TEXT_DOC).location).toBeUndefined()
+      expect(parseDocument({ ...TEXT_DOC, location: { lat: '48.8' } }).location).toBeUndefined()
+    })
+
     it('extracts events from afpentity', () => {
       const doc = parseDocument({
         ...TEXT_DOC,
