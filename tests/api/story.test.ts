@@ -24,17 +24,15 @@ describe('Story (via Docs.getStoryHtml)', () => {
     globalThis.fetch = vi.fn().mockImplementation(() => {
       callIndex++
       if (callIndex === 1) {
-        // First call: fetch webstory XML URL
         return Promise.resolve({
           status: 200,
           json: () => Promise.resolve({
             uno: 'story-123',
             href: '/v1/webstory/abc'
           }),
-          text: () => Promise.resolve('')
+          text: () => Promise.resolve(JSON.stringify({ uno: 'story-123', href: '/v1/webstory/abc' }))
         })
       }
-      // Second call: fetch the actual HTML
       return Promise.resolve({
         status: 200,
         json: () => Promise.resolve(storyHtml),
@@ -45,11 +43,23 @@ describe('Story (via Docs.getStoryHtml)', () => {
     const docs = createAuthenticatedDocs()
     const result = await docs.getStoryHtml({
       class: 'webstory',
-      href: 'https://example.com/xml/story'
+      href: 'https://afp-apicore-prod.afp.com/objects/api/get?id=abc.xml'
     })
 
     expect(typeof result).toBe('string')
     expect(result).toContain('<base href=')
+  })
+
+  it('should refuse to send the token outside the API origin', async () => {
+    const docs = createAuthenticatedDocs()
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify({ uno: 'story-123', href: '@evil.example/steal' }))
+    })
+
+    await expect(docs.getStoryHtml({ class: 'webstory', href: 'https://evil.example/xml' })).rejects.toThrow('not the API origin')
+    await expect(docs.getStoryHtml({ class: 'webstory', href: 'https://afp-apicore-prod.afp.com/objects/api/get?id=abc.xml' })).rejects.toThrow('not the API origin')
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('should reject non-webstory documents', async () => {

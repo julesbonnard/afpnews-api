@@ -6,11 +6,15 @@ export const defaultSearchParams = {
   sortOrder: 'desc' as const
 }
 
-export const defaultBaseUrl = 'https://afp-apicore-prod-v2-external.app.afp.com'
+export const defaultBaseUrl = 'https://afp-apicore-prod.afp.com'
 
-export const maxRowsByRequest = 1000
+export const maxRowsByRequest = 10000
 
-export const fullTextSearchFields = ['all', 'title', 'news']
+import { TEXT_FIELDS } from './searchFields.js'
+
+export const fullTextSearchFields: readonly string[] = ['all', ...TEXT_FIELDS]
+
+export const translatedSearchFields: readonly string[] = ['all', 'news', 'title', 'headline', 'subheadline', 'caption', 'script']
 
 export const langsWithTranslation = ['fr', 'en', 'es', 'de', 'pt', 'ar']
 

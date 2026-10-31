@@ -35,7 +35,6 @@ describe('parseParagraphBlocks', () => {
     // A dash line surrounded by other dash lines is a list item, not a subtitle
     const paragraphs = ['— Item A', '— Ambiguous —', '— Item C']
     const blocks = parseParagraphBlocks(paragraphs)
-    // All three should form a single list, not subtitles
     expect(blocks).toHaveLength(1)
     expect(blocks[0].type).toBe('list')
   })

@@ -16,8 +16,6 @@ export const FIELD_SOURCES = {
   class: ['class'],
   source: ['source'],
   headline: ['headline', 'news', 'urgency'],
-  // Comme `headline` : sans elle, `extractTextParagraphs` peut retirer la 1re ligne de `news`
-  // au titre de titre replié (urgency < 4).
   paragraphs: ['news', 'headline', 'urgency'],
   lang: ['lang'],
   country: ['country', 'countryname'],
@@ -42,14 +40,34 @@ export const FIELD_SOURCES = {
   hasBeenAlerted: ['hopHistory', 'urgency'],
   medias: ['bagItem'],
   topics: ['topic'],
-  topshot: ['urgency'],
-  // Repli sur bagItem[0].caption pour picture/graphic (voir parseDocument).
-  caption: ['caption', 'bagItem'],
+  topshot: ['rating'],
+  caption: ['caption', 'captionContext', 'bagItem'],
   shots: ['news'],
   href: ['href'],
   title: ['title'],
   creditLine: ['creditLine'],
-  aspectRatios: ['aspectRatios']
+  aspectRatios: ['aspectRatios'],
+  copyright: ['copyright'],
+  rules: ['rules'],
+  usageRights: ['usageRight'],
+  exclusions: ['exclusion'],
+  countriesOut: ['country_out'],
+  countriesOnly: ['country_only'],
+  expires: ['expires'],
+  initialStatus: ['initialStatus'],
+  contentWarnings: ['excludeAudiences'],
+  genres: ['genre'],
+  genreIds: ['genreid'],
+  editorialTypes: ['genreid'],
+  editorialAttribute: ['genreid'],
+  ratings: ['rating'],
+  summary: ['summary'],
+  subheadline: ['subheadline'],
+  captionContext: ['captionContext'],
+  channels: ['channel'],
+  mediatopics: ['mediatopic'],
+  script: ['script'],
+  associatedWith: ['associatedWith']
 } as const satisfies Record<keyof AfpDocument, readonly AfpRawField[]>
 
 export type AfpField = keyof typeof FIELD_SOURCES
