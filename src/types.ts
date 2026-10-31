@@ -265,76 +265,272 @@ export type AfpMedia = {
  * guarantees to a required type, for callers that do switch/narrow on `class`.
  */
 export type AfpDocumentCommon = {
+  /**
+   * Identifiant unique d’un document fourni par l’AFP au sein de l’API et des systèmes de livraison.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/identifiers#uno
+   */
   uno: string
+  /**
+   * Identifiant court AFP du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/identifiers#afpshortid
+   */
   shortId?: string
+  /**
+   * Source du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#source
+   */
   source?: string
+  /**
+   * Titre éditorial historique du document ou du composant.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#headline
+   */
   headline?: string
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#news
+   */
   paragraphs: AfpParagraph[]
+  /**
+   * Langue du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#lang
+   */
   lang: string
+  /**
+   * Pays où le document a été rédigé (lieu de rédaction, pas le sujet).
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/geography#country
+   */
   country: AfpCountry
+  /**
+   * Nom lisible de la ville où le document a été rédigé.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/geography#city
+   */
   city?: string
-  /** Coordonnées de la dateline (lieu de rédaction), pas du sujet */
+  /**
+   * Coordonnées de la dateline (lieu de rédaction), pas du sujet
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/geography#objet-location
+   */
   location?: AfpLocation
+  /**
+   * Créateur du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#creator
+   */
   creator?: string
+  /**
+   * Fournisseur (émetteur) du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#provider
+   */
   provider: string
+  /**
+   * Premier libellé `genre`, dans la langue du document : préférer `genreIds` pour filtrer.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#genre
+   */
   genre?: string
+  /**
+   * Urgence éditoriale.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#urgency
+   */
   urgency: number
+  /**
+   * Estimation du nombre de mots du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/other#wordcount
+   */
   wordCount?: number
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/entities#objet-afpentity
+   */
   events: AfpEvent[]
+  /**
+   * Description courte du document (mots-clés éditoriaux).
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#slug
+   */
   slugs?: string[]
+  /**
+   * Mots-clés du document (extraction automatique).
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#keyword
+   */
   keywords?: string[]
+  /**
+   * Mention obligatoire ou avertissement éditorial à afficher lorsque le champ est présent.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#disclaimer
+   */
   disclaimer?: string[]
+  /**
+   * Consignes éditoriales.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#advisory
+   */
   advisory?: string
+  /**
+   * Date de création éditoriale du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/dates#created
+   */
   created: Date
+  /**
+   * Date de publication du document dans l’API.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/dates#published
+   */
   published: Date
+  /**
+   * Date jusqu’à laquelle l’embargo s’applique.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#embargoed
+   */
   embargoed?: Date
+  /**
+   * Numéro de révision éditoriale du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#revision
+   */
   revision: number
+  /**
+   * État courant du document, à relire à chaque révision : `Canceled` = ne plus l’utiliser.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#status
+   */
   status: AfpDocumentStatus
+  /**
+   * Information sur la révision du document (mise à jour, correction, etc.) ou alerte de contenu (violence, décès, nudité, etc.).
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#signal
+   */
   signal?: AfpDocumentSignal
   hasBeenAlerted?: boolean
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/media#objet-bagitem
+   */
   medias: AfpMedia[]
+  /**
+   * Code de fil, rubrique ou produit éditorial auquel le document est rattaché.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#topic
+   */
   topics?: string[]
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/ratings#objet-rating
+   */
   topshot?: boolean
+  /**
+   * Légende ou texte descriptif d’une photo, d’une infographie ou d’un média.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#caption
+   */
   caption?: string
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#news
+   */
   shots?: Shot[]
+  /**
+   * URL technique à appeler en GET pour récupérer le document dans le format demandé.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/other#href
+   */
   href?: string
+  /**
+   * Titre lisible du document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#title
+   */
   title?: string
+  /**
+   * Mention d’attribution éditoriale du document (photographe, vidéaste, source…).
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#creditline
+   */
   creditLine?: string
+  /**
+   * Orientation générale d’un document photo, lorsqu’elle est fournie par l’API.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/media#aspectratios
+   */
   aspectRatios?: string[]
-  /** Copyright, à afficher aux utilisateurs finaux */
+  /**
+   * Copyright, à afficher aux utilisateurs finaux
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#copyright
+   */
   copyright?: string
-  /** Règles explicites, ex. `['GERMANY OUT']` */
+  /**
+   * Règles explicites, ex. `['GERMANY OUT']`
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#rules
+   */
   rules?: string[]
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#objet-usageright
+   */
   usageRights?: AfpUsageRight[]
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#objet-exclusion
+   */
   exclusions?: AfpExclusion[]
-  /** Pays où le document ne doit pas être diffusé (`country_out`) */
+  /**
+   * Pays où le document ne doit pas être diffusé (`country_out`)
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#country-out
+   */
   countriesOut?: string[]
-  /** Pays où il peut l'être (`country_only`, souvent `['ALL']`) */
+  /**
+   * Pays où il peut l'être (`country_only`, souvent `['ALL']`)
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#country-only
+   */
   countriesOnly?: string[]
-  /** Le document ne doit plus être utilisé après cette date */
+  /**
+   * Le document ne doit plus être utilisé après cette date
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#expires
+   */
   expires?: Date
-  /** Statut de la première révision (`Usable`…) */
+  /**
+   * Statut de la première révision (`Usable`…)
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#initialstatus
+   */
   initialStatus?: string
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/rights-restrictions#excludeaudiences-qcode
+   */
   contentWarnings?: AfpContentWarning[]
-  /** Tous les libellés `genre` (dans la langue du document) ; `genre` ne garde que le premier */
+  /**
+   * Tous les libellés `genre` (dans la langue du document) ; `genre` ne garde que le premier
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#genre
+   */
   genres?: string[]
-  /** Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer */
+  /**
+   * Identifiants `genreid`, indépendants de la langue : à préférer pour filtrer
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#genreid
+   */
   genreIds?: string[]
-  /** Types éditoriaux (`afpedtype:*`), cumulables : ex. `['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast']` */
+  /**
+   * Types éditoriaux (`afpedtype:*`), cumulables : ex. `['afpedtype:videoAFPTVGeneral', 'afpedtype:Broadcast']`
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#genreid
+   */
   editorialTypes?: string[]
-  /** Attribut éditorial (`afpattribute:*`), au plus un par document : ex. `'afpattribute:Article'` */
+  /**
+   * Attribut éditorial (`afpattribute:*`), au plus un par document : ex. `'afpattribute:Article'`
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#genreid
+   */
   editorialAttribute?: string
+  /**
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/ratings#objet-rating
+   */
   ratings?: AfpRating[]
+  /**
+   * Contenu textuel synthétique ou de prévisualisation associé au document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#summary
+   */
   summary?: string[]
+  /**
+   * Sous-titre du document lorsqu’il est disponible.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#subheadline
+   */
   subheadline?: string
-  /** Contexte éditorial isolé (vidéo, photo), à préférer à `caption` pour une vidéo d'après la doc */
+  /**
+   * Contexte éditorial isolé (vidéo, photo), à préférer à `caption` pour une vidéo d'après la doc
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#captioncontext
+   */
   captionContext?: string
+  /**
+   * Chemin de distribution associé au document.
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#channel
+   */
   channels?: string[]
-  /** Codes IPTC Media Topic */
+  /**
+   * Codes IPTC Media Topic
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#mediatopic
+   */
   mediatopics?: string[]
-  /** Vidéo : texte de narration */
+  /**
+   * Vidéo : texte de narration
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/text-content#script
+   */
   script?: string[]
-  /** Vidéo : guid des dépêches de contexte */
+  /**
+   * Vidéo : guid des dépêches de contexte
+   * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/identifiers#associatedwith
+   */
   associatedWith?: string[]
 }
 
