@@ -70,6 +70,7 @@ export function FilterCenter (this: ApiCore) {
     delete: async (name: string) => {
       const data = await this.withAuth(() => get(`${baseFilterUrl}/delete`, {
         headers: this.authorizationBearerHeaders,
+        retry: false,
         params: {
           name,
           wt: 'json'

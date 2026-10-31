@@ -1,5 +1,6 @@
 import { defaultSearchParams } from '../config.js'
-import type { SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
+import { DATE_FIELDS } from '../searchFields.js'
+import type { AdditionalParamValue, AfpFieldMapping, SearchFilters, SearchMeta, SearchQueryParams, SearchQuerySortOrder, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -10,6 +11,25 @@ import { Story } from './story.js'
 import { NotificationCenter } from './notification.js'
 import { FilterCenter } from './filter.js'
 
+const FILTER_OPERATORS = ['in', 'exclude', 'and', 'contains', 'range', 'exists']
+
+function legacyFilters (rest: Record<string, unknown>): SearchFilters {
+  const isFilterValue = (value: unknown): value is AdditionalParamValue =>
+    typeof value === 'string' || typeof value === 'number' || Array.isArray(value) ||
+    (typeof value === 'object' && value !== null && FILTER_OPERATORS.some(operator => operator in value))
+  const filters: SearchFilters = {}
+  for (const [name, value] of Object.entries(rest)) {
+    if (isFilterValue(value)) filters[name] = value
+  }
+  return filters
+}
+
+function withCursor (filter: AdditionalParamValue | undefined, sortOrder: SearchQuerySortOrder, value: string): AdditionalParamValue {
+  const own = filter === undefined ? {} : typeof filter === 'object' && !Array.isArray(filter) ? filter : { in: Array.isArray(filter) ? filter : [filter] }
+  const bound = sortOrder === 'asc' ? { from: value, fromExcluded: false } : { to: value, toExcluded: false }
+  return { ...own, range: { ...own.range, ...bound } }
+}
+
 function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: number } {
   const documents = docs.flatMap(doc => {
     const parsed = safeParseDocument(doc)
@@ -18,7 +38,6 @@ function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: 
   return { documents, skipped: docs.length - documents.length }
 }
 
-// Dispatch commun aux quatre méthodes qui exposent `{ parse, lenient }` (search/mlt/latest/searchWithFilter).
 function applyParseOption (
   count: number,
   documents: unknown[],
@@ -32,14 +51,18 @@ function applyParseOption (
   return { count, documents: documents.map(doc => parseDocument(doc)) }
 }
 
-const docParser = z.object({
-  published: z.string()
-})
+const SEARCH_ALL_PAGE_SIZE = 1000
+const SEARCH_WINDOW = 10000
+
+const facetBuckets = z.object({ value: z.string(), occurence: z.number() }).array()
+  .transform(buckets => buckets.map(({ value, occurence }) => ({ name: value, count: occurence })))
 
 const searchResponse = z.object({
   response: z.object({
     docs: z.unknown().array().default([]),
-    numFound: z.number().default(0)
+    numFound: z.number().default(0),
+    facets: z.record(z.string(), facetBuckets).optional(),
+    relation: z.enum(['eq', 'gt']).optional()
   })
 })
 
@@ -53,6 +76,19 @@ const listResponse = z.object({
   })
 })
 
+const mappingResponse = z.object({
+  response: z.object({
+    mapping: z.record(z.string(), z.looseObject({
+      type: z.string(),
+      facet: z.boolean(),
+      analyzer: z.string().optional(),
+      term_vector: z.string().optional(),
+      store: z.boolean().optional(),
+      description: z.string().optional()
+    }))
+  })
+})
+
 const getResponse = z.object({
   response: z.object({
     docs: z.unknown().array().length(1)
@@ -60,9 +96,6 @@ const getResponse = z.object({
 })
 
 export class Docs extends Auth {
-  // `fields: []` veut dire "aucune restriction" côté API (toutes les colonnes) — ne jamais y
-  // injecter le socle, ça le transformerait en restriction. Uniquement pertinent avec `parse`,
-  // sinon `parseDocument()` n'est pas appelé et le socle brut n'a pas besoin d'être garanti.
   private withMandatorySocle (fields: string[], parse?: boolean): string[] {
     if (!parse || fields.length === 0) return fields
     return [...new Set([...fields, ...MANDATORY_RAW_FIELDS])]
@@ -83,6 +116,9 @@ export class Docs extends Auth {
       wantCluster,
       wantedFacets,
       sort,
+      exactNumFound,
+      dateField,
+      filters,
       ...rest
     } = Object.assign({}, defaultSearchParams, params)
 
@@ -98,7 +134,10 @@ export class Docs extends Auth {
       .setWantCluster(wantCluster)
       .setWantedFacets(wantedFacets)
       .setMultiSort(sort)
-      .addAdditionalParams(rest)
+      .setExactNumFound(exactNumFound)
+      .setDateField(dateField)
+      .addFilters(legacyFilters(rest))
+      .addFilters(filters)
       .build()
   }
 
@@ -108,7 +147,7 @@ export class Docs extends Auth {
    * @param fields - An array of fields to include in the response
    * @returns An object containing the documents and their count
    */
-  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[] }>
+  public async search (params?: SearchQueryParams, fields?: string[]): Promise<{ count: number; documents: unknown[] } & SearchMeta>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model
    * @param params - An object containing the search parameters
@@ -116,7 +155,7 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true }` to get typed `AfpDocument`s
    * @returns An object containing the parsed documents and their count
    */
-  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] }>
+  public async search (params: SearchQueryParams, fields: string[], options: ParseOption): Promise<{ count: number; documents: AfpDocument[] } & SearchMeta>
   /**
    * Search documents and parse them into the canonical `AfpDocument` model, skipping any
    * document that fails to parse instead of failing the whole request
@@ -125,18 +164,20 @@ export class Docs extends Auth {
    * @param options - Pass `{ parse: true, lenient: true }` to skip malformed documents
    * @returns An object containing the parsed documents, their count, and how many were skipped
    */
-  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
-  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
+  public async search (params: SearchQueryParams, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number } & SearchMeta>
+  public async search (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number } & SearchMeta> {
     const body = this.prepareRequest(params, this.withMandatorySocle(fields, options?.parse))
 
     const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/search`, body, {
       headers: this.authorizationBearerHeaders,
+      retry: true,
       params: { wt: 'json' }
     }))
 
-    const { response: { docs: documents, numFound: count } } = searchResponse.parse(data)
+    const { response } = searchResponse.parse(data)
+    const result = applyParseOption(response.numFound, response.docs, options)
 
-    return applyParseOption(count, documents, options)
+    return { ...result, facets: response.facets, relation: response.relation }
   }
 
   /**
@@ -164,30 +205,43 @@ export class Docs extends Auth {
    */
   public searchAll (params: SearchQueryParams, fields: string[], options: LenientParseOption): AsyncGenerator<AfpDocument>
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): AsyncGenerator<unknown> {
-    const direction = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
-    const maxRequestSize = 1000
-    const maxSize = params.size || defaultSearchParams.size
-    const effectiveFields = this.withMandatorySocle(fields, options?.parse)
-    let i = 0
-    while (i < maxSize) {
-      params.size = Math.min(maxSize - i, maxRequestSize)
-      const { count, documents } = await this.search(params, effectiveFields)
-      if (!documents.length) return
-      for (const doc of documents) {
-        i++
-        if (!options?.parse) {
-          yield doc
-          continue
-        }
-        if (options.lenient) {
-          const parsed = safeParseDocument(doc)
-          if (parsed) yield parsed
-          continue
-        }
-        yield parseDocument(doc)
-      }
-      if (documents.length < params.size || count <= documents.length) return
-      params[direction] = docParser.parse(documents.pop()).published
+    const maxSize = params.size ?? defaultSearchParams.size
+    const { sortField, sortOrder } = params.sort?.[0] ?? {
+      sortField: params.sortField ?? defaultSearchParams.sortField,
+      sortOrder: params.sortOrder ?? defaultSearchParams.sortOrder
+    }
+    const pageParams: SearchQueryParams = { ...params }
+    if (!params.sort && sortField !== 'timestamp' && (DATE_FIELDS as readonly string[]).includes(sortField)) {
+      pageParams.sort = [{ sortField, sortOrder }, { sortField: 'timestamp', sortOrder }]
+    }
+
+    let pageFields = this.withMandatorySocle(fields, options?.parse)
+    if (pageFields.length > 0) pageFields = [...new Set([...pageFields, sortField, 'uno'])]
+
+    let yielded = 0
+    let startAt = params.startAt ?? 0
+    let cursor: unknown
+    let seen = new Set<unknown>()
+
+    while (yielded < maxSize) {
+      const size = Math.min(maxSize - yielded, SEARCH_ALL_PAGE_SIZE)
+      if (startAt + size > SEARCH_WINDOW) throw new Error(`searchAll: more than ${SEARCH_WINDOW - size} documents share ${sortField} "${String(cursor)}", cannot paginate past the API's ${SEARCH_WINDOW} result window`)
+      const { documents } = await this.search({ ...pageParams, size, startAt }, pageFields)
+      const page = documents as Record<string, unknown>[]
+      const fresh = page.filter(doc => !seen.has(doc.uno))
+      yielded += fresh.length
+      yield * applyParseOption(0, fresh, options).documents
+
+      if (page.length < size || fresh.length === 0) return
+
+      const lastValue = page[page.length - 1]?.[sortField]
+      if (typeof lastValue !== 'string') throw new Error(`searchAll: document without "${sortField}", cannot paginate`)
+      if (lastValue !== cursor) seen = new Set()
+      for (const doc of page) if (doc[sortField] === lastValue) seen.add(doc.uno)
+
+      cursor = lastValue
+      pageParams.filters = { ...params.filters, [sortField]: withCursor(params.filters?.[sortField], sortOrder, lastValue) }
+      startAt = seen.size
     }
   }
 
@@ -205,7 +259,7 @@ export class Docs extends Auth {
    */
   public async get (uno: string, options: ParseOption): Promise<AfpDocument>
   public async get (uno: string, options?: { parse?: boolean }): Promise<unknown> {
-    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${uno}`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${encodeURIComponent(uno)}`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json' }
     }))
@@ -245,8 +299,6 @@ export class Docs extends Auth {
    */
   public async mlt (uno: string, lang: string, size: number | undefined, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
   public async mlt (uno: string, lang: string, size: number = 10, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
-    // Contrairement à search (fields dans le body POST), l'API expose ici `fl` (convention Solr),
-    // sur la requête GET — vérifié en conditions réelles, `fields` est silencieusement ignoré ici.
     const fl = this.withMandatorySocle(fields, options?.parse)
 
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mlt`, {
@@ -273,12 +325,15 @@ export class Docs extends Auth {
    * @returns An object containing the keywords (typed, zod-validated `AfpFacetValue[]`) and their count
    */
   public async list (facet: string, params: SearchQueryParams = {}, minDocCount = 1): Promise<{ count: number; keywords: AfpFacetValue[] }> {
-    const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, params), [])
+    const { size = 100, ...searchParams } = params
+    const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, searchParams), [])
 
-    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
+    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${encodeURIComponent(facet)}`, body, {
       headers: this.authorizationBearerHeaders,
+      retry: true,
       params: {
         minDocCount,
+        size,
         wt: 'json'
       }
     }))
@@ -327,23 +382,17 @@ export class Docs extends Auth {
   }
 
   /**
-   * Get the API field mapping
-   * @param lang - The language for the mapping
-   * @returns The mapping object
+   * Get the API field mapping with translated descriptions
+   * @param lang - The language of the field descriptions
+   * @returns The mapping, keyed by field name
    */
-  public async mapping (lang: string) {
+  public async mapping (lang: string): Promise<AfpFieldMapping> {
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mapping`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json', lang }
     }))
 
-    const { response: { mapping } } = z.object({
-      response: z.object({
-        mapping: z.unknown()
-      })
-    }).parse(data)
-
-    return mapping
+    return mappingResponse.parse(data).response.mapping
   }
 
   /**

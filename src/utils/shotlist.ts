@@ -63,21 +63,18 @@ export function parseShotList (input: string): Shot[] {
       continue
     }
 
-    // Traiter les citations s'il y a un plan courant
     if (currentShot && line.startsWith('"') && line.endsWith('"')) {
       const citationText = line.slice(1, -1)
       currentShot.citations.push({ text: citationText })
       continue
     }
 
-    // Gestion des erreurs de format
     if (
       currentShot &&
       currentShot.description.startsWith('SOUNDBITE') &&
       line &&
       !line.startsWith('"')
     ) {
-      // Peut être un début de citation oubliant les guillemets
       currentShot.citations.push({ text: line })
     }
   }

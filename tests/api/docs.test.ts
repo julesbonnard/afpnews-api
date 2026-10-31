@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { Docs } from '../../src/api/docs'
-import type { SearchRequest, AfpFacetValue } from '../../src/types'
+import type { SearchRequest, AfpFacetValue, SearchQueryParams } from '../../src/types'
 import { mockFetch, mockFetchSequence } from '../helpers/mockFetch'
 
 const TOKEN_RESPONSE = {
@@ -54,7 +54,6 @@ describe('Docs', () => {
           numFound: 1
         }
       }
-      // First call: anonymous token, second call: search
       mockFetchSequence([
         { body: TOKEN_RESPONSE },
         { body: searchResponse }
@@ -68,6 +67,33 @@ describe('Docs', () => {
       expect(result.documents[0]).toEqual({ uno: 'doc1', title: 'Test' })
     })
 
+    it('should return facets normalised to AfpFacetValue (prod shape: value / occurence)', async () => {
+      mockFetch({
+        response: {
+          docs: [],
+          numFound: 207389,
+          relation: 'eq',
+          facets: { status: [{ occurence: 207300, value: 'Usable' }, { occurence: 7, value: 'Canceled' }] }
+        }
+      })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({ size: 0, wantedFacets: { status: { minDocCount: 1, size: 20 } } })
+
+      expect(result.facets).toEqual({ status: [{ name: 'Usable', count: 207300 }, { name: 'Canceled', count: 7 }] })
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).maxRows).toBe(0)
+    })
+
+    it('should not add a facets key when the API returns none', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search()
+
+      expect(result.facets).toBeUndefined()
+    })
+
     it('should use existing valid token', async () => {
       const searchResponse = {
         response: { docs: [], numFound: 0 }
@@ -79,8 +105,51 @@ describe('Docs', () => {
 
       expect(result.count).toBe(0)
       expect(result.documents).toHaveLength(0)
-      // Only one fetch call (search), no auth call
       expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should turn params.filters into query conditions', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({ filters: { class: 'text', genreid: { exclude: ['afpedtype:docrobot'] } } })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).query).toEqual({
+        and: [
+          { name: 'class', in: ['text'] },
+          { name: 'genreid', exclude: ['afpedtype:docrobot'] }
+        ]
+      })
+    })
+
+    it('should send exactNumFound and dateField as options, not as filters, and return relation', async () => {
+      mockFetch({ response: { docs: [], numFound: 1000, relation: 'gt' } })
+
+      const docs = createAuthenticatedDocs()
+      const result = await docs.search({ exactNumFound: 1000, dateField: 'contentCreated', dateFrom: 'now-7d' })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      const body = JSON.parse(init!.body as string) as SearchRequest
+      expect(body.exactNumFound).toBe(1000)
+      expect(body.dateRange).toEqual({ targetField: 'contentCreated', from: 'now-7d', to: 'now' })
+      expect(body.query).toBeUndefined()
+      expect(result.relation).toBe('gt')
+    })
+
+    it('should still read deprecated flat filters, and ignore entries that are not filters', async () => {
+      mockFetch({ response: { docs: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.search({ country: 'fra', exactNumFound: true, empty: '', facets: { topic: { size: 5 } }, filters: { class: 'text' } })
+
+      const [, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect((JSON.parse(init!.body as string) as SearchRequest).query).toEqual({
+        and: [
+          { name: 'country', in: ['fra'] },
+          { name: 'class', in: ['text'] }
+        ]
+      })
     })
 
     it('should pass search params to the API', async () => {
@@ -217,6 +286,14 @@ describe('Docs', () => {
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
+    })
+
+    it('should encode the uno so it cannot change the request path or query', async () => {
+      mockFetch({ response: { docs: [{ uno: 'x' }] } })
+      await createAuthenticatedDocs().get('../oauth/token?grant_type=x#y')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0] as string
+      expect(calledUrl).toContain('/v1/api/get/..%2Foauth%2Ftoken%3Fgrant_type%3Dx%23y?')
     })
 
     it('should return the raw document by default, even when it is parseable', async () => {
@@ -402,6 +479,26 @@ describe('Docs', () => {
       expect(result.keywords[0]).toEqual({ count: 100 })
     })
 
+    it('should send size as a query param (number of facet values), not as maxRows', async () => {
+      mockFetch({ response: { topics: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.list('topic', { size: 2000 })
+
+      const [calledUrl, init] = (fetch as Mock<typeof fetch>).mock.calls[0]
+      expect(calledUrl).toContain('size=2000')
+      expect((JSON.parse(init!.body as string) as SearchRequest).maxRows).toBe(10)
+    })
+
+    it('should request 100 facet values by default (API default)', async () => {
+      mockFetch({ response: { topics: [], numFound: 0 } })
+
+      const docs = createAuthenticatedDocs()
+      await docs.list('topic')
+
+      expect((fetch as Mock<typeof fetch>).mock.calls[0][0]).toContain('size=100')
+    })
+
     it('should pass custom minDocCount', async () => {
       const listResponse = {
         response: { topics: [], numFound: 0 }
@@ -432,7 +529,6 @@ describe('Docs', () => {
     it('should yield documents across multiple pages using spied search', async () => {
       const docs = createAuthenticatedDocs()
 
-      // Mock search to simulate pagination: 2 pages of 3 docs each
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
       searchSpy.mockImplementation(() => {
@@ -458,9 +554,6 @@ describe('Docs', () => {
       })
 
       const collected: unknown[] = []
-      // size: 6, each page returns 3 docs. Since 3 < 6 (params.size),
-      // searchAll stops after page 1 — this tests the "fewer than requested" exit.
-      // To actually paginate, size must exceed maxRequestSize (1000).
       for await (const doc of docs.searchAll({ size: 6 })) {
         collected.push(doc)
       }
@@ -469,7 +562,7 @@ describe('Docs', () => {
       expect(searchSpy).toHaveBeenCalledTimes(1)
     })
 
-    it('should paginate when size exceeds maxRequestSize', async () => {
+    it('should paginate when size exceeds the page size', async () => {
       const docs = createAuthenticatedDocs()
 
       const searchSpy = vi.spyOn(docs, 'search')
@@ -477,14 +570,12 @@ describe('Docs', () => {
       searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
-          // Return exactly 1000 docs (matching maxRequestSize) so pagination continues
           const pageDocs = Array.from({ length: 1000 }, (_, i) => ({
             uno: `doc-${i}`,
             published: `2023-06-${String(15).padStart(2, '0')}T${String(i).padStart(2, '0')}:00:00Z`
           }))
           return Promise.resolve({ count: 1500, documents: pageDocs })
         }
-        // Second page: fewer than requested → stops
         const pageDocs = Array.from({ length: 100 }, (_, i) => ({
           uno: `doc-${1000 + i}`,
           published: `2023-06-14T${String(i).padStart(2, '0')}:00:00Z`
@@ -497,9 +588,132 @@ describe('Docs', () => {
         collected.push(doc)
       }
 
-      // 1000 from page 1 + 100 from page 2
       expect(collected).toHaveLength(1100)
       expect(searchSpy).toHaveBeenCalledTimes(2)
+    })
+
+    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), les filtres range, le tri,
+    // startAt et size comme l'API, y compris la fenêtre de 10 000 au-delà de laquelle elle ne renvoie rien.
+    function mockIndex (docs: SearchAllDoc[]) {
+      return (params: SearchQueryParams = {}) => {
+        const field = (params.dateField ?? 'published') as 'published' | 'contentCreated'
+        const primary = params.sort?.[0] ?? params
+        const sortField = (primary.sortField ?? 'published') as keyof SearchAllDoc
+        const asc = primary.sortOrder === 'asc'
+        const matching = docs
+          .filter(d => (!params.dateTo || params.dateTo === 'now' || d[field] <= params.dateTo) &&
+            (!params.dateFrom || params.dateFrom === '1980-01-01' || d[field] >= params.dateFrom))
+          .filter(d => Object.entries(params.filters ?? {}).every(([name, filter]) => {
+            const range = (filter as { range?: { from?: string; to?: string } }).range
+            const value = d[name as keyof SearchAllDoc]
+            return (!range?.from || value >= range.from) && (!range?.to || value <= range.to)
+          }))
+          .sort((a, b) => (asc ? 1 : -1) * String(a[sortField]).localeCompare(String(b[sortField])))
+        const start = params.startAt ?? 0
+        const end = start + (params.size ?? 10)
+        return Promise.resolve({ count: 0, documents: end > 10000 ? [] : matching.slice(start, end) })
+      }
+    }
+    type SearchAllDoc = { uno: string; published: string; contentCreated: string }
+
+    // 2500 documents dont 1200 partagent la même date (plus d'une page de 1000)
+    const INDEX: SearchAllDoc[] = Array.from({ length: 2500 }, (_, i) => {
+      const date = i < 400 ? `2026-10-0${1 + (i % 3)}T00:00:${String(i % 60).padStart(2, '0')}Z`
+        : i < 1600 ? '2026-09-30T12:00:00Z'
+          : `2026-09-${String(10 + (i % 19)).padStart(2, '0')}T00:00:00Z`
+      return { uno: `doc-${String(i).padStart(4, '0')}`, published: date, contentCreated: date }
+    })
+
+    it('should return every document exactly once across pages, even when more than a page share the same date', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, exactNumFound: false })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(unos).toHaveLength(2500)
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.length).toBeGreaterThan(2)
+    })
+
+    it('should paginate on the sort field with a range cursor, leaving dateField and dateFrom to the caller', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, dateFrom: '2026-09-01', sortField: 'contentCreated', sortOrder: 'asc' })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined && p.dateFrom === '2026-09-01' && p.dateTo === undefined)).toBe(true)
+      expect(searchSpy.mock.calls[1]?.[0]?.filters?.contentCreated).toMatchObject({ range: { fromExcluded: false } })
+    })
+
+    it('should take the cursor field and direction from sort[0] when the caller passes sort', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, sort: [{ sortField: 'contentCreated', sortOrder: 'asc' }] })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined && p.dateTo === undefined)).toBe(true)
+    })
+
+    it('should add timestamp as a secondary sort so documents of the same date keep a stable order', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+
+      for await (const _ of docs.searchAll({ size: 10, sortOrder: 'asc' })) { /* consume */ }
+
+      expect(searchSpy.mock.calls[0]?.[0]?.sort).toEqual([
+        { sortField: 'published', sortOrder: 'asc' },
+        { sortField: 'timestamp', sortOrder: 'asc' }
+      ])
+    })
+
+    it('should keep a sort given by the caller, and add none for a non-date sort field', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+      const sort = [{ sortField: 'published', sortOrder: 'desc' as const }]
+
+      for await (const _ of docs.searchAll({ size: 10, sort })) { /* consume */ }
+      for await (const _ of docs.searchAll({ size: 10, sortField: 'uno' })) { /* consume */ }
+
+      expect(searchSpy.mock.calls[0]?.[0]?.sort).toEqual(sort)
+      expect(searchSpy.mock.calls[1]?.[0]?.sort).toBeUndefined()
+    })
+
+    it('should paginate past the 10,000 result window with a range cursor', async () => {
+      const docs = createAuthenticatedDocs()
+      const index = Array.from({ length: 12000 }, (_, i) => ({ uno: `doc-${String(i).padStart(5, '0')}`, published: '2026-10-01', contentCreated: '2026-10-01' }))
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(index))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 20000, sortField: 'uno', sortOrder: 'asc', filters: { uno: { exclude: ['doc-00005'] } } })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(12000)
+      expect(searchSpy.mock.calls.every(([p]) => (p?.startAt ?? 0) <= 1 && p?.dateField === undefined)).toBe(true)
+      expect(searchSpy.mock.calls[1]?.[0]?.filters?.uno).toEqual({ exclude: ['doc-00005'], range: { from: 'doc-00999', fromExcluded: false } })
+    })
+
+    it('should throw rather than stop silently when ties on the sort value outgrow the 10,000 result window', async () => {
+      const docs = createAuthenticatedDocs()
+      const index = Array.from({ length: 10500 }, (_, i) => ({ uno: `doc-${String(i).padStart(5, '0')}`, published: '2026-10-31T00:00:00Z', contentCreated: '2026-10-31T00:00:00Z' }))
+      vi.spyOn(docs, 'search').mockImplementation(mockIndex(index))
+
+      let count = 0
+      await expect(async () => { for await (const _ of docs.searchAll({ size: 20000 })) count++ }).rejects.toThrow('10000 result window')
+      expect(count).toBe(10000)
+    })
+
+    it('should not mutate the params passed by the caller', async () => {
+      const docs = createAuthenticatedDocs()
+      vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+      const params = { size: 1500, query: 'climat' }
+
+      for await (const _ of docs.searchAll(params)) { /* consume */ }
+
+      expect(params).toEqual({ size: 1500, query: 'climat' })
     })
 
     it('should stop when no documents returned', async () => {
@@ -545,7 +759,7 @@ describe('Docs', () => {
       expect(collected).toHaveLength(1)
     })
 
-    it('should stop when count <= documents.length', async () => {
+    it('should stop on a page smaller than requested', async () => {
       const docs = createAuthenticatedDocs()
       vi.spyOn(docs, 'search').mockResolvedValue({
         count: 2,
@@ -561,22 +775,6 @@ describe('Docs', () => {
       }
 
       expect(collected).toHaveLength(2)
-    })
-
-    it('should use dateFrom for ascending sort direction', async () => {
-      const docs = createAuthenticatedDocs()
-      const searchSpy = vi.spyOn(docs, 'search').mockResolvedValue({
-        count: 1,
-        documents: [{ uno: 'doc1', published: '2023-01-01T00:00:00Z' }]
-      })
-
-      const collected: unknown[] = []
-      for await (const doc of docs.searchAll({ size: 10, sortOrder: 'asc' })) {
-        collected.push(doc)
-      }
-
-      expect(collected).toHaveLength(1)
-      expect(searchSpy).toHaveBeenCalled()
     })
 
     it('should yield AfpDocuments when parse: true is passed', async () => {
@@ -749,13 +947,17 @@ describe('Docs', () => {
   })
 
   describe('mapping', () => {
-    it('should fetch mapping and return response.mapping', async () => {
-      const mappingData = { response: { mapping: { fields: ['uno', 'title'] } } }
-      mockFetch(mappingData)
+    it('should fetch mapping and return response.mapping (prod shape, keyed by field)', async () => {
+      const mapping = {
+        title: { analyzer: 'search_langue', type: 'text', facet: false },
+        country: { type: 'keyword', facet: true }
+      }
+      mockFetch({ response: { status: { code: 0, reason: 'Success' }, took: 3, numFound: 2, mapping } })
       const docs = createAuthenticatedDocs()
       const result = await docs.mapping('en')
 
-      expect(result).toEqual({ fields: ['uno', 'title'] })
+      expect(result).toEqual(mapping)
+      expect(result.country?.facet).toBe(true)
 
       const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0]
       expect(calledUrl).toContain('/v1/api/mapping')
@@ -872,7 +1074,4 @@ describe('Docs', () => {
     })
   })
 
-  // notificationCenter / filterCenter behavior (registerService, add, delete, ...) is already
-  // exercised in tests/api/notification.test.ts and tests/api/filter.test.ts — no need to
-  // re-assert their method presence here.
 })

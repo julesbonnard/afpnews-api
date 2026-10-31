@@ -50,9 +50,6 @@ describe('parseShotList', () => {
   })
 
   it('treats an unquoted line as a citation fallback when the SOUNDBITE description itself starts with "SOUNDBITE"', () => {
-    // Malformed input: the description captured after "SOUNDBITE 1 - " itself starts with the
-    // word SOUNDBITE, so the format-error fallback (shotlist.ts ~L88) kicks in for the next
-    // unquoted line instead of it being silently dropped.
     const input = [
       '1. 00:12-00:30 SOUNDBITE 1 - SOUNDBITE en anglais de Jean Dupont',
       'Tout a commencé très vite'

@@ -28,7 +28,13 @@ type LiteralExpressionToken = {
 type EmptyExpression = {
   type: 'EmptyExpression'
 }
-type ExpressionToken = EmptyExpression | LiteralExpressionToken
+type RangeExpressionToken = {
+  type: 'RangeExpression'
+  /** `undefined` pour une borne ouverte (`*`) */
+  from?: string
+  to?: string
+}
+type ExpressionToken = EmptyExpression | LiteralExpressionToken | RangeExpressionToken
 type BooleanOperatorToken = {
   operator: 'AND' | 'OR'
   type: 'BooleanOperator'
