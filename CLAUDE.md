@@ -111,7 +111,7 @@ dist/
 - Types are defined in `src/types.ts` - keep type definitions centralized there
 
 ### Dependencies
-- Runtime: `btoa-lite`, `events`, `moo`, `nearley`, `statuses`, `zod`
+- Runtime: `events`, `moo`, `nearley`, `zod`
 - `@types/*` packages are in `dependencies` (not `devDependencies`) since they're needed by consumers
 - Package manager: pnpm (lock file: `pnpm-lock.yaml`)
 
@@ -176,4 +176,4 @@ tests/
 `npm run prepare` runs `lint`, `typecheck`, then `build` before publish, ensuring dist/ is always fresh.
 
 ### Node.js Compatibility
-Minimum Node.js version: 12.20.0 (declared in `engines` field).
+Minimum Node.js version: 18 (declared in `engines` field): global `fetch` is required, and zod 4 does not load on Node 12.
