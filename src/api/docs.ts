@@ -38,7 +38,6 @@ function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: 
   return { documents, skipped: docs.length - documents.length }
 }
 
-// Dispatch commun aux quatre méthodes qui exposent `{ parse, lenient }` (search/mlt/latest/searchWithFilter).
 function applyParseOption (
   count: number,
   documents: unknown[],
@@ -234,24 +233,11 @@ export class Docs extends Auth {
       const size = Math.min(maxSize - yielded, SEARCH_ALL_PAGE_SIZE)
       const { documents } = await this.search({ ...pageParams, size, startAt }, pageFields)
       const page = documents as Record<string, unknown>[]
-      const yieldedBefore = yielded
+      const fresh = page.filter(doc => !seen.has(doc.uno))
+      yielded += fresh.length
+      yield * applyParseOption(0, fresh, options).documents
 
-      for (const doc of page) {
-        if (seen.has(doc.uno)) continue
-        yielded++
-        if (!options?.parse) {
-          yield doc
-          continue
-        }
-        if (options.lenient) {
-          const parsed = safeParseDocument(doc)
-          if (parsed) yield parsed
-          continue
-        }
-        yield parseDocument(doc)
-      }
-
-      if (page.length < size || yielded === yieldedBefore) return
+      if (page.length < size || fresh.length === 0) return
 
       const lastValue = page[page.length - 1]?.[sortField]
       if (typeof lastValue !== 'string') throw new Error(`searchAll: document without "${sortField}", cannot paginate`)
