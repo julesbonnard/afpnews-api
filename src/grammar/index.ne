@@ -1,12 +1,8 @@
 @preprocessor typescript
 
 @{%
-  // Moo lexer documentation is here:
-  // https://github.com/no-context/moo
-
   import moo from 'moo'
 
-  // All casings of a keyword (AND, And, aNd, ...), not just a few hardcoded ones.
   const caseVariants = (word: string): string[] =>
     word.length === 0
       ? ['']
@@ -44,7 +40,6 @@
 
   const negate = (negated: boolean, node: any) => negated ? { type: 'UnaryOperator', operator: 'NOT', operand: node } : node
 
-  // Rewrites every ImplicitField leaf of a `field:(...)` group to the group's own field, so `title:(a OR b)` reads as `title:a OR title:b`.
   const applyFieldToGroup = (field: unknown, node: any): any => {
     if (node.type === 'Tag' && node.field?.type === 'ImplicitField') return { ...node, field }
     if (node.type === 'LogicalExpression') return { ...node, left: applyFieldToGroup(field, node.left), right: applyFieldToGroup(field, node.right) }

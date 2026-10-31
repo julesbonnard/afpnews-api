@@ -344,7 +344,6 @@ describe('QueryBuilder', () => {
 
       expect(result).toBeDefined()
       expect(result!.or).toBeDefined()
-      // NOT should produce exclude instead of in
       const flat = JSON.stringify(result)
       expect(flat).toContain('exclude')
     })
@@ -369,7 +368,6 @@ describe('QueryBuilder', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('()')
 
-      // Empty expression serializes to undefined
       expect(result).toBeUndefined()
     })
 
@@ -562,7 +560,6 @@ describe('QueryBuilder', () => {
       expect(result).toBeDefined()
       expect(result!.or).toBeDefined()
       const flat = JSON.stringify(result)
-      // normalizer lowercases the text
       expect(flat).toContain("l'afp")
     })
 
@@ -573,7 +570,6 @@ describe('QueryBuilder', () => {
       expect(result).toBeDefined()
       expect(result!.or).toBeDefined()
       const flat = JSON.stringify(result)
-      // normalizer lowercases the text
       expect(flat).toContain('jean-luc')
     })
 
@@ -775,8 +771,6 @@ describe('QueryBuilder', () => {
   })
 
   describe('setter chaining contract', () => {
-    // Every setter returns `this`. Instead of repeating the same assertion once per describe
-    // block above, verify it here for all of them in one parameterized pass.
     it.each<[string, (qb: QueryBuilder) => unknown]>([
       ['setMaxRows', qb => qb.setMaxRows(10)],
       ['setDateRange', qb => qb.setDateRange('2023-01-01', '2023-12-31')],

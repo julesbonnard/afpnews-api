@@ -95,9 +95,6 @@ const getResponse = z.object({
 })
 
 export class Docs extends Auth {
-  // `fields: []` veut dire "aucune restriction" côté API (toutes les colonnes) — ne jamais y
-  // injecter le socle, ça le transformerait en restriction. Uniquement pertinent avec `parse`,
-  // sinon `parseDocument()` n'est pas appelé et le socle brut n'a pas besoin d'être garanti.
   private withMandatorySocle (fields: string[], parse?: boolean): string[] {
     if (!parse || fields.length === 0) return fields
     return [...new Set([...fields, ...MANDATORY_RAW_FIELDS])]
@@ -305,8 +302,6 @@ export class Docs extends Auth {
    */
   public async mlt (uno: string, lang: string, size: number | undefined, fields: string[], options: LenientParseOption): Promise<{ count: number; documents: AfpDocument[]; skipped: number }>
   public async mlt (uno: string, lang: string, size: number = 10, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): Promise<{ count: number; documents: unknown[]; skipped?: number }> {
-    // Contrairement à search (fields dans le body POST), l'API expose ici `fl` (convention Solr),
-    // sur la requête GET — vérifié en conditions réelles, `fields` est silencieusement ignoré ici.
     const fl = this.withMandatorySocle(fields, options?.parse)
 
     const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/mlt`, {

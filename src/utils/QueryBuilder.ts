@@ -32,7 +32,6 @@ const quote = (value: string) => {
   return `"${value}"`
 }
 
-// Auto-closes a trailing unclosed `(` or `"`; an extra unmatched `)` is left as a real error.
 const balanceQuery = (query: string): string => {
   let parenDepth = 0
   let inQuote = false
@@ -61,7 +60,6 @@ const tokenLabels: Record<string, string> = {
   word: 'a term'
 }
 
-// Drops nearley's raw Earley derivation trace, keeping only the position/pointer and a deduped "expected" list.
 const formatParseError = (rawMessage: string): string => {
   const lines = rawMessage.split('\n')
   const unexpectedLineIndex = lines.findIndex(line => line.startsWith('Unexpected'))
@@ -291,7 +289,6 @@ export class QueryBuilder {
   
     if (ast.type === 'LogicalExpression') {
       const operator = ast.operator.operator.toLowerCase()
-      // De Morgan: NOT distributes over AND/OR by flipping the connective, e.g. NOT (a OR b) = NOT a AND NOT b.
       const connective = exclude ? (operator === 'and' ? 'or' : 'and') : operator
       return {
         [connective]: [this.serialize(ast.left, exclude), this.serialize(ast.right, exclude)]
@@ -309,8 +306,6 @@ export class QueryBuilder {
     throw new Error('Unexpected AST type.')
   }
 
-  // nearley's parser.results is typed `any[]`; the grammar guarantees each
-  // result matches the Ast shape declared in grammar/grammar.d.ts.
   private runParser (queryToFeed: string, typedQuery: string): Ast {
     const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar))
     try {
@@ -343,7 +338,6 @@ export class QueryBuilder {
     try {
       parsedQuery = this.runParser(balancedQuery, typedQuery)
     } catch (error) {
-      // Re-report against what the user typed, never against an auto-added `)`/`"`.
       if (balancedQuery === typedQuery) throw error
       parsedQuery = this.runParser(typedQuery, typedQuery)
     }

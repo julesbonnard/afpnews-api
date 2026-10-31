@@ -54,7 +54,6 @@ describe('Docs', () => {
           numFound: 1
         }
       }
-      // First call: anonymous token, second call: search
       mockFetchSequence([
         { body: TOKEN_RESPONSE },
         { body: searchResponse }
@@ -106,7 +105,6 @@ describe('Docs', () => {
 
       expect(result.count).toBe(0)
       expect(result.documents).toHaveLength(0)
-      // Only one fetch call (search), no auth call
       expect(fetch).toHaveBeenCalledTimes(1)
     })
 
@@ -523,7 +521,6 @@ describe('Docs', () => {
     it('should yield documents across multiple pages using spied search', async () => {
       const docs = createAuthenticatedDocs()
 
-      // Mock search to simulate pagination: 2 pages of 3 docs each
       const searchSpy = vi.spyOn(docs, 'search')
       let callNum = 0
       searchSpy.mockImplementation(() => {
@@ -549,9 +546,6 @@ describe('Docs', () => {
       })
 
       const collected: unknown[] = []
-      // size: 6, each page returns 3 docs. Since 3 < 6 (params.size),
-      // searchAll stops after page 1 — this tests the "fewer than requested" exit.
-      // To actually paginate, size must exceed maxRequestSize (1000).
       for await (const doc of docs.searchAll({ size: 6 })) {
         collected.push(doc)
       }
@@ -568,14 +562,12 @@ describe('Docs', () => {
       searchSpy.mockImplementation(() => {
         callNum++
         if (callNum === 1) {
-          // Return exactly 1000 docs (matching maxRequestSize) so pagination continues
           const pageDocs = Array.from({ length: 1000 }, (_, i) => ({
             uno: `doc-${i}`,
             published: `2023-06-${String(15).padStart(2, '0')}T${String(i).padStart(2, '0')}:00:00Z`
           }))
           return Promise.resolve({ count: 1500, documents: pageDocs })
         }
-        // Second page: fewer than requested → stops
         const pageDocs = Array.from({ length: 100 }, (_, i) => ({
           uno: `doc-${1000 + i}`,
           published: `2023-06-14T${String(i).padStart(2, '0')}:00:00Z`
@@ -588,7 +580,6 @@ describe('Docs', () => {
         collected.push(doc)
       }
 
-      // 1000 from page 1 + 100 from page 2
       expect(collected).toHaveLength(1100)
       expect(searchSpy).toHaveBeenCalledTimes(2)
     })
@@ -1079,7 +1070,4 @@ describe('Docs', () => {
     })
   })
 
-  // notificationCenter / filterCenter behavior (registerService, add, delete, ...) is already
-  // exercised in tests/api/notification.test.ts and tests/api/filter.test.ts — no need to
-  // re-assert their method presence here.
 })

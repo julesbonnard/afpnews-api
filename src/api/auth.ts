@@ -4,7 +4,6 @@ import { ApiError, get, postForm } from '../utils/request.js'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 
-// btoa est natif côté navigateur ; Node ne le globalise pas sur toutes les versions supportées, d'où le repli sur Buffer.
 const toBase64 = (str: string) => typeof btoa === 'function' ? btoa(str) : Buffer.from(str).toString('base64')
 
 const tokenSchema = z.object({

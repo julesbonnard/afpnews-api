@@ -24,7 +24,6 @@ describe('Story (via Docs.getStoryHtml)', () => {
     globalThis.fetch = vi.fn().mockImplementation(() => {
       callIndex++
       if (callIndex === 1) {
-        // First call: fetch webstory XML URL
         return Promise.resolve({
           status: 200,
           json: () => Promise.resolve({
@@ -34,7 +33,6 @@ describe('Story (via Docs.getStoryHtml)', () => {
           text: () => Promise.resolve(JSON.stringify({ uno: 'story-123', href: '/v1/webstory/abc' }))
         })
       }
-      // Second call: fetch the actual HTML
       return Promise.resolve({
         status: 200,
         json: () => Promise.resolve(storyHtml),

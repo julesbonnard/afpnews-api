@@ -371,7 +371,6 @@ describe('Auth', () => {
     })
 
     it('should retry once on 401 by refreshing the token', async () => {
-
       const auth = new Auth({ apiKey: 'my-key' })
       auth.token = {
         accessToken: 'expired-token',
@@ -384,7 +383,6 @@ describe('Auth', () => {
       globalThis.fetch = vi.fn().mockImplementation(() => {
         callCount++
         if (callCount === 1) {
-          // First call: getUserInfo returns 401
           return Promise.resolve({
             status: 200,
             json: () => Promise.resolve({ error: { code: 401, message: 'Unauthorized' } }),
@@ -392,14 +390,12 @@ describe('Auth', () => {
           })
         }
         if (callCount === 2) {
-          // Second call: refresh token
           return Promise.resolve({
             status: 200,
             json: () => Promise.resolve(TOKEN_RESPONSE),
             text: () => Promise.resolve(JSON.stringify(TOKEN_RESPONSE))
           })
         }
-        // Third call: getUserInfo succeeds
         return Promise.resolve({
           status: 200,
           json: () => Promise.resolve(USER_RESPONSE),

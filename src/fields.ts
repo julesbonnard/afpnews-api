@@ -16,8 +16,6 @@ export const FIELD_SOURCES = {
   class: ['class'],
   source: ['source'],
   headline: ['headline', 'news', 'urgency'],
-  // Comme `headline` : sans elle, `extractTextParagraphs` peut retirer la 1re ligne de `news`
-  // au titre de titre replié (urgency < 4).
   paragraphs: ['news', 'headline', 'urgency'],
   lang: ['lang'],
   country: ['country', 'countryname'],

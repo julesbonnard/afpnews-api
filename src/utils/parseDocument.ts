@@ -179,8 +179,6 @@ function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
   }
 }
 
-// Below urgency 4 (Flash/Alert/Urgent), the headline is often folded into the first
-// news line rather than sent as its own field — promote it so `headline` is reliable.
 function extractTextParagraphs (doc: DocumentSource): { headline?: string; paragraphs: AfpParagraph[] } {
   let headline = doc.headline
   let lines = doc.news

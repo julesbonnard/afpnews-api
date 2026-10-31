@@ -574,7 +574,7 @@ export type AfpDocument =
   | AfpWebStoryDocument
 
 export type ParseOption = { parse: true; lenient?: false }
-// Saute les documents malformés au lieu de faire échouer tout le lot (voir `parseLeniently` dans docs.ts).
+/** Saute les documents malformés au lieu de faire échouer tout le lot. */
 export type LenientParseOption = { parse: true; lenient: true }
 
 /**
