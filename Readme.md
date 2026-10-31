@@ -241,7 +241,7 @@ for await (const doc of afp.searchAll({ query: 'Macron' }, [], { parse: true }))
 const doc = parseDocument(raw)
 ```
 
-`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`, `script`, `associatedWith`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
+`AfpDocument` reflects the underlying AFP data: `class`, `source`, `headline`, `title`, `creditLine`, `aspectRatios`, `paragraphs` (segmented, with a stable `index` for deep-linking), `lang`, `country`, `city`, `location` (dateline coordinates `{ lat, lon }`, when the API provides them), `creator`, `genre`, `events`, media `renditions` (with `sizeInBytes` when the API provides it), and `shots` for video documents (never throws on a malformed shot list — falls back to `[]`). Fields specific to a subset of `class` values (`caption`, `shots`, `topshot`, `topics`, `href`, `script`, `associatedWith`) are only populated for the classes they apply to. `parseDocument()` throws if the raw input doesn't match the expected shape.
 
 It also exposes what you need to display or apply before publishing a document, when the API provides it:
 
