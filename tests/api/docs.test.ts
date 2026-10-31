@@ -288,6 +288,14 @@ describe('Docs', () => {
       expect(calledUrl).toContain('/v1/api/get/AFP-123')
     })
 
+    it('should encode the uno so it cannot change the request path or query', async () => {
+      mockFetch({ response: { docs: [{ uno: 'x' }] } })
+      await createAuthenticatedDocs().get('../oauth/token?grant_type=x#y')
+
+      const calledUrl = (fetch as Mock<typeof fetch>).mock.calls[0][0] as string
+      expect(calledUrl).toContain('/v1/api/get/..%2Foauth%2Ftoken%3Fgrant_type%3Dx%23y?')
+    })
+
     it('should return the raw document by default, even when it is parseable', async () => {
       mockFetch({ response: { docs: [RAW_TEXT_DOC] } })
 

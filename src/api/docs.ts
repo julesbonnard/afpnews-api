@@ -259,7 +259,7 @@ export class Docs extends Auth {
    */
   public async get (uno: string, options: ParseOption): Promise<AfpDocument>
   public async get (uno: string, options?: { parse?: boolean }): Promise<unknown> {
-    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${uno}`, {
+    const data = await this.withAuth(() => get(`${this.baseUrl}/v1/api/get/${encodeURIComponent(uno)}`, {
       headers: this.authorizationBearerHeaders,
       params: { wt: 'json' }
     }))
@@ -328,7 +328,7 @@ export class Docs extends Auth {
     const { size = 100, ...searchParams } = params
     const body = this.prepareRequest(Object.assign({}, defaultSearchParams, { dateFrom: 'now-2d' }, searchParams), [])
 
-    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${facet}`, body, {
+    const data = await this.withAuth(() => post(`${this.baseUrl}/v1/api/list/${encodeURIComponent(facet)}`, body, {
       headers: this.authorizationBearerHeaders,
       retry: true,
       params: {

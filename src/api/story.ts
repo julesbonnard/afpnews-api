@@ -12,15 +12,21 @@ const storySchema = z.object({
   href: z.string()
 })
 
+function onApiOrigin (url: string, baseUrl: string): string {
+  const { origin } = new URL(url)
+  if (origin !== new URL(baseUrl).origin) throw new Error(`Story: ${origin} is not the API origin, refusing to send the token there`)
+  return url
+}
+
 export async function Story (this: ApiCore, doc: unknown) {
-  const docHref = docStorySchema.parse(doc).href
+  const docHref = onApiOrigin(docStorySchema.parse(doc).href, this.baseUrl)
   const data = await this.withAuth(() => get(docHref, {
     headers: this.authorizationBearerHeaders
   }))
 
   const { href } = storySchema.parse(data)
 
-  const link = `${this.baseUrl}${href}`
+  const link = onApiOrigin(`${this.baseUrl}${href}`, this.baseUrl)
 
   const docbase = `<base href="${link}" />`
 
