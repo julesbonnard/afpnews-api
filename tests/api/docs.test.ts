@@ -593,7 +593,8 @@ describe('Docs', () => {
       expect(searchSpy).toHaveBeenCalledTimes(2)
     })
 
-    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), le tri, startAt et size comme l'API.
+    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), un filtre range sur uno, le tri,
+    // startAt et size comme l'API, y compris la fenêtre de 10 000 au-delà de laquelle elle ne renvoie rien.
     function mockIndex (docs: SearchAllDoc[], dateKey: 'published' | 'contentCreated' = 'published') {
       return (params: SearchQueryParams = {}) => {
         const field = (params.dateField ?? 'published') as typeof dateKey
@@ -603,9 +604,14 @@ describe('Docs', () => {
         const matching = docs
           .filter(d => (!params.dateTo || params.dateTo === 'now' || d[field] <= params.dateTo) &&
             (!params.dateFrom || params.dateFrom === '1980-01-01' || d[field] >= params.dateFrom))
+          .filter(d => {
+            const range = (params.filters?.uno as { range?: { from?: string; to?: string } } | undefined)?.range
+            return (!range?.from || d.uno >= range.from) && (!range?.to || d.uno <= range.to)
+          })
           .sort((a, b) => (asc ? 1 : -1) * String(a[sortField]).localeCompare(String(b[sortField])))
         const start = params.startAt ?? 0
-        return Promise.resolve({ count: 0, documents: matching.slice(start, start + (params.size ?? 10)) })
+        const end = start + (params.size ?? 10)
+        return Promise.resolve({ count: 0, documents: end > 10000 ? [] : matching.slice(start, end) })
       }
     }
     type SearchAllDoc = { uno: string; published: string; contentCreated: string }
@@ -676,16 +682,17 @@ describe('Docs', () => {
       expect(searchSpy.mock.calls[1]?.[0]?.sort).toBeUndefined()
     })
 
-    it('should paginate with startAt when sorting on a non-date field', async () => {
+    it('should paginate past the 10,000 result window with a range cursor on a non-date sort field', async () => {
       const docs = createAuthenticatedDocs()
-      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
+      const index = Array.from({ length: 12000 }, (_, i) => ({ uno: `doc-${String(i).padStart(5, '0')}`, published: '2026-10-01', contentCreated: '2026-10-01' }))
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(index))
 
       const unos: string[] = []
-      for await (const doc of docs.searchAll({ size: 2200, sortField: 'uno' })) unos.push((doc as SearchAllDoc).uno)
+      for await (const doc of docs.searchAll({ size: 20000, sortField: 'uno', sortOrder: 'asc', filters: { uno: { exclude: ['doc-00005'] } } })) unos.push((doc as SearchAllDoc).uno)
 
-      expect(new Set(unos).size).toBe(2200)
-      expect(searchSpy.mock.calls.map(([p]) => p?.startAt)).toEqual([0, 1000, 2000])
-      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined)).toBe(true)
+      expect(new Set(unos).size).toBe(12000)
+      expect(searchSpy.mock.calls.every(([p]) => (p?.startAt ?? 0) <= 1 && p?.dateField === undefined)).toBe(true)
+      expect(searchSpy.mock.calls[1]?.[0]?.filters?.uno).toEqual({ exclude: ['doc-00005'], range: { from: 'doc-00999', fromExcluded: false } })
     })
 
     it('should not mutate the params passed by the caller', async () => {

@@ -1,6 +1,6 @@
 import { defaultSearchParams } from '../config.js'
 import { DATE_FIELDS } from '../searchFields.js'
-import type { AdditionalParamValue, AfpFieldMapping, SearchFilters, SearchMeta, SearchQueryParams, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
+import type { AdditionalParamValue, AfpFieldMapping, SearchFilters, SearchMeta, SearchQueryParams, SearchQuerySortOrder, AfpDocument, AfpFacetValue, ParseOption, LenientParseOption } from '../types.js'
 import { QueryBuilder } from '../utils/QueryBuilder.js'
 import { get, post } from '../utils/request.js'
 import { parseDocument, safeParseDocument } from '../utils/parseDocument.js'
@@ -22,6 +22,12 @@ function legacyFilters (rest: Record<string, unknown>): SearchFilters {
     if (isFilterValue(value)) filters[name] = value
   }
   return filters
+}
+
+function withCursor (filter: AdditionalParamValue | undefined, sortOrder: SearchQuerySortOrder, value: string): AdditionalParamValue {
+  const own = filter === undefined ? {} : typeof filter === 'object' && !Array.isArray(filter) ? filter : { in: Array.isArray(filter) ? filter : [filter] }
+  const bound = sortOrder === 'asc' ? { from: value, fromExcluded: false } : { to: value, toExcluded: false }
+  return { ...own, range: { ...own.range, ...bound } }
 }
 
 function parseLeniently (docs: unknown[]): { documents: AfpDocument[]; skipped: number } {
@@ -247,18 +253,14 @@ export class Docs extends Auth {
 
       if (page.length < size || yielded === yieldedBefore) return
 
-      if (!cursorOnDate) {
-        startAt += page.length
-        continue
-      }
-
       const lastValue = page[page.length - 1]?.[sortField]
       if (typeof lastValue !== 'string') throw new Error(`searchAll: document without "${sortField}", cannot paginate`)
       if (lastValue !== cursor) seen = new Set()
       for (const doc of page) if (doc[sortField] === lastValue) seen.add(doc.uno)
 
       cursor = lastValue
-      pageParams[bound] = lastValue
+      if (cursorOnDate) pageParams[bound] = lastValue
+      else pageParams.filters = { ...params.filters, [sortField]: withCursor(params.filters?.[sortField], sortOrder, lastValue) }
       startAt = seen.size
     }
   }
