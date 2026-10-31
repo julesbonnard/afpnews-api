@@ -554,7 +554,7 @@ describe('Docs', () => {
       expect(searchSpy).toHaveBeenCalledTimes(1)
     })
 
-    it('should paginate when size exceeds maxRequestSize', async () => {
+    it('should paginate when size exceeds the page size', async () => {
       const docs = createAuthenticatedDocs()
 
       const searchSpy = vi.spyOn(docs, 'search')
@@ -584,21 +584,22 @@ describe('Docs', () => {
       expect(searchSpy).toHaveBeenCalledTimes(2)
     })
 
-    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), un filtre range sur uno, le tri,
+    // Faux index : applique dateTo/dateFrom (inclusifs, sur dateField), les filtres range, le tri,
     // startAt et size comme l'API, y compris la fenêtre de 10 000 au-delà de laquelle elle ne renvoie rien.
-    function mockIndex (docs: SearchAllDoc[], dateKey: 'published' | 'contentCreated' = 'published') {
+    function mockIndex (docs: SearchAllDoc[]) {
       return (params: SearchQueryParams = {}) => {
-        const field = (params.dateField ?? 'published') as typeof dateKey
+        const field = (params.dateField ?? 'published') as 'published' | 'contentCreated'
         const primary = params.sort?.[0] ?? params
         const sortField = (primary.sortField ?? 'published') as keyof SearchAllDoc
         const asc = primary.sortOrder === 'asc'
         const matching = docs
           .filter(d => (!params.dateTo || params.dateTo === 'now' || d[field] <= params.dateTo) &&
             (!params.dateFrom || params.dateFrom === '1980-01-01' || d[field] >= params.dateFrom))
-          .filter(d => {
-            const range = (params.filters?.uno as { range?: { from?: string; to?: string } } | undefined)?.range
-            return (!range?.from || d.uno >= range.from) && (!range?.to || d.uno <= range.to)
-          })
+          .filter(d => Object.entries(params.filters ?? {}).every(([name, filter]) => {
+            const range = (filter as { range?: { from?: string; to?: string } }).range
+            const value = d[name as keyof SearchAllDoc]
+            return (!range?.from || value >= range.from) && (!range?.to || value <= range.to)
+          }))
           .sort((a, b) => (asc ? 1 : -1) * String(a[sortField]).localeCompare(String(b[sortField])))
         const start = params.startAt ?? 0
         const end = start + (params.size ?? 10)
@@ -627,26 +628,27 @@ describe('Docs', () => {
       expect(searchSpy.mock.calls.length).toBeGreaterThan(2)
     })
 
-    it('should paginate on the sort field (dateField aligned) and in ascending order', async () => {
+    it('should paginate on the sort field with a range cursor, leaving dateField and dateFrom to the caller', async () => {
       const docs = createAuthenticatedDocs()
-      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX, 'contentCreated'))
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
 
       const unos: string[] = []
-      for await (const doc of docs.searchAll({ size: 5000, sortField: 'contentCreated', sortOrder: 'asc' })) unos.push((doc as SearchAllDoc).uno)
+      for await (const doc of docs.searchAll({ size: 5000, dateFrom: '2026-09-01', sortField: 'contentCreated', sortOrder: 'asc' })) unos.push((doc as SearchAllDoc).uno)
 
       expect(new Set(unos).size).toBe(2500)
-      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated')).toBe(true)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined && p.dateFrom === '2026-09-01' && p.dateTo === undefined)).toBe(true)
+      expect(searchSpy.mock.calls[1]?.[0]?.filters?.contentCreated).toMatchObject({ range: { fromExcluded: false } })
     })
 
     it('should take the cursor field and direction from sort[0] when the caller passes sort', async () => {
       const docs = createAuthenticatedDocs()
-      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX, 'contentCreated'))
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX))
 
       const unos: string[] = []
       for await (const doc of docs.searchAll({ size: 5000, sort: [{ sortField: 'contentCreated', sortOrder: 'asc' }] })) unos.push((doc as SearchAllDoc).uno)
 
       expect(new Set(unos).size).toBe(2500)
-      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated' && p.dateTo === undefined)).toBe(true)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === undefined && p.dateTo === undefined)).toBe(true)
     })
 
     it('should add timestamp as a secondary sort so documents of the same date keep a stable order', async () => {
@@ -673,7 +675,7 @@ describe('Docs', () => {
       expect(searchSpy.mock.calls[1]?.[0]?.sort).toBeUndefined()
     })
 
-    it('should paginate past the 10,000 result window with a range cursor on a non-date sort field', async () => {
+    it('should paginate past the 10,000 result window with a range cursor', async () => {
       const docs = createAuthenticatedDocs()
       const index = Array.from({ length: 12000 }, (_, i) => ({ uno: `doc-${String(i).padStart(5, '0')}`, published: '2026-10-01', contentCreated: '2026-10-01' }))
       const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(index))
@@ -684,6 +686,16 @@ describe('Docs', () => {
       expect(new Set(unos).size).toBe(12000)
       expect(searchSpy.mock.calls.every(([p]) => (p?.startAt ?? 0) <= 1 && p?.dateField === undefined)).toBe(true)
       expect(searchSpy.mock.calls[1]?.[0]?.filters?.uno).toEqual({ exclude: ['doc-00005'], range: { from: 'doc-00999', fromExcluded: false } })
+    })
+
+    it('should throw rather than stop silently when ties on the sort value outgrow the 10,000 result window', async () => {
+      const docs = createAuthenticatedDocs()
+      const index = Array.from({ length: 10500 }, (_, i) => ({ uno: `doc-${String(i).padStart(5, '0')}`, published: '2026-10-31T00:00:00Z', contentCreated: '2026-10-31T00:00:00Z' }))
+      vi.spyOn(docs, 'search').mockImplementation(mockIndex(index))
+
+      let count = 0
+      await expect(async () => { for await (const _ of docs.searchAll({ size: 20000 })) count++ }).rejects.toThrow('10000 result window')
+      expect(count).toBe(10000)
     })
 
     it('should not mutate the params passed by the caller', async () => {
@@ -755,22 +767,6 @@ describe('Docs', () => {
       }
 
       expect(collected).toHaveLength(2)
-    })
-
-    it('should use dateFrom for ascending sort direction', async () => {
-      const docs = createAuthenticatedDocs()
-      const searchSpy = vi.spyOn(docs, 'search').mockResolvedValue({
-        count: 1,
-        documents: [{ uno: 'doc1', published: '2023-01-01T00:00:00Z' }]
-      })
-
-      const collected: unknown[] = []
-      for await (const doc of docs.searchAll({ size: 10, sortOrder: 'asc' })) {
-        collected.push(doc)
-      }
-
-      expect(collected).toHaveLength(1)
-      expect(searchSpy).toHaveBeenCalled()
     })
 
     it('should yield AfpDocuments when parse: true is passed', async () => {

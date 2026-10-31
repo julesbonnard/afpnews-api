@@ -52,6 +52,7 @@ function applyParseOption (
 }
 
 const SEARCH_ALL_PAGE_SIZE = 1000
+const SEARCH_WINDOW = 10000
 
 const facetBuckets = z.object({ value: z.string(), occurence: z.number() }).array()
   .transform(buckets => buckets.map(({ value, occurence }) => ({ name: value, count: occurence })))
@@ -209,12 +210,8 @@ export class Docs extends Auth {
       sortField: params.sortField ?? defaultSearchParams.sortField,
       sortOrder: params.sortOrder ?? defaultSearchParams.sortOrder
     }
-    const cursorOnDate = (DATE_FIELDS as readonly string[]).includes(sortField)
-    const bound = sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
-
     const pageParams: SearchQueryParams = { ...params }
-    if (cursorOnDate) pageParams.dateField = sortField
-    if (cursorOnDate && !params.sort && sortField !== 'timestamp') {
+    if (!params.sort && sortField !== 'timestamp' && (DATE_FIELDS as readonly string[]).includes(sortField)) {
       pageParams.sort = [{ sortField, sortOrder }, { sortField: 'timestamp', sortOrder }]
     }
 
@@ -228,6 +225,7 @@ export class Docs extends Auth {
 
     while (yielded < maxSize) {
       const size = Math.min(maxSize - yielded, SEARCH_ALL_PAGE_SIZE)
+      if (startAt + size > SEARCH_WINDOW) throw new Error(`searchAll: more than ${SEARCH_WINDOW - size} documents share ${sortField} "${String(cursor)}", cannot paginate past the API's ${SEARCH_WINDOW} result window`)
       const { documents } = await this.search({ ...pageParams, size, startAt }, pageFields)
       const page = documents as Record<string, unknown>[]
       const fresh = page.filter(doc => !seen.has(doc.uno))
@@ -242,8 +240,7 @@ export class Docs extends Auth {
       for (const doc of page) if (doc[sortField] === lastValue) seen.add(doc.uno)
 
       cursor = lastValue
-      if (cursorOnDate) pageParams[bound] = lastValue
-      else pageParams.filters = { ...params.filters, [sortField]: withCursor(params.filters?.[sortField], sortOrder, lastValue) }
+      pageParams.filters = { ...params.filters, [sortField]: withCursor(params.filters?.[sortField], sortOrder, lastValue) }
       startAt = seen.size
     }
   }
