@@ -597,8 +597,9 @@ describe('Docs', () => {
     function mockIndex (docs: SearchAllDoc[], dateKey: 'published' | 'contentCreated' = 'published') {
       return (params: SearchQueryParams = {}) => {
         const field = (params.dateField ?? 'published') as typeof dateKey
-        const sortField = (params.sortField ?? 'published') as keyof SearchAllDoc
-        const asc = params.sortOrder === 'asc'
+        const primary = params.sort?.[0] ?? params
+        const sortField = (primary.sortField ?? 'published') as keyof SearchAllDoc
+        const asc = primary.sortOrder === 'asc'
         const matching = docs
           .filter(d => (!params.dateTo || params.dateTo === 'now' || d[field] <= params.dateTo) &&
             (!params.dateFrom || params.dateFrom === '1980-01-01' || d[field] >= params.dateFrom))
@@ -638,6 +639,17 @@ describe('Docs', () => {
 
       expect(new Set(unos).size).toBe(2500)
       expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated')).toBe(true)
+    })
+
+    it('should take the cursor field and direction from sort[0] when the caller passes sort', async () => {
+      const docs = createAuthenticatedDocs()
+      const searchSpy = vi.spyOn(docs, 'search').mockImplementation(mockIndex(INDEX, 'contentCreated'))
+
+      const unos: string[] = []
+      for await (const doc of docs.searchAll({ size: 5000, sort: [{ sortField: 'contentCreated', sortOrder: 'asc' }] })) unos.push((doc as SearchAllDoc).uno)
+
+      expect(new Set(unos).size).toBe(2500)
+      expect(searchSpy.mock.calls.every(([p]) => p?.dateField === 'contentCreated' && p.dateTo === undefined)).toBe(true)
     })
 
     it('should add timestamp as a secondary sort so documents of the same date keep a stable order', async () => {

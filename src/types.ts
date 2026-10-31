@@ -59,13 +59,6 @@ export type AfpFacetValue = {
 }
 
 /**
- * Filtre sur un champ. Une valeur ou une liste vaut `in`. Un objet combine des opérateurs, chacun
- * donnant une condition (toutes combinées en ET) :
- * - `in` : au moins une des valeurs ; `exclude` : aucune ; `and` : toutes les valeurs ;
- * - `contains` : recherche textuelle (`'"expression exacte"'` entre guillemets) ;
- * - `range` : intervalle ; `exists` : champ présent (`true`) ou absent (`false`).
- */
-/**
  * Informations renvoyées par `search()` en plus des documents : facettes demandées via `wantedFacets`,
  * et `relation` (`eq` : total exact ; `gt` : total supérieur à la borne demandée via `exactNumFound`).
  */
@@ -85,6 +78,13 @@ export type AfpFieldMapping = Record<string, {
   description?: string
 }>
 
+/**
+ * Filtre sur un champ. Une valeur ou une liste vaut `in`. Un objet combine des opérateurs, chacun
+ * donnant une condition (toutes combinées en ET) :
+ * - `in` : au moins une des valeurs ; `exclude` : aucune ; `and` : toutes les valeurs ;
+ * - `contains` : recherche textuelle (`'"expression exacte"'` entre guillemets) ;
+ * - `range` : intervalle ; `exists` : champ présent (`true`) ou absent (`false`).
+ */
 export type AdditionalParamValue =
   string |
   number |

@@ -67,7 +67,6 @@ function parseJson (text: string): unknown {
   }
 }
 
-// AFP peut renvoyer un payload d'erreur avec un HTTP 200 : on regarde le corps avant le statut.
 function toApiError (response: Response, data: unknown): ApiError | undefined {
   const status = response.status
   const structured = errorSchema.safeParse(data)

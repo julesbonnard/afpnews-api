@@ -11,11 +11,6 @@ import { Story } from './story.js'
 import { NotificationCenter } from './notification.js'
 import { FilterCenter } from './filter.js'
 
-/**
- * @deprecated Clés à plat de `SearchQueryParams` lues comme filtres (`{ country: 'fra' }`) : à supprimer en 4.0,
- * au profit de `params.filters`. Garde les entrées qui ont la forme d'un filtre et ignore les autres
- * (booléens, valeurs absentes, objets d'options).
- */
 const FILTER_OPERATORS = ['in', 'exclude', 'and', 'contains', 'range', 'exists']
 
 function legacyFilters (rest: Record<string, unknown>): SearchFilters {
@@ -208,14 +203,16 @@ export class Docs extends Auth {
   public searchAll (params: SearchQueryParams, fields: string[], options: LenientParseOption): AsyncGenerator<AfpDocument>
   public async * searchAll (params: SearchQueryParams = {}, fields: string[] = [], options?: { parse?: boolean; lenient?: boolean }): AsyncGenerator<unknown> {
     const maxSize = params.size ?? defaultSearchParams.size
-    const sortField = params.sortField ?? defaultSearchParams.sortField
+    const { sortField, sortOrder } = params.sort?.[0] ?? {
+      sortField: params.sortField ?? defaultSearchParams.sortField,
+      sortOrder: params.sortOrder ?? defaultSearchParams.sortOrder
+    }
     const cursorOnDate = (DATE_FIELDS as readonly string[]).includes(sortField)
-    const bound = params.sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
+    const bound = sortOrder === 'asc' ? 'dateFrom' : 'dateTo'
 
     const pageParams: SearchQueryParams = { ...params }
     if (cursorOnDate) pageParams.dateField = sortField
     if (cursorOnDate && !params.sort && sortField !== 'timestamp') {
-      const sortOrder = params.sortOrder ?? defaultSearchParams.sortOrder
       pageParams.sort = [{ sortField, sortOrder }, { sortField: 'timestamp', sortOrder }]
     }
 
