@@ -242,7 +242,9 @@ export class QueryBuilder {
     }
   
     const fieldName = field?.name || 'all'
-    const fieldOperator = exclude ? 'exclude' : fullTextSearchFields.includes(fieldName) ? 'contains' : 'in'
+    const isFullText = fullTextSearchFields.includes(fieldName)
+    if (exclude && isFullText) return [{ exclude: this.serializeExpression(expression, false, field) }]
+    const fieldOperator = exclude ? 'exclude' : isFullText ? 'contains' : 'in'
     const fieldValue = expression.quoted && fieldOperator === 'contains' ? [quote(expression.value)] : [normalize(String(expression.value))]
   
     if (fieldOperator === 'contains' && translatedSearchFields.includes(fieldName)) {

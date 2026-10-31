@@ -389,6 +389,21 @@ describe('QueryBuilder', () => {
       expect(result!.or).toBeDefined()
     })
 
+    it('should exclude a full-text term as a whole condition, quotes and translations included', () => {
+      const qb = new QueryBuilder()
+      qb.setLangs(['fr'])
+
+      expect(qb.parseQueryString('NOT "extrême droite"')).toEqual({ or: [{ exclude: [
+        { name: 'all', contains: ['"extrême droite"'] },
+        { name: 'translated.fr.all', contains: ['"extrême droite"'] }
+      ] }] })
+      expect(qb.parseQueryString('NOT caption:Trump')).toEqual({ or: [{ exclude: [
+        { name: 'caption', contains: ['trump'] },
+        { name: 'translated.fr.caption', contains: ['trump'] }
+      ] }] })
+      expect(qb.parseQueryString('NOT country:fra')).toEqual({ or: [{ name: 'country', exclude: ['fra'] }] })
+    })
+
     it('should parse lowercase "not" keyword', () => {
       const qb = new QueryBuilder()
       const result = qb.parseQueryString('not country:fra')

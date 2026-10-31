@@ -35,7 +35,8 @@ export type SearchQuery = {
   in?: StringOrNumber[]
   contains?: string | string[]
   fullText?: boolean
-  exclude?: StringOrNumber[]
+  /** Avec `name` : valeurs exactes à exclure. Sans `name` : conditions complètes à exclure. */
+  exclude?: StringOrNumber[] | SearchQuery[]
   range?: SearchRange
   /** Nom d'un champ qui doit être présent */
   having?: string
