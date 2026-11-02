@@ -1,4 +1,5 @@
 import { defaultSearchParams, maxRowsByRequest, fullTextSearchFields, translatedSearchFields, langsWithTranslation } from '../config.js'
+import { AFP_REGIONS, type AfpRegion } from '../regions.js'
 import type { AdditionalParamValue, SearchFilters, SearchQuery, SearchQuerySortOrder, SearchRequest, SortEntry, WantedFacets } from "../types.js"
 import nearley from 'nearley'
 import { default as grammar } from '../grammar/index.js'
@@ -23,6 +24,20 @@ function toConditions (name: string, value: AdditionalParamValue): SearchQuery[]
   if (value.range) conditions.push({ name, range: value.range })
   if (value.exists !== undefined) conditions.push(value.exists ? { having: name } : { missing: name })
   return conditions
+}
+
+function regionCountries (region: string | number): string[] {
+  const countries: readonly string[] | undefined = AFP_REGIONS[String(region) as AfpRegion]
+  if (!countries) throw new Error(`Unknown AFP region "${region}". Expected one of: ${Object.keys(AFP_REGIONS).join(', ')}`)
+  return [...countries]
+}
+
+/** `region` n'est pas un champ AFP : chaque région est remplacée par ses pays (`country`), en `in` ou `exclude`. */
+function expandRegion (value: AdditionalParamValue): AdditionalParamValue {
+  const toCountries = (regions: readonly (string | number)[]) => regions.flatMap(regionCountries)
+  if (typeof value === 'string' || typeof value === 'number') return value === '' ? [] : toCountries([value])
+  if (Array.isArray(value)) return toCountries(value)
+  return { in: value.in && toCountries(value.in), exclude: value.exclude && toCountries(value.exclude) }
 }
 
 const toBound = (bound?: string): string | number | undefined =>
@@ -180,7 +195,7 @@ export class QueryBuilder {
   /** Ajoute des filtres par champ, combinés en ET avec la requête (voir `toConditions`). */
   public addFilters (filters: SearchFilters = {}) {
     for (const [name, value] of Object.entries(filters)) {
-      this.additionalParams.push(...toConditions(name, value))
+      this.additionalParams.push(...(name === 'region' ? toConditions('country', expandRegion(value)) : toConditions(name, value)))
     }
     return this
   }
