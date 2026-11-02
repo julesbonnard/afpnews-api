@@ -160,6 +160,12 @@ An object can use several operators; each one becomes a separate condition:
 
 Field names autocomplete in `filters`, `sortField`, `dateField` and `langs`: the lists come from the AFP documentation's metadata catalogue and are exported as `FACET_FIELDS`, `TEXT_FIELDS` and `DATE_FIELDS` (types `FacetField`, `TextField`, `DateField`, `SortField`, `Lang`). Other names are still accepted.
 
+`region` is not an AFP field: it filters on the countries of one or more AFP regions (`france`, `europe`, `africa`, `mena`, `asia-pacific`, `north-america`, `latin-america`, `antarctica`), as a value, a list, or `{ in, exclude }`. An unknown region throws. The country lists are exported as `AFP_REGIONS` (type `AfpRegion`).
+
+```js
+afp.search({ filters: { region: ['africa', 'mena'], genre: 'Papier général' } })
+```
+
 Two options are related: `dateField` picks the date field `dateFrom` / `dateTo` apply to (`published` by default), and `exactNumFound` controls the total count (`true`: exact; `false`: none, lighter request; a number: bounded, with `relation: 'gt'` in the result when the total exceeds it).
 
 ```js
