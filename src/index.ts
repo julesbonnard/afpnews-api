@@ -1,6 +1,8 @@
 export { Docs as ApiCore } from './api/docs.js'
 export type * from './types.js'
 export * from './config.js'
+export { AFP_REGIONS } from './regions.js'
+export type { AfpRegion } from './regions.js'
 export { FACET_FIELDS, TEXT_FIELDS, DATE_FIELDS } from './searchFields.js'
 export { ApiError } from './utils/request.js'
 export { parseShotList, timeToSeconds } from './utils/shotlist.js'
