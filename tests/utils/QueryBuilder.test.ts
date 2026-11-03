@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { QueryBuilder } from '../../src/utils/QueryBuilder'
+import { AFP_REGIONS } from '../../src/regions'
 
 describe('QueryBuilder', () => {
   describe('constructor', () => {
@@ -114,6 +115,31 @@ describe('QueryBuilder', () => {
     it('should return this when params is undefined', () => {
       const qb = new QueryBuilder()
       expect(qb.addFilters(undefined)).toBe(qb)
+    })
+
+    it('expands region into its countries, combined with other country filters', () => {
+      const result = new QueryBuilder()
+        .addFilters({ region: ['france', 'antarctica'], country: 'fra' })
+        .build()
+      expect(result.query!.and).toEqual(expect.arrayContaining([
+        { name: 'country', in: [...AFP_REGIONS.france, 'ata'] },
+        { name: 'country', in: ['fra'] }
+      ]))
+    })
+
+    it('expands excluded regions', () => {
+      const result = new QueryBuilder().addFilters({ region: { exclude: ['mena'] } }).build()
+      expect(result.query!.and).toEqual(expect.arrayContaining([{ name: 'country', exclude: [...AFP_REGIONS.mena] }]))
+    })
+
+    it('throws on an unknown region', () => {
+      expect(() => new QueryBuilder().addFilters({ region: 'oceania' })).toThrow(/Unknown AFP region "oceania"/)
+    })
+
+    it('assigns each country to exactly one region', () => {
+      const countries = Object.values(AFP_REGIONS).flat()
+      expect(new Set(countries).size).toBe(countries.length)
+      expect(countries).toHaveLength(251)
     })
   })
 
