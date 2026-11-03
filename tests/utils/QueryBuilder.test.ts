@@ -637,6 +637,13 @@ describe('QueryBuilder', () => {
       expect(qb.parseQueryString('-_exists_:embargoed')).toEqual({ or: [{ missing: 'embargoed' }] })
     })
 
+    it('should expand region:x into the countries of the region', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('region:africa')).toEqual({ or: [{ name: 'country', in: [...AFP_REGIONS.africa] }] })
+      expect(qb.parseQueryString('NOT region:asia-pacific')).toEqual({ or: [{ name: 'country', exclude: [...AFP_REGIONS['asia-pacific']] }] })
+      expect(() => qb.parseQueryString('region:oceania')).toThrow(/Unknown AFP region "oceania"/)
+    })
+
     it('should add translated fields only where they exist in the prod mapping', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])

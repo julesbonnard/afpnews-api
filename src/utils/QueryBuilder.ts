@@ -253,7 +253,10 @@ export class QueryBuilder {
       const name = String(expression.value)
       return [exclude ? { missing: name } : { having: name }]
     }
-  
+    if (field?.name === 'region') {
+      return [{ name: 'country', [exclude ? 'exclude' : 'in']: regionCountries(String(expression.value)) }]
+    }
+
     const fieldName = field?.name || 'all'
     const isFullText = fullTextSearchFields.includes(fieldName)
     if (exclude && isFullText) return [{ exclude: this.serializeExpression(expression, false, field) }]
