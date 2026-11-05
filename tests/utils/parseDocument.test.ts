@@ -235,6 +235,15 @@ describe('parseDocument', () => {
       )
     })
 
+    it('drops empty and whitespace-only news lines', () => {
+      const doc = parseDocument({ ...TEXT_DOC, headline: undefined, urgency: 3, news: ['', 'Titre', ' ', 'Premier', '\u00a0\n', 'Second'] })
+      expect(doc.headline).toBe('Titre')
+      expect(doc.paragraphs).toEqual([
+        { index: 0, text: 'Premier' },
+        { index: 1, text: 'Second' }
+      ])
+    })
+
     it('parses a factcheck document as class factcheck', () => {
       const doc = parseDocument({ ...TEXT_DOC, class: 'factcheck' })
       expect(doc.class).toBe('factcheck')

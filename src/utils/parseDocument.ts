@@ -181,7 +181,7 @@ function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
 
 function extractTextParagraphs (doc: DocumentSource): { headline?: string; paragraphs: AfpParagraph[] } {
   let headline = doc.headline
-  let lines = doc.news
+  let lines = doc.news.filter(line => line.trim() !== '')
 
   if (!headline && doc.urgency < 4) {
     const cleaned = lines.filter(line => !CANCELLATION_PREFIXES.has(line))
