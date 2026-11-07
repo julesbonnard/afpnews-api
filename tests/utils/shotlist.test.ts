@@ -25,6 +25,31 @@ describe('parseShotList', () => {
     })
   })
 
+  it('extracts a quote written on the shot line itself', () => {
+    const shots = parseShotList(
+      '10. 00:49-01:19 LIVE Me Elsa Marcel commentant des photos : "Ça, c\'est une personne qui a pris un tir." [IMAGES DE BLESSURES]'
+    )
+    expect(shots[0]).toMatchObject({
+      numero: 10,
+      description: 'LIVE Me Elsa Marcel commentant des photos [IMAGES DE BLESSURES]',
+      citations: [{ text: 'Ça, c\'est une personne qui a pris un tir.' }]
+    })
+  })
+
+  it('leaves on-screen text in the description when the shot has no live sound', () => {
+    const description = 'Plan serré manifestante avec une pancarte : "Le monde est à nous"'
+    const shots = parseShotList(`4. 00:19-00:24 ${description}`)
+    expect(shots[0]).toMatchObject({ description, citations: [] })
+  })
+
+  it('keeps a header ending with a colon as is, the quote coming on the next line', () => {
+    const shots = parseShotList('11. 01:22-01:55 Me Arié Alimi, avocat (homme, français, 33 sec) :\n"On s\'appuie sur les jurisprudences"')
+    expect(shots[0]).toMatchObject({
+      description: 'Me Arié Alimi, avocat (homme, français, 33 sec) :',
+      citations: [{ text: 'On s\'appuie sur les jurisprudences' }]
+    })
+  })
+
   it('parses several shots separated by newlines', () => {
     const input = [
       '1. 00:00-00:12 Vue aérienne de la ville',
