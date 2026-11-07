@@ -20,6 +20,7 @@ export const FIELD_SOURCES = {
   lang: ['lang'],
   country: ['country', 'countryname'],
   city: ['city'],
+  cityCode: ['citycode'],
   location: ['location'],
   creator: ['creator'],
   provider: ['provider'],

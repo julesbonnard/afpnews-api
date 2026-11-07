@@ -306,6 +306,10 @@ export type AfpDocumentCommon = {
    */
   city?: string
   /**
+   * Identifiant de la ville de rédaction (`afplocation:…`), identique quelle que soit la langue du document.
+   */
+  cityCode?: string
+  /**
    * Coordonnées de la dateline (lieu de rédaction), pas du sujet
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/geography#objet-location
    */
