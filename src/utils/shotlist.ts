@@ -29,6 +29,10 @@ export function parseShotList (input: string): Shot[] {
   const shotRegex = /^(\d+)\.\s+(\d{2}:\d{2})-(\d{2}:\d{2})\s+(.*)$/
   const soundbiteRegex =
     /^(\d+)\.\s+(\d{2}:\d{2})-(\d{2}:\d{2})\s+(?:SONORE|SOUNDBITE) \d+ - (.*)$/i
+  // Plan en son direct : citation sur la ligne du plan, après « : », parfois suivie d'une mention [ENTRE CROCHETS].
+  // Sans marqueur de son, le texte entre guillemets est celui d'une pancarte ou d'un panneau : il reste dans la description.
+  const inlineQuoteRegex = /^(.*?)\s*:\s*"(.+)"\s*(\[[^\]]*\])?$/
+  const liveSoundRegex = /\b(?:LIVE|Sound-up|UPSOT|NATSOT|SOT)\b|Sonido ambiente|Som ambiente|أجواء حية/
 
   const buildShot = (numero = '', start = '', end = '', description = ''): Shot => ({
     numero: parseInt(numero || '0', 10),
@@ -57,8 +61,12 @@ export function parseShotList (input: string): Shot[] {
 
     const matchShot = line.match(shotRegex)
     if (matchShot && !line.includes('SOUNDBITE') && !line.includes('SONORE')) {
-      const [, numero, start, end, description] = matchShot
-      currentShot = buildShot(numero, start, end, description)
+      const [, numero, start, end, description = ''] = matchShot
+      const inline = liveSoundRegex.test(description) ? description.match(inlineQuoteRegex) : null
+      currentShot = inline
+        ? buildShot(numero, start, end, [inline[1], inline[3]].filter(Boolean).join(' '))
+        : buildShot(numero, start, end, description)
+      if (inline) currentShot.citations.push({ text: inline[2] })
       shots.push(currentShot)
       continue
     }
