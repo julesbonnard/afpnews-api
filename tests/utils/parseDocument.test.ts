@@ -149,6 +149,11 @@ describe('parseDocument', () => {
       expect(doc.location).toEqual({ lat: 48.85341, lon: 2.3488 })
     })
 
+    it('exposes the language-independent city code', () => {
+      expect(parseDocument({ ...TEXT_DOC, citycode: 'afplocation:2032' }).cityCode).toBe('afplocation:2032')
+      expect(parseDocument(TEXT_DOC).cityCode).toBeUndefined()
+    })
+
     it('drops a malformed location without rejecting the document', () => {
       expect(parseDocument(TEXT_DOC).location).toBeUndefined()
       expect(parseDocument({ ...TEXT_DOC, location: { lat: '48.8' } }).location).toBeUndefined()
