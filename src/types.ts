@@ -199,6 +199,12 @@ export type AfpEvent = {
   name: string
 }
 
+/** Entité du thésaurus AFP (`afpentity.keyword|person|organisation`) : id sans préfixe de qcode, et libellé. */
+export type AfpEntity = {
+  id: string
+  name: string
+}
+
 export type AfpCountry = {
   id?: string
   name?: string
@@ -343,6 +349,21 @@ export type AfpDocumentCommon = {
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/entities#objet-afpentity
    */
   events: AfpEvent[]
+  /**
+   * Mots-clés du thésaurus AFP (`afpentity.keyword`), surtout présents sur les photos.
+   * Recherche : `afpentity.keyword.qcode:"afpkeyword:<id>"`.
+   */
+  afpKeywords: AfpEntity[]
+  /**
+   * Personnes citées (`afpentity.person`), libellé dans la langue du document.
+   * Recherche : `afpentity.person.qcode:"afpperson:<id>"`.
+   */
+  persons: AfpEntity[]
+  /**
+   * Organisations citées (`afpentity.organisation`), libellé dans la langue du document.
+   * Recherche : `afpentity.organisation.qcode:"afporganization:<id>"`.
+   */
+  organisations: AfpEntity[]
   /**
    * Description courte du document (mots-clés éditoriaux).
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#slug
