@@ -40,6 +40,23 @@ function expandRegion (value: AdditionalParamValue): AdditionalParamValue {
   return { in: value.in && toCountries(value.in), exclude: value.exclude && toCountries(value.exclude) }
 }
 
+/**
+ * Champs courts pour les entités du thésaurus, interrogeables seulement par qcode :
+ * `person:123` cherche `afpentity.person.qcode:"afpperson:123"`, `event:ABC12` le champ `event`
+ * (`afpevent:ABC12`). La valeur peut aussi être le qcode complet.
+ */
+const ENTITY_ALIASES: Record<string, { name: string, prefix: string }> = {
+  person: { name: 'afpentity.person.qcode', prefix: 'afpperson' },
+  organisation: { name: 'afpentity.organisation.qcode', prefix: 'afporganization' },
+  afpkeyword: { name: 'afpentity.keyword.qcode', prefix: 'afpkeyword' },
+  event: { name: 'event', prefix: 'afpevent' }
+}
+
+function entityCondition (alias: { name: string, prefix: string }, value: string, exclude: boolean) {
+  const id = value.toLowerCase().startsWith(`${alias.prefix}:`) ? value.slice(alias.prefix.length + 1) : value
+  return { name: alias.name, [exclude ? 'exclude' : 'in']: [`${alias.prefix}:${id}`.toLowerCase()] }
+}
+
 const toBound = (bound?: string): string | number | undefined =>
   bound !== undefined && /^-?\d+(\.\d+)?$/.test(bound) ? Number(bound) : bound
 
@@ -256,6 +273,8 @@ export class QueryBuilder {
     if (field?.name === 'region') {
       return [{ name: 'country', [exclude ? 'exclude' : 'in']: regionCountries(String(expression.value)) }]
     }
+    const alias = field?.name ? ENTITY_ALIASES[field.name] : undefined
+    if (alias) return [entityCondition(alias, String(expression.value), exclude)]
 
     const fieldName = field?.name || 'all'
     const isFullText = fullTextSearchFields.includes(fieldName)
