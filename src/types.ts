@@ -199,8 +199,8 @@ export type AfpEvent = {
   name: string
 }
 
-/** Mot-clé du thésaurus AFP (`afpentity.keyword`), ex. `{ id: "13088", name: "WIG" }`. */
-export type AfpKeyword = {
+/** Entité du thésaurus AFP (`afpentity.keyword|person|organisation`), ex. `{ id: "13088", name: "WIG" }`. */
+export type AfpEntity = {
   id: string
   name: string
 }
@@ -353,7 +353,22 @@ export type AfpDocumentCommon = {
    * Mots-clés du thésaurus AFP (`afpentity.keyword`), surtout présents sur les photos.
    * Recherche : `afpentity.keyword.qcode:"afpkeyword:<id>"`.
    */
-  afpKeywords: AfpKeyword[]
+  afpKeywords: AfpEntity[]
+  /**
+   * Personnes citées (`afpentity.person`), libellé dans la langue du document.
+   * Recherche : `afpentity.person.qcode:"afpperson:<id>"`.
+   */
+  persons: AfpEntity[]
+  /**
+   * Organisations citées (`afpentity.organisation`), libellé dans la langue du document.
+   * Recherche : `afpentity.organisation.qcode:"afporganization:<id>"`.
+   */
+  organisations: AfpEntity[]
+  /**
+   * Albums d'archive (`afpentity.album`, vidéo seulement) : libellés sans qcode,
+   * retrouvés en plein texte.
+   */
+  albums: string[]
   /**
    * Description courte du document (mots-clés éditoriaux).
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#slug

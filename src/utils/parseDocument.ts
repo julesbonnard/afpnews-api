@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpKeyword, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
+import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEntity, AfpEvent, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
 import { parseShotList } from './shotlist.js'
 
 const EventSchema = z.object({
@@ -100,7 +100,13 @@ export const DocumentSourceSchema = z.object({
   published: z.coerce.date(),
   embargoed: z.coerce.date().optional(),
   lang: z.string(),
-  afpentity: z.object({ event: z.unknown().array().optional(), keyword: z.unknown().array().optional() }).optional(),
+  afpentity: z.object({
+    event: z.unknown().array().optional(),
+    keyword: z.unknown().array().optional(),
+    person: z.unknown().array().optional(),
+    organisation: z.unknown().array().optional(),
+    album: z.unknown().array().optional()
+  }).optional(),
   slug: z.string().array().optional(),
   keyword: z.string().array().optional(),
   country: z.string().optional(),
@@ -168,13 +174,23 @@ function extractEvents (events: unknown[] = []): AfpEvent[] {
   })
 }
 
-// Mots-clés du thésaurus AFP ({ qcode: "afpkeyword:13088", keyword: "WIG" }) : seul le qcode
-// est interrogeable (`afpentity.keyword.qcode:"afpkeyword:13088"`), le libellé ne l’est pas.
-function extractAfpKeywords (keywords: unknown[] = []): AfpKeyword[] {
-  return keywords.flatMap(keyword => {
-    const parsed = EventSchema.safeParse(keyword)
+// Entités du thésaurus AFP ({ qcode: "afpkeyword:13088", keyword: "WIG" }) : seul le qcode
+// est interrogeable (`afpentity.keyword.qcode:"afpkeyword:13088"`), pas le libellé.
+function extractEntities (entities: unknown[] = []): AfpEntity[] {
+  return entities.flatMap(entity => {
+    const parsed = EventSchema.safeParse(entity)
     if (!parsed.success) return []
     return [{ id: parsed.data.qcode.split(':', 2)[1] ?? '', name: parsed.data.keyword.trim() }]
+  })
+}
+
+const AlbumSchema = z.object({ keyword: z.string() })
+
+// Les albums (vidéo seulement) n'ont pas de qcode : seul leur libellé existe.
+function extractAlbums (albums: unknown[] = []): string[] {
+  return albums.flatMap(album => {
+    const parsed = AlbumSchema.safeParse(album)
+    return parsed.success ? [parsed.data.keyword] : []
   })
 }
 
@@ -243,7 +259,10 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     urgency: doc.urgency,
     wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
-    afpKeywords: extractAfpKeywords(doc.afpentity?.keyword),
+    afpKeywords: extractEntities(doc.afpentity?.keyword),
+    persons: extractEntities(doc.afpentity?.person),
+    organisations: extractEntities(doc.afpentity?.organisation),
+    albums: extractAlbums(doc.afpentity?.album),
     slugs: doc.slug,
     keywords: doc.keyword,
     disclaimer: doc.disclaimer,
