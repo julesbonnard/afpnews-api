@@ -28,6 +28,7 @@ export const FIELD_SOURCES = {
   urgency: ['urgency'],
   wordCount: ['wordCount'],
   events: ['afpentity'],
+  afpKeywords: ['afpentity'],
   slugs: ['slug'],
   keywords: ['keyword'],
   disclaimer: ['disclaimer'],

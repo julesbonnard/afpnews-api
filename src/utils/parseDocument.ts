@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
+import type { AfpDocument, AfpDocumentCommon, AfpDocumentSignal, AfpEvent, AfpKeyword, AfpParagraph, AfpMedia, AfpMediaRendition } from '../types.js'
 import { parseShotList } from './shotlist.js'
 
 const EventSchema = z.object({
@@ -100,7 +100,7 @@ export const DocumentSourceSchema = z.object({
   published: z.coerce.date(),
   embargoed: z.coerce.date().optional(),
   lang: z.string(),
-  afpentity: z.object({ event: z.unknown().array().optional() }).optional(),
+  afpentity: z.object({ event: z.unknown().array().optional(), keyword: z.unknown().array().optional() }).optional(),
   slug: z.string().array().optional(),
   keyword: z.string().array().optional(),
   country: z.string().optional(),
@@ -165,6 +165,16 @@ function extractEvents (events: unknown[] = []): AfpEvent[] {
       id: parsed.data.qcode.split(':', 2)[1] ?? '',
       name: parsed.data.keyword.split(':').slice(1).join(':').trim()
     }]
+  })
+}
+
+// Mots-clés du thésaurus AFP ({ qcode: "afpkeyword:13088", keyword: "WIG" }) : seul le qcode
+// est interrogeable (`afpentity.keyword.qcode:"afpkeyword:13088"`), le libellé ne l’est pas.
+function extractAfpKeywords (keywords: unknown[] = []): AfpKeyword[] {
+  return keywords.flatMap(keyword => {
+    const parsed = EventSchema.safeParse(keyword)
+    if (!parsed.success) return []
+    return [{ id: parsed.data.qcode.split(':', 2)[1] ?? '', name: parsed.data.keyword.trim() }]
   })
 }
 
@@ -233,6 +243,7 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     urgency: doc.urgency,
     wordCount: doc.wordCount,
     events: extractEvents(doc.afpentity?.event),
+    afpKeywords: extractAfpKeywords(doc.afpentity?.keyword),
     slugs: doc.slug,
     keywords: doc.keyword,
     disclaimer: doc.disclaimer,

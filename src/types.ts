@@ -199,6 +199,12 @@ export type AfpEvent = {
   name: string
 }
 
+/** Mot-clé du thésaurus AFP (`afpentity.keyword`), ex. `{ id: "13088", name: "WIG" }`. */
+export type AfpKeyword = {
+  id: string
+  name: string
+}
+
 export type AfpCountry = {
   id?: string
   name?: string
@@ -343,6 +349,11 @@ export type AfpDocumentCommon = {
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/entities#objet-afpentity
    */
   events: AfpEvent[]
+  /**
+   * Mots-clés du thésaurus AFP (`afpentity.keyword`), surtout présents sur les photos.
+   * Recherche : `afpentity.keyword.qcode:"afpkeyword:<id>"`.
+   */
+  afpKeywords: AfpKeyword[]
   /**
    * Description courte du document (mots-clés éditoriaux).
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#slug

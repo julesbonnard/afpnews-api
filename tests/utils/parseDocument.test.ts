@@ -167,6 +167,15 @@ describe('parseDocument', () => {
       expect(doc.events).toEqual([{ id: '123', name: 'Olympic Games' }])
     })
 
+    it('extracts AFP thesaurus keywords from afpentity, skipping malformed ones', () => {
+      const doc = parseDocument({
+        ...TEXT_DOC,
+        afpentity: { keyword: [{ qcode: 'afpkeyword:13088', keyword: 'WIG' }, { qcode: 'afpkeyword:1' }] }
+      })
+      expect(doc.afpKeywords).toEqual([{ id: '13088', name: 'WIG' }])
+      expect(parseDocument(TEXT_DOC).afpKeywords).toEqual([])
+    })
+
     it('normalises signal: correction takes priority', () => {
       const doc = parseDocument({ ...TEXT_DOC, signal: ['correction', 'update'] })
       expect(doc.signal).toBe('correction')
