@@ -40,18 +40,21 @@ function expandRegion (value: AdditionalParamValue): AdditionalParamValue {
   return { in: value.in && toCountries(value.in), exclude: value.exclude && toCountries(value.exclude) }
 }
 
-const ENTITY_FIELDS: Record<string, string> = {
-  afpkeyword: 'keyword',
-  afpperson: 'person',
-  afporganization: 'organisation',
-  afpevent: 'event'
+/**
+ * Champs courts pour les entités du thésaurus, interrogeables seulement par qcode :
+ * `person:123` cherche `afpentity.person.qcode:"afpperson:123"`, `event:ABC12` le champ `event`
+ * (`afpevent:ABC12`). La valeur peut aussi être le qcode complet.
+ */
+const ENTITY_ALIASES: Record<string, { name: string, prefix: string }> = {
+  person: { name: 'afpentity.person.qcode', prefix: 'afpperson' },
+  organisation: { name: 'afpentity.organisation.qcode', prefix: 'afporganization' },
+  afpkeyword: { name: 'afpentity.keyword.qcode', prefix: 'afpkeyword' },
+  event: { name: 'event', prefix: 'afpevent' }
 }
 
-/** `entity` n'est pas un champ AFP : `entity:"afpperson:123"` cherche `afpentity.person.qcode`, d'après le préfixe du qcode. */
-function entityField (qcode: string): string {
-  const field = ENTITY_FIELDS[qcode.split(':', 1)[0] ?? '']
-  if (!field) throw new Error(`Unknown AFP entity "${qcode}". Expected a qcode prefixed with one of: ${Object.keys(ENTITY_FIELDS).join(', ')}`)
-  return `afpentity.${field}.qcode`
+function entityCondition (alias: { name: string, prefix: string }, value: string, exclude: boolean) {
+  const id = value.toLowerCase().startsWith(`${alias.prefix}:`) ? value.slice(alias.prefix.length + 1) : value
+  return { name: alias.name, [exclude ? 'exclude' : 'in']: [`${alias.prefix}:${id}`.toLowerCase()] }
 }
 
 const toBound = (bound?: string): string | number | undefined =>
@@ -270,10 +273,8 @@ export class QueryBuilder {
     if (field?.name === 'region') {
       return [{ name: 'country', [exclude ? 'exclude' : 'in']: regionCountries(String(expression.value)) }]
     }
-    if (field?.name === 'entity') {
-      const qcode = String(expression.value).toLowerCase()
-      return [{ name: entityField(qcode), [exclude ? 'exclude' : 'in']: [qcode] }]
-    }
+    const alias = field?.name ? ENTITY_ALIASES[field.name] : undefined
+    if (alias) return [entityCondition(alias, String(expression.value), exclude)]
 
     const fieldName = field?.name || 'all'
     const isFullText = fullTextSearchFields.includes(fieldName)
