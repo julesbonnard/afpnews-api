@@ -365,11 +365,6 @@ export type AfpDocumentCommon = {
    */
   organisations: AfpEntity[]
   /**
-   * Albums d'archive (`afpentity.album`, vidéo seulement) : libellés sans qcode,
-   * retrouvés en plein texte.
-   */
-  albums: string[]
-  /**
    * Description courte du document (mots-clés éditoriaux).
    * @see https://afp-api-doc-portal-uat.app.afp.com/metadata/fields/by-category/classification#slug
    */

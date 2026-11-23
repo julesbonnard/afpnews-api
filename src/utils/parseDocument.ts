@@ -104,8 +104,7 @@ export const DocumentSourceSchema = z.object({
     event: z.unknown().array().optional(),
     keyword: z.unknown().array().optional(),
     person: z.unknown().array().optional(),
-    organisation: z.unknown().array().optional(),
-    album: z.unknown().array().optional()
+    organisation: z.unknown().array().optional()
   }).optional(),
   slug: z.string().array().optional(),
   keyword: z.string().array().optional(),
@@ -184,16 +183,6 @@ function extractEntities (entities: unknown[] = []): AfpEntity[] {
   })
 }
 
-const AlbumSchema = z.object({ keyword: z.string() })
-
-// Les albums (vidéo seulement) n'ont pas de qcode : seul leur libellé existe.
-function extractAlbums (albums: unknown[] = []): string[] {
-  return albums.flatMap(album => {
-    const parsed = AlbumSchema.safeParse(album)
-    return parsed.success ? [parsed.data.keyword] : []
-  })
-}
-
 function extractMedia (bagItem: z.infer<typeof BagItemSchema>): AfpMedia {
   return {
     uno: bagItem.uno,
@@ -262,7 +251,6 @@ function extractBase (doc: DocumentSource): Omit<AfpDocumentCommon, 'headline' |
     afpKeywords: extractEntities(doc.afpentity?.keyword),
     persons: extractEntities(doc.afpentity?.person),
     organisations: extractEntities(doc.afpentity?.organisation),
-    albums: extractAlbums(doc.afpentity?.album),
     slugs: doc.slug,
     keywords: doc.keyword,
     disclaimer: doc.disclaimer,

@@ -40,6 +40,20 @@ function expandRegion (value: AdditionalParamValue): AdditionalParamValue {
   return { in: value.in && toCountries(value.in), exclude: value.exclude && toCountries(value.exclude) }
 }
 
+const ENTITY_FIELDS: Record<string, string> = {
+  afpkeyword: 'keyword',
+  afpperson: 'person',
+  afporganization: 'organisation',
+  afpevent: 'event'
+}
+
+/** `entity` n'est pas un champ AFP : `entity:"afpperson:123"` cherche `afpentity.person.qcode`, d'après le préfixe du qcode. */
+function entityField (qcode: string): string {
+  const field = ENTITY_FIELDS[qcode.split(':', 1)[0] ?? '']
+  if (!field) throw new Error(`Unknown AFP entity "${qcode}". Expected a qcode prefixed with one of: ${Object.keys(ENTITY_FIELDS).join(', ')}`)
+  return `afpentity.${field}.qcode`
+}
+
 const toBound = (bound?: string): string | number | undefined =>
   bound !== undefined && /^-?\d+(\.\d+)?$/.test(bound) ? Number(bound) : bound
 
@@ -255,6 +269,10 @@ export class QueryBuilder {
     }
     if (field?.name === 'region') {
       return [{ name: 'country', [exclude ? 'exclude' : 'in']: regionCountries(String(expression.value)) }]
+    }
+    if (field?.name === 'entity') {
+      const qcode = String(expression.value).toLowerCase()
+      return [{ name: entityField(qcode), [exclude ? 'exclude' : 'in']: [qcode] }]
     }
 
     const fieldName = field?.name || 'all'

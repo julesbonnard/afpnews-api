@@ -644,6 +644,19 @@ describe('QueryBuilder', () => {
       expect(() => qb.parseQueryString('region:oceania')).toThrow(/Unknown AFP region "oceania"/)
     })
 
+    it('should route entity:"qcode" to the afpentity field of its prefix', () => {
+      const qb = new QueryBuilder()
+      expect(qb.parseQueryString('entity:"afpkeyword:13088"')).toEqual({ or: [{ name: 'afpentity.keyword.qcode', in: ['afpkeyword:13088'] }] })
+      expect(qb.parseQueryString('entity:"afpperson:1809319" OR entity:"afporganization:4418"')).toEqual({
+        or: [
+          { or: [{ name: 'afpentity.person.qcode', in: ['afpperson:1809319'] }] },
+          { or: [{ name: 'afpentity.organisation.qcode', in: ['afporganization:4418'] }] }
+        ]
+      })
+      expect(qb.parseQueryString('NOT entity:"AFPEVENT:QGX26"')).toEqual({ or: [{ name: 'afpentity.event.qcode', exclude: ['afpevent:qgx26'] }] })
+      expect(() => qb.parseQueryString('entity:"foo:1"')).toThrow(/Unknown AFP entity "foo:1"/)
+    })
+
     it('should add translated fields only where they exist in the prod mapping', () => {
       const qb = new QueryBuilder()
       qb.setLangs(['fr', 'en'])

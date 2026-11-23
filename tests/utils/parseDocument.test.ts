@@ -167,22 +167,20 @@ describe('parseDocument', () => {
       expect(doc.events).toEqual([{ id: '123', name: 'Olympic Games' }])
     })
 
-    it('extracts AFP thesaurus entities and albums from afpentity, skipping malformed ones', () => {
+    it('extracts AFP thesaurus entities from afpentity, skipping malformed ones', () => {
       const doc = parseDocument({
         ...TEXT_DOC,
         afpentity: {
           keyword: [{ qcode: 'afpkeyword:13088', keyword: 'WIG' }, { qcode: 'afpkeyword:1' }],
           person: [{ qcode: 'afpperson:1809319', keyword: 'Simon Harmer' }],
-          organisation: [{ qcode: 'afporganization:4418', keyword: 'Organización de las Naciones Unidas' }],
-          album: [{ role: 'afpkrole:album', keyword: 'ECO_SOLAR' }, { role: 'afpkrole:album' }]
+          organisation: [{ qcode: 'afporganization:4418', keyword: 'Organización de las Naciones Unidas' }]
         }
       })
       expect(doc.afpKeywords).toEqual([{ id: '13088', name: 'WIG' }])
       expect(doc.persons).toEqual([{ id: '1809319', name: 'Simon Harmer' }])
       expect(doc.organisations).toEqual([{ id: '4418', name: 'Organización de las Naciones Unidas' }])
-      expect(doc.albums).toEqual(['ECO_SOLAR'])
       const bare = parseDocument(TEXT_DOC)
-      expect([bare.afpKeywords, bare.persons, bare.organisations, bare.albums]).toEqual([[], [], [], []])
+      expect([bare.afpKeywords, bare.persons, bare.organisations]).toEqual([[], [], []])
     })
 
     it('normalises signal: correction takes priority', () => {

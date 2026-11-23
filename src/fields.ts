@@ -31,7 +31,6 @@ export const FIELD_SOURCES = {
   afpKeywords: ['afpentity'],
   persons: ['afpentity'],
   organisations: ['afpentity'],
-  albums: ['afpentity'],
   slugs: ['slug'],
   keywords: ['keyword'],
   disclaimer: ['disclaimer'],
