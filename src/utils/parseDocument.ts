@@ -173,8 +173,7 @@ function extractEvents (events: unknown[] = []): AfpEvent[] {
   })
 }
 
-// Entités du thésaurus AFP ({ qcode: "afpkeyword:13088", keyword: "WIG" }) : seul le qcode
-// est interrogeable (`afpentity.keyword.qcode:"afpkeyword:13088"`), pas le libellé.
+// Entités du thésaurus AFP ({ qcode, keyword }) : seul le qcode est interrogeable, pas le libellé.
 function extractEntities (entities: unknown[] = []): AfpEntity[] {
   return entities.flatMap(entity => {
     const parsed = EventSchema.safeParse(entity)

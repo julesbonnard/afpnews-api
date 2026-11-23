@@ -199,7 +199,7 @@ export type AfpEvent = {
   name: string
 }
 
-/** Entité du thésaurus AFP (`afpentity.keyword|person|organisation`), ex. `{ id: "13088", name: "WIG" }`. */
+/** Entité du thésaurus AFP (`afpentity.keyword|person|organisation`) : id sans préfixe de qcode, et libellé. */
 export type AfpEntity = {
   id: string
   name: string
